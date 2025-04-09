@@ -4,12 +4,73 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// db/schema.prisma
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  models    Model[]  @relation("UserModels")
+  logs      Log[]
+}
+
+model Model {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  fileUrl     String
+  images      String[]  // массив ссылок на изображения
+  authorId    String?
+  author      User?     @relation("UserModels", fields: [authorId], references: [id])
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id])
+  sphere      Sphere
+  logs        Log[]
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  models    Model[]
+  createdAt DateTime @default(now())
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  action    String
+  modelId   String?
+  model     Model?   @relation(fields: [modelId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  LEAD
+  ARTIST
+  PROGRAMMER
+  MANAGER
+  ANALYST
+}
+
+enum Sphere {
+  CONSTRUCTION
+  CHEMISTRY
+  INDUSTRIAL
+  MEDICAL
+  OTHER
 }
