@@ -12,6 +12,8 @@
     "@prisma/client": "^6.6.0",
     "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
+    "formidable": "^3.5.2",
+    "fs-extra": "^11.3.0",
     "jsonwebtoken": "^9.0.2",
     "next": "15.2.5",
     "next-auth": "^4.24.11",
