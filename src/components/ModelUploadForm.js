@@ -44,6 +44,9 @@ export default function ModelUploadForm() {
       formData.append('screenshots', screenshot)
     }
 
+    for (let [key, value] of formData.entries()) {
+      console.log(`${key}:`, value);
+    }
     const res = await fetch('/api/models/upload', {
       method: 'POST',
       body: formData
@@ -56,7 +59,6 @@ export default function ModelUploadForm() {
     } else {
       alert('Ошибка при загрузке модели')
     }
-
     setLoading(false)
   }
 
@@ -67,7 +69,13 @@ export default function ModelUploadForm() {
         <textarea name="description" placeholder="Описание" value={formState.description} onChange={handleChange} className="block w-full border px-2 py-1" />
         <input name="authorId" placeholder="Автор (ID)" value={formState.authorId} onChange={handleChange} className="block w-full border px-2 py-1" />
         <input name="projectId" placeholder="Проект (ID)" value={formState.projectId} onChange={handleChange} className="block w-full border px-2 py-1" />
-        <input name="sphere" placeholder="Область применения" value={formState.sphere} onChange={handleChange} className="block w-full border px-2 py-1" />
+        <select name="sphere" value={formState.sphere} onChange={handleChange} required>
+          <option value="CONSTRUCTION">Строительство</option>
+          <option value="CHEMISTRY">Химия</option>
+          <option value="INDUSTRIAL">Промышленность</option>
+          <option value="MEDICAL">Медицина</option>
+          <option value="OTHER">Другое</option>
+        </select>
 
         <label className="block">ZIP-файл модели</label>
         <input name="zipFile" type="file" onChange={handleFileChange} accept=".zip" className="block" />

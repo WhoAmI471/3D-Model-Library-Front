@@ -18,7 +18,7 @@ export function createSession(user) {
 }
 
 export async function getUserFromSession() {
-  const cookie = cookies()
+  const cookie = await cookies()
   const token = cookie.get('session')?.value
 
   if (!token) return null

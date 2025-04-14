@@ -1,52 +1,48 @@
-// api/models/upload
-import { PrismaClient } from '@prisma/client'
-import { mkdir, writeFile } from 'fs/promises'
-import { join, extname } from 'path'
+import { writeFile, mkdir } from 'fs/promises'
+import path, { extname } from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import formidable from 'formidable'
-import fs from 'fs'
-
-export const config = {
-  api: {
-    bodyParser: false, // важное условие для multipart
-  },
-}
-
-const prisma = new PrismaClient()
+import prisma from '@/lib/prisma'
+import { Sphere } from '@prisma/client'
 
 export async function POST(req) {
-  const form = formidable({ multiples: true, keepExtensions: true })
+  const formData = await req.formData()
+
+  const zipFile = formData.get('zipFile') // Blob
+  const title = formData.get('title')
+  const description = formData.get('description')
+  const authorId = formData.get('authorId')
+  const projectId = formData.get('projectId')
+  const sphere = formData.get('sphere')
+  const screenshots = formData.getAll('screenshots') // Array of Blobs
+
+  if (!zipFile || !title || !sphere) {
+    return new Response(JSON.stringify({ error: 'Обязательные поля отсутствуют' }), { status: 400 })
+  }
+
+  const validSpheres = ['CONSTRUCTION', 'CHEMISTRY', 'INDUSTRIAL', 'MEDICAL', 'OTHER']
+  if (!validSpheres.includes(sphere)) {
+    return new Response(JSON.stringify({ error: 'Неверная сфера применения' }), { status: 400 })
+  }
   
-  const data = await new Promise((resolve, reject) => {
-    form.parse(req, (err, fields, files) => {
-      if (err) reject(err)
-      else resolve({ fields, files })
-    })
-  })
-
-  const { title, description, authorId, projectId, sphere } = data.fields
-  const zipFile = Array.isArray(data.files.zipFile) ? data.files.zipFile[0] : data.files.zipFile
-  const images = Array.isArray(data.files.screenshots) ? data.files.screenshots : [data.files.screenshots]
-
   const modelId = uuidv4()
-  const modelFolder = join(process.cwd(), 'public/uploads/models', modelId)
-  await mkdir(join(modelFolder, 'screenshots'), { recursive: true })
+  const modelFolder = path.join(process.cwd(), 'public/uploads/models', modelId)
+  const screenshotFolder = path.join(modelFolder, 'screenshots')
+  await mkdir(screenshotFolder, { recursive: true })
 
   // Сохраняем zip
-  const zipPath = join(modelFolder, 'model.zip')
-  const zipData = fs.readFileSync(zipFile.filepath)
-  await writeFile(zipPath, zipData)
+  const zipPath = path.join(modelFolder, 'model.zip')
+  await writeFile(zipPath, Buffer.from(await zipFile.arrayBuffer()))
 
   // Сохраняем скриншоты
   const imageUrls = []
-  for (const image of images) {
-    const ext = extname(image.originalFilename)
-    const newPath = join(modelFolder, 'screenshots', image.newFilename + ext)
-    await writeFile(newPath, fs.readFileSync(image.filepath))
-    imageUrls.push(`/uploads/models/${modelId}/screenshots/${image.newFilename + ext}`)
+  for (const file of screenshots) {
+    const ext = extname(file.name)
+    const filename = uuidv4() + ext
+    const filePath = path.join(screenshotFolder, filename)
+    await writeFile(filePath, Buffer.from(await file.arrayBuffer()))
+    imageUrls.push(`/uploads/models/${modelId}/screenshots/${filename}`)
   }
 
-  // Запись в БД
   const newModel = await prisma.model.create({
     data: {
       id: modelId,
@@ -54,30 +50,27 @@ export async function POST(req) {
       description,
       fileUrl: `/uploads/models/${modelId}/model.zip`,
       images: imageUrls,
-      authorId,
-      projectId,
+      authorId: authorId || null,
+      projectId: projectId || null,
       sphere,
     },
   })
 
-  // Добавление лога
   await prisma.log.create({
     data: {
       action: `Добавлена модель: ${title}`,
-      userId: authorId,
+      userId: authorId || null,
       modelId: modelId,
     },
   })
 
-  // Получение всех моделей после добавления
   const allModels = await prisma.model.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { author: true, project: true }, // если нужно
+    include: { author: true, project: true },
   })
-  
-  return new Response(JSON.stringify({
-    success: true,
-    model: newModel,
-    allModels, // возвращаем все модели
-  }), { status: 200 })
+
+  return new Response(JSON.stringify({ success: true, model: newModel, allModels }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
