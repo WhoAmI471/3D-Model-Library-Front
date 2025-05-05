@@ -82,7 +82,9 @@ export default function DashboardPage() {
                   <Link href={`/models/${model.id}`}>
                     <button className="text-blue-600 hover:underline">Открыть</button>
                   </Link>
-                  <button className="text-yellow-600 hover:underline">✏️</button>
+                  <Link href={`/dashboard/models/update/${model.id}`}>
+                    <button className="text-yellow-600 hover:underline">✏️</button>
+                  </Link>
                   <button className="text-red-600 hover:underline">❌</button>
                 </td>
               </tr>
