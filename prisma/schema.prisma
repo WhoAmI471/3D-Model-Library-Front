@@ -32,12 +32,12 @@ model Model {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   fileUrl     String
-  images      String[]  // массив ссылок на изображения
+  images      String[]  @default([]) // массив ссылок на изображения
   authorId    String?
   author      User?     @relation("UserModels", fields: [authorId], references: [id])
   projectId   String?
   project     Project?  @relation(fields: [projectId], references: [id])
-  sphere      Sphere
+  sphere      Sphere?
   logs        Log[]
 }
 

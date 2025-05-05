@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import ModelList from './ModelList'
 
 export default function ModelUploadForm() {
   const [models, setModels] = useState([])
@@ -24,7 +23,7 @@ export default function ModelUploadForm() {
     const { name, files } = e.target
     if (name === 'screenshots') {
       setFormState(prev => ({ ...prev, screenshots: files }))
-    } else {
+    } else if (name === 'zipFile') {
       setFormState(prev => ({ ...prev, zipFile: files[0] }))
     }
   }
@@ -33,6 +32,12 @@ export default function ModelUploadForm() {
     e.preventDefault()
     setLoading(true)
 
+    if (!formState.title || !formState.sphere || !formState.zipFile) {
+      alert('Пожалуйста, заполните все обязательные поля')
+      setLoading(false)
+      return
+    }
+
     const formData = new FormData()
     formData.append('title', formState.title)
     formData.append('description', formState.description)
@@ -40,36 +45,79 @@ export default function ModelUploadForm() {
     formData.append('authorId', formState.authorId)
     formData.append('sphere', formState.sphere)
     formData.append('zipFile', formState.zipFile)
+
     for (const screenshot of formState.screenshots) {
       formData.append('screenshots', screenshot)
     }
-
+    
     for (let [key, value] of formData.entries()) {
-      console.log(`${key}:`, value);
+      console.log(key, value);
     }
-    const res = await fetch('/api/models/upload', {
-      method: 'POST',
-      body: formData
-    })
+    
+    try {
+      const res = await fetch('/api/models/upload', {
+        method: 'POST',
+        body: formData,
+      })
 
-    const result = await res.json()
-    if (result.success) {
-      setModels(result.allModels)
-      alert('Модель загружена успешно!')
-    } else {
-      alert('Ошибка при загрузке модели')
+      const text = await res.text()
+      const result = text ? JSON.parse(text) : {}
+
+      if (res.ok && result.success) {
+        setModels(result.allModels)
+        alert('Модель загружена успешно!')
+      } else {
+        console.error(result)
+        alert(result.error || 'Ошибка при загрузке модели')
+      }
+    } catch (err) {
+      console.error('Ошибка сети или сервера:', err)
+      alert('Ошибка загрузки. Попробуйте позже.')
     }
+
     setLoading(false)
   }
 
   return (
     <div>
       <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded mb-8">
-        <input name="title" placeholder="Название" value={formState.title} onChange={handleChange} className="block w-full border px-2 py-1" />
-        <textarea name="description" placeholder="Описание" value={formState.description} onChange={handleChange} className="block w-full border px-2 py-1" />
-        <input name="authorId" placeholder="Автор (ID)" value={formState.authorId} onChange={handleChange} className="block w-full border px-2 py-1" />
-        <input name="projectId" placeholder="Проект (ID)" value={formState.projectId} onChange={handleChange} className="block w-full border px-2 py-1" />
-        <select name="sphere" value={formState.sphere} onChange={handleChange} required>
+        <input
+          name="title"
+          placeholder="Название"
+          value={formState.title}
+          onChange={handleChange}
+          className="block w-full border px-2 py-1"
+          required
+        />
+        <textarea
+          name="description"
+          placeholder="Описание"
+          value={formState.description}
+          onChange={handleChange}
+          className="block w-full border px-2 py-1"
+        />
+        <input
+          name="authorId"
+          placeholder="Автор (ID)"
+          value={formState.authorId}
+          onChange={handleChange}
+          className="block w-full border px-2 py-1"
+        />
+        <input
+          name="projectId"
+          placeholder="Проект (ID)"
+          value={formState.projectId}
+          onChange={handleChange}
+          className="block w-full border px-2 py-1"
+        />
+        <select
+          name="sphere"
+          value={formState.sphere}
+          onChange={handleChange}
+          required
+          className="block w-full border px-2 py-1"
+        >
+          <option value="">Выберите сферу</option>
           <option value="CONSTRUCTION">Строительство</option>
           <option value="CHEMISTRY">Химия</option>
           <option value="INDUSTRIAL">Промышленность</option>
@@ -77,11 +125,25 @@ export default function ModelUploadForm() {
           <option value="OTHER">Другое</option>
         </select>
 
-        <label className="block">ZIP-файл модели</label>
-        <input name="zipFile" type="file" onChange={handleFileChange} accept=".zip" className="block" />
+        <label className="block">ZIP-файл модели *</label>
+        <input
+          name="zipFile"
+          type="file"
+          onChange={handleFileChange}
+          accept=".zip"
+          className="block"
+          required
+        />
 
         <label className="block">Скриншоты</label>
-        <input name="screenshots" type="file" onChange={handleFileChange} accept="image/*" multiple className="block" />
+        <input
+          name="screenshots"
+          type="file"
+          onChange={handleFileChange}
+          accept="image/*"
+          multiple
+          className="block"
+        />
 
         <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded">
           {loading ? 'Загрузка...' : 'Загрузить модель'}
@@ -91,6 +153,7 @@ export default function ModelUploadForm() {
       {models.length > 0 && (
         <div>
           <h2 className="text-xl font-semibold mb-2">Загруженные модели</h2>
+          {/* Убедись, что у тебя есть компонент <ModelList /> */}
           <ModelList models={models} />
         </div>
       )}
