@@ -39,10 +39,10 @@ export async function POST(request) {
     // Обработка ZIP-файла
     const zipFile = formData.get('zipFile')
     if (zipFile && zipFile.size > 0) {
-      if (existingModel.zip) {
-        await deleteFile(existingModel.zip)
+      if (existingModel.fileUrl) {
+        await deleteFile(existingModel.fileUrl)
       }
-      updateData.zip = await saveFile(zipFile, 'models')
+      updateData.fileUrl = await saveFile(zipFile, 'models')
     }
 
     // Обработка скриншотов

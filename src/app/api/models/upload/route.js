@@ -1,10 +1,7 @@
 import { writeFile, mkdir } from 'fs/promises'
 import path, { extname } from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
-
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req) {
   try {

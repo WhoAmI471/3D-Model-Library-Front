@@ -4,12 +4,12 @@ import prisma from './prisma'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret'
 
-export function createSession(user) {
+export async function createSession(user) {
   const token = jwt.sign({ id: user.id, name: user.name }, JWT_SECRET, {
     expiresIn: '7d',
   })
 
-  const cookie = cookies()
+  const cookie = await cookies()
   cookie.set('session', token, {
     httpOnly: true,
     path: '/',
@@ -32,7 +32,7 @@ export async function getUserFromSession() {
   }
 }
 
-export function clearSession() {
-  const cookie = cookies()
+export async function clearSession() {
+  const cookie = await cookies()
   cookie.delete('session')
 }
