@@ -1,8 +1,12 @@
 // app/api/models/[id]/route.js
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserFromSession } from '@/lib/auth'
 
 export async function GET(request, { params }) {
+  const user = await getUserFromSession()
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
   try {
     const { id } = params
     

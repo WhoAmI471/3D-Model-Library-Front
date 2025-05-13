@@ -12,14 +12,18 @@ export async function createSession(user) {
   const cookie = await cookies()
   cookie.set('session', token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: 60 * 60 * 24 * 7, // 7 дней
+    maxAge: 60 * 60 * 24 * 7,
   })
 }
 
 export async function getUserFromSession() {
   const cookie = await cookies()
   const token = cookie.get('session')?.value
+  const payload = jwt.verify(token, JWT_SECRET)
+  if (payload.exp < Date.now() / 1000) return null
+
 
   if (!token) return null
 
@@ -34,5 +38,9 @@ export async function getUserFromSession() {
 
 export async function clearSession() {
   const cookie = await cookies()
-  cookie.delete('session')
+  cookie.set('session', '', {
+    httpOnly: true,
+    path: '/',
+    expires: new Date(0) // Устанавливаем дату в прошлое
+  })
 }

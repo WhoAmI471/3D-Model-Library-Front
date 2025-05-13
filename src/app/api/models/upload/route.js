@@ -2,8 +2,12 @@ import { writeFile, mkdir } from 'fs/promises'
 import path, { extname } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { prisma } from '@/lib/prisma'
+import { getUserFromSession } from '@/lib/auth'
 
 export async function POST(req) {
+  const user = await getUserFromSession()
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
   try {
     const formData = await req.formData()
 

@@ -2,8 +2,12 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { saveFile, deleteFile } from '@/lib/fileStorage'
+import { getUserFromSession } from '@/lib/auth'
 
 export async function POST(request) {
+  const user = await getUserFromSession()
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
   try {
     const formData = await request.formData()
     const id = formData.get('id')
