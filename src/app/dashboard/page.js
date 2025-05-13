@@ -80,7 +80,7 @@ export default function DashboardPage() {
                 <td className="p-3">{model.project?.name || '—'}</td>
                 <td className="p-3">{model.author?.name || '—'}</td>
                 <td className="p-3 text-center space-x-2">
-                  <Link href={`/models/${model.id}`}>
+                  <Link href={`/dashboard/models/${model.id}`}>
                     <button className="text-blue-600 hover:underline">Открыть</button>
                   </Link>
                   <Link href={`/dashboard/models/update/${model.id}`}>

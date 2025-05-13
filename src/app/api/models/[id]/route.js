@@ -1,11 +1,13 @@
-// app/api/models/[id]/route.js
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 
 export async function GET(request, { params }) {
   const user = await getUserFromSession()
-  if (!user) return new Response('Unauthorized', { status: 401 })
+  if (!user) return NextResponse.json(
+    { error: 'Не авторизован' }, 
+    { status: 401 }
+  )
 
   try {
     const { id } = params
@@ -18,7 +20,19 @@ export async function GET(request, { params }) {
     }
 
     const model = await prisma.model.findUnique({
-      where: { id: String(id) }
+      where: { id: String(id) },
+      include: {
+        author: true,
+        project: true,
+        logs: {
+          include: {
+            user: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+      },
     })
 
     if (!model) {
