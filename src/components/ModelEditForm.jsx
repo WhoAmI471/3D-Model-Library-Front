@@ -16,12 +16,38 @@ export default function ModelEditForm({ id }) {
   })
   const [zipFile, setZipFile] = useState(null)
   const [screenshots, setScreenshots] = useState([])
+  const [users, setUsers] = useState([])
+  const [projects, setProjects] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [currentFiles, setCurrentFiles] = useState({
     zip: null,
     screenshots: []
   })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [usersRes, projectsRes] = await Promise.all([
+          fetch('/api/users'),
+          fetch('/api/projects')
+        ])
+        
+        const usersData = await usersRes.json()
+        const projectsData = await projectsRes.json()
+        
+        // Убедимся, что данные - массивы
+        setUsers(Array.isArray(usersData) ? usersData : [])
+        setProjects(Array.isArray(projectsData) ? projectsData : [])
+      } catch (error) {
+        console.error('Ошибка загрузки данных:', error)
+        setUsers([])
+        setProjects([])
+      }
+    }
+    
+    fetchData()
+  }, [])
 
   useEffect(() => {
     const loadModel = async () => {
@@ -145,27 +171,43 @@ export default function ModelEditForm({ id }) {
         />
       </div>
 
+
+        
+
+        
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block mb-1 font-medium">ID проекта</label>
-          <input
+          <label className="block mb-1 font-medium">Проект</label>
+          <select
             name="projectId"
             value={form.projectId}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
-            placeholder="Введите ID проекта"
-          />
+            className="block w-full border px-2 py-1"
+          >
+            <option value="">Выберите проект</option>
+            {Array.isArray(projects) && projects.map(project => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">ID автора</label>
-          <input
+          <label className="block mb-1 font-medium">Автор</label>
+          <select
             name="authorId"
             value={form.authorId}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
-            placeholder="Введите ID автора"
-          />
+            className="block w-full border px-2 py-1"
+          >
+            <option value="">Выберите автора</option>
+            {users.map(user => (
+              <option key={user.id} value={user.id}>
+                {user.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

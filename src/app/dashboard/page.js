@@ -37,7 +37,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-gray-800">
       {/* Header */}
       <header className="flex justify-between items-center p-4 bg-blue-600 text-white shadow">
         <div className="text-xl font-bold">DigiTech</div>

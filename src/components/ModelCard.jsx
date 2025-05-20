@@ -95,7 +95,7 @@ export const ModelCard = ({ model }) => {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">Проект:</h2>
-                <p>{model.project?.title || 'Не указан'}</p>
+                <p>{model.project?.name || 'Не указан'}</p>
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">Сфера:</h2>

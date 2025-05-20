@@ -1,9 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function ModelUploadForm() {
   const [models, setModels] = useState([])
   const [loading, setLoading] = useState(false)
+  const [users, setUsers] = useState([])
+  const [projects, setProjects] = useState([])
   const [formState, setFormState] = useState({
     title: '',
     description: '',
@@ -13,6 +15,30 @@ export default function ModelUploadForm() {
     zipFile: null,
     screenshots: []
   })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [usersRes, projectsRes] = await Promise.all([
+          fetch('/api/users'),
+          fetch('/api/projects')
+        ])
+        
+        const usersData = await usersRes.json()
+        const projectsData = await projectsRes.json()
+        
+        // Убедимся, что данные - массивы
+        setUsers(Array.isArray(usersData) ? usersData : [])
+        setProjects(Array.isArray(projectsData) ? projectsData : [])
+      } catch (error) {
+        console.error('Ошибка загрузки данных:', error)
+        setUsers([])
+        setProjects([])
+      }
+    }
+    
+    fetchData()
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -96,20 +122,35 @@ export default function ModelUploadForm() {
           onChange={handleChange}
           className="block w-full border px-2 py-1"
         />
-        <input
+        
+        <select
           name="authorId"
-          placeholder="Автор (ID)"
           value={formState.authorId}
           onChange={handleChange}
           className="block w-full border px-2 py-1"
-        />
-        <input
+        >
+          <option value="">Выберите автора</option>
+          {users.map(user => (
+            <option key={user.id} value={user.id}>
+              {user.name}
+            </option>
+          ))}
+        </select>
+
+        <select
           name="projectId"
-          placeholder="Проект (ID)"
           value={formState.projectId}
           onChange={handleChange}
           className="block w-full border px-2 py-1"
-        />
+        >
+          <option value="">Выберите проект</option>
+          {Array.isArray(projects) && projects.map(project => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+
         <select
           name="sphere"
           value={formState.sphere}
@@ -150,13 +191,13 @@ export default function ModelUploadForm() {
         </button>
       </form>
 
-      {models.length > 0 && (
+      {/* {models.length > 0 && (
         <div>
-          <h2 className="text-xl font-semibold mb-2">Загруженные модели</h2>
+          <h2 className="text-xl font-semibold mb-2">Загруженные модели</h2> */}
           {/* Убедись, что у тебя есть компонент <ModelList /> */}
-          <ModelList models={models} />
-        </div>
-      )}
+          {/* <ModelList models={models} /> */}
+        {/* </div>
+      )} */}
     </div>
   )
 }
