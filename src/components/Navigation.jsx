@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { HomeIcon, CubeIcon, UsersIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
+import { FolderIcon, CubeIcon, UsersIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 
 export default function Navigation() {
   const pathname = usePathname()
@@ -12,6 +12,12 @@ export default function Navigation() {
       href: '/dashboard',
       icon: <CubeIcon className="w-5 h-5" />,
       current: pathname === '/dashboard'
+    },
+    {
+      name: 'Проекты',
+      href: '/dashboard/projects',
+      icon: <FolderIcon className="w-5 h-5" />,
+      current: pathname === '/dashboard/projects'
     },
     {
       name: 'Сотрудники',

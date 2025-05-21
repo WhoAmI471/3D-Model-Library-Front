@@ -89,7 +89,7 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 text-gray-800">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Сотрудники</h1>
         <button
