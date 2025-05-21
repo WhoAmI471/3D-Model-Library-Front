@@ -39,7 +39,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
       {/* Header */}
-      <header className="flex justify-between items-center p-4 bg-blue-600 text-white shadow">
+      {/* <header className="flex justify-between items-center p-4 bg-blue-600 text-white shadow">
         <div className="text-xl font-bold">DigiTech</div>
         <div className="flex items-center gap-4">
           <span>{user?.name}</span>
@@ -50,7 +50,7 @@ export default function DashboardPage() {
             Выйти
           </button>
         </div>
-      </header>
+      </header> */}
 
       {/* Main content */}
       <main className="p-6 max-w-6xl mx-auto">

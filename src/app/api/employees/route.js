@@ -1,0 +1,85 @@
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcrypt'
+
+
+export async function GET() {
+  try {
+    const employees = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    })
+    return NextResponse.json(employees)
+  } catch (error) {
+    console.error('Error fetching employees:', error)
+    return NextResponse.json(
+      { error: 'Ошибка загрузки сотрудников' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request) {
+  try {
+    const { name, email, role, password } = await request.json()
+    
+    // Валидация данных
+    if (!name || !email || !role || !password) {
+      return NextResponse.json(
+        { error: 'Все поля обязательны для заполнения' },
+        { status: 400 }
+      )
+    }
+    
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'Пароль должен быть не менее 6 символов' },
+        { status: 400 }
+      )
+    }
+    
+    // Проверка существования пользователя
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    })
+    
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'Пользователь с таким email уже существует' },
+        { status: 400 }
+      )
+    }
+    
+    // Хеширование пароля
+    const hashedPassword = await bcrypt.hash(password, 10)
+    
+    // Создание пользователя
+    const newEmployee = await prisma.user.create({
+      data: {
+        name,
+        email,
+        role,
+        password: hashedPassword,
+      },
+    })
+    
+    // Не возвращаем пароль в ответе
+    const { password: _, ...employeeWithoutPassword } = newEmployee
+    
+    return NextResponse.json(employeeWithoutPassword)
+    
+  } catch (error) {
+    console.error('Error creating employee:', error)
+    return NextResponse.json(
+      { error: 'Ошибка создания сотрудника' },
+      { status: 500 }
+    )
+  }
+}

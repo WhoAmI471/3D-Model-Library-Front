@@ -170,10 +170,6 @@ export default function ModelEditForm({ id }) {
           placeholder="Добавьте описание модели"
         />
       </div>
-
-
-        
-
         
       <div className="grid grid-cols-2 gap-4">
         <div>
