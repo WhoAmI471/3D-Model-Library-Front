@@ -3,18 +3,24 @@ import { prisma } from '@/lib/prisma'
 
 export async function PUT(request, { params }) {
   try {
-    const { id } = params
-    const { name } = await request.json()
+    const data = await request.json()
+    const { id } = data
+    const { name } = data
+    
+    if (!name.id) {
+      return NextResponse.json(
+        { error: 'ID проекта обязательно' },
+        { status: 400 }
+      )
+    }
 
-    // Валидация данных
-    if (!name) {
+    if (!name || name.trim() === '') {
       return NextResponse.json(
         { error: 'Название проекта обязательно' },
         { status: 400 }
       )
     }
 
-    // Проверка существования проекта
     const existingProject = await prisma.project.findUnique({
       where: { id }
     })
@@ -26,7 +32,26 @@ export async function PUT(request, { params }) {
       )
     }
 
-    // Обновление проекта
+    // Проверка на дубликат (исключая текущий проект)
+    const duplicateProject = await prisma.project.findFirst({
+      where: {
+        name: {
+          equals: name,
+          mode: 'insensitive'
+        },
+        NOT: {
+          id: id
+        }
+      }
+    })
+
+    if (duplicateProject) {
+      return NextResponse.json(
+        { error: 'Проект с таким названием уже существует' },
+        { status: 400 }
+      )
+    }
+
     const updatedProject = await prisma.project.update({
       where: { id },
       data: { name },
@@ -52,9 +77,16 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params
+    const data = await request.json()
+    const { id } = data
 
-    // Проверка существования проекта
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID проекта обязательно' },
+        { status: 400 }
+      )
+    }
+
     const existingProject = await prisma.project.findUnique({
       where: { id },
       include: {
@@ -69,7 +101,6 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    // Проверка на наличие связанных моделей
     if (existingProject.models.length > 0) {
       return NextResponse.json(
         { error: 'Нельзя удалить проект с привязанными моделями' },
@@ -77,13 +108,12 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    // Удаление проекта
     await prisma.project.delete({
       where: { id }
     })
 
     return NextResponse.json(
-      { success: true },
+      { success: true, message: 'Проект успешно удален' },
       { status: 200 }
     )
 

@@ -27,9 +27,9 @@ export default function Navigation() {
     },
     {
       name: 'Логи',
-      href: '/logs',
+      href: '/dashboard/logs',
       icon: <DocumentTextIcon className="w-5 h-5" />,
-      current: pathname === '/logs'
+      current: pathname === '/dashboard/logs'
     }
   ]
 

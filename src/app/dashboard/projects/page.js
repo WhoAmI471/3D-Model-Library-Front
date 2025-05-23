@@ -66,12 +66,18 @@ export default function ProjectsPage() {
   }
 
   // Обработка удаления проекта
-  const handleDelete = async (id) => {
+  const handleDelete = async (project) => {
     if (!confirm('Вы уверены, что хотите удалить этот проект?')) return
     
+    const id = project.id
+
     try {
       const response = await fetch(`/api/projects/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(project),
       })
       
       if (response.ok) {
@@ -155,7 +161,7 @@ export default function ProjectsPage() {
                       Редактировать
                     </button>
                     <button 
-                      onClick={() => handleDelete(project.id)}
+                      onClick={() => handleDelete(project)}
                       className="text-red-600 hover:text-red-800"
                     >
                       Удалить
