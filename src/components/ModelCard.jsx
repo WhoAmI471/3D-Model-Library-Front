@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
-export const ModelCard = ({ model }) => {
+export const ModelCard = ({ model, userRole, onDeleteRequest }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
@@ -24,6 +24,24 @@ export const ModelCard = ({ model }) => {
       console.error('Ошибка при скачивании:', error);
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleDeleteRequest = async () => {
+    if (userRole === 'ADMIN') {
+      if (confirm('Вы уверены, что хотите удалить эту модель?')) {
+        const result = await onDeleteRequest(model.id, true);
+        if (result?.success && result.redirect) {
+          router.push(result.redirect);
+        }
+      }
+    } else {
+      if (confirm('Отправить запрос на удаление администратору?')) {
+        const result = await onDeleteRequest(model.id, false);
+        if (result?.success) {
+          alert(result.message || 'Запрос на удаление отправлен администратору');
+        }
+      }
     }
   };
 
@@ -172,9 +190,9 @@ export const ModelCard = ({ model }) => {
           
           <button 
             className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md"
-            onClick={() => confirm('Удалить модель?') && handleDelete(model.id)}
+            onClick={handleDeleteRequest}
           >
-            Удалить
+            {userRole === 'ADMIN' ? 'Удалить' : 'Запросить удаление'}
           </button>
         </div>
 

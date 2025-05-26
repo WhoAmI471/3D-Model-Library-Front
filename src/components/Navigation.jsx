@@ -1,9 +1,10 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FolderIcon, CubeIcon, UsersIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
+import { FolderIcon, CubeIcon, UsersIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 
-export default function Navigation() {
+
+export default function Navigation({ userRole }) {
   const pathname = usePathname()
 
   const navItems = [
@@ -30,7 +31,13 @@ export default function Navigation() {
       href: '/dashboard/logs',
       icon: <DocumentTextIcon className="w-5 h-5" />,
       current: pathname === '/dashboard/logs'
-    }
+    },
+    ...(userRole === 'ADMIN' ? [{
+      name: 'Удаление моделей',
+      href: '/dashboard/deletion-requests',
+      icon: <TrashIcon className="w-5 h-5" />,
+      current: pathname === '/dashboard/deletion-requests'
+    }] : [])
   ]
 
   return (

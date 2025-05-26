@@ -1,15 +1,24 @@
 import { NextResponse } from 'next/server'
-import { getUserFromSession } from '@/lib/auth'
+import { getUserFromSession } from './lib/auth'
+
+// Пути, доступные без авторизации
+const PUBLIC_PATHS = ['/login', '/api/auth']
 
 export async function middleware(request) {
-  const user = await getUserFromSession()
   const { pathname } = request.nextUrl
 
-  // Защищённые пути
-  const protectedPaths = ['/dashboard', '/dashboard/models']
+  // Пропускаем публичные пути
+  if (PUBLIC_PATHS.some(path => pathname.startsWith(path))) {
+    return NextResponse.next()
+  }
 
-  if (protectedPaths.some(path => pathname.startsWith(path)) && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  const user = await getUserFromSession(request)
+
+  // Если пользователь не авторизован - редирект на логин
+  if (!user) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   return NextResponse.next()

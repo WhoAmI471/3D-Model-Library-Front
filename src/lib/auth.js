@@ -2,45 +2,79 @@ import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import prisma from './prisma'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret'
+const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-please-change'
 
 export async function createSession(user) {
-  const token = jwt.sign({ id: user.id, name: user.name }, JWT_SECRET, {
-    expiresIn: '7d',
-  })
+  const token = jwt.sign(
+    { 
+      id: user.id, 
+      name: user.name,
+      role: user.role,
+      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 дней
+    }, 
+    JWT_SECRET
+  )
 
-  const cookie = await cookies()
-  cookie.set('session', token, {
+  cookies().set('session', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 7, // 7 дней
+    sameSite: 'lax'
   })
 }
 
-export async function getUserFromSession() {
-  const cookie = await cookies()
-  const token = cookie.get('session')?.value
-  const payload = jwt.verify(token, JWT_SECRET)
-  if (payload.exp < Date.now() / 1000) return null
+export async function getUserFromSession(request) {
+  // Для API роутов
+  if (request?.cookies) {
+    const token = request.cookies.get('session')?.value
+    return await verifyToken(token)
+  }
+  
+  // Для серверных компонентов
+  const token = cookies().get('session')?.value
+  return await verifyToken(token)
+}
 
-
+async function verifyToken(token) {
   if (!token) return null
 
   try {
     const payload = jwt.verify(token, JWT_SECRET)
-    const user = await prisma.user.findUnique({ where: { id: payload.id } })
+    
+    // Проверка срока действия токена
+    if (payload.exp < Date.now() / 1000) {
+      await clearSession()
+      return null
+    }
+
+    const user = await prisma.user.findUnique({ 
+      where: { id: payload.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true
+      }
+    })
+
+    if (!user) {
+      await clearSession()
+      return null
+    }
+
     return user
   } catch (err) {
+    await clearSession()
     return null
   }
 }
 
 export async function clearSession() {
-  const cookie = await cookies()
-  cookie.set('session', '', {
+  cookies().set('session', '', {
     httpOnly: true,
     path: '/',
-    expires: new Date(0) // Устанавливаем дату в прошлое
+    expires: new Date(0)
   })
 }

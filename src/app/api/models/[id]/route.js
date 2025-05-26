@@ -51,3 +51,68 @@ export async function GET(request, { params }) {
     )
   }
 }
+
+// DELETE метод
+export async function DELETE(request, { params }) {
+  const user = await getUserFromSession();
+  if (!user) return new Response('Unauthorized', { status: 401 });
+
+  try {
+    const { id } = params;
+    const { approve } = await request.json();
+
+    const model = await prisma.model.findUnique({
+      where: { id },
+      include: {
+        logs: true,
+        markedBy: true
+      }
+    });
+
+    if (!model) {
+      return NextResponse.json(
+        { error: 'Модель не найдена' },
+        { status: 404 }
+      );
+    }
+
+    if (approve) {
+      // Реальное удаление модели (кроме логов)
+      await prisma.model.delete({
+        where: { id }
+      });
+
+      // Сохраняем логи в отдельной таблице
+      await prisma.deletedModelLogs.createMany({
+        data: model.logs.map(log => ({
+          ...log,
+          modelId: id,
+          deletedAt: new Date()
+        }))
+      });
+
+      return NextResponse.json(
+        { success: true, message: 'Модель удалена' }
+      );
+    } else {
+      // Отмена пометки на удаление
+      await prisma.model.update({
+        where: { id },
+        data: {
+          markedForDeletion: false,
+          markedById: null
+        }
+      });
+
+      return NextResponse.json(
+        { success: true, message: 'Удаление отменено' }
+      );
+    }
+  } catch (error) {
+    console.error('Error deleting model:', error);
+    return NextResponse.json(
+      { error: 'Ошибка удаления модели' },
+      { status: 500 }
+    );
+  }
+}
