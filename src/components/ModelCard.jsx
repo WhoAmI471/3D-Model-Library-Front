@@ -1,9 +1,11 @@
 'use client'
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation'
 import Link from 'next/link';
 
 export const ModelCard = ({ model, userRole, onDeleteRequest }) => {
+  const router = useRouter()
   const [isDownloading, setIsDownloading] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
@@ -37,9 +39,21 @@ export const ModelCard = ({ model, userRole, onDeleteRequest }) => {
       }
     } else {
       if (confirm('Отправить запрос на удаление администратору?')) {
-        const result = await onDeleteRequest(model.id, false);
-        if (result?.success) {
-          alert(result.message || 'Запрос на удаление отправлен администратору');
+        try {
+          const response = await fetch(`/api/models/${model.id}`, {
+            method: 'PUT'
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok) {
+            alert(result.message);
+            router.refresh(); // Обновляем страницу
+          } else {
+            throw new Error(result.error);
+          }
+        } catch (error) {
+          alert(error.message);
         }
       }
     }

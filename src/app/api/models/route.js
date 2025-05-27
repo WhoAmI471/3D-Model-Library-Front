@@ -1,25 +1,39 @@
 // /app/api/models/route.js
 import prisma from '@/lib/prisma'
+import { NextResponse } from 'next/server'
 import { getUserFromSession } from '@/lib/auth'
 
 
 export async function GET(request) {
-  const user = await getUserFromSession(request)
-  
-  if (!user) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    )
-  }
+  const { searchParams } = new URL(request.url);
+  const markedForDeletion = searchParams.get('markedForDeletion') === 'true';
 
-  const models = await prisma.model.findMany({
-    include: {
-      project: true,
-      author: true,
-    },
-  })
-  return Response.json(models)
+  try {
+    const models = await prisma.model.findMany({
+      where: markedForDeletion 
+        ? { 
+            markedForDeletion: true,
+            markedById: { not: null } // Дополнительная проверка
+          } 
+        : {},
+      include: {
+        markedBy: true,
+        author: true,
+        project: true
+      },
+      orderBy: markedForDeletion
+        ? { markedAt: 'desc' }
+        : { createdAt: 'desc' }
+    });
+
+    return NextResponse.json(models);
+  } catch (error) {
+    console.error('Error fetching models:', error);
+    return NextResponse.json(
+      { error: 'Ошибка загрузки моделей' },
+      { status: 500 }
+    );
+  }
 }
 
 // GET метод с фильтром

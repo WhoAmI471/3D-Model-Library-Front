@@ -23,6 +23,8 @@ model User {
   createdAt DateTime @default(now())
   models    Model[]  @relation("UserModels")
   logs      Log[]
+  markedModels  Model[] @relation("MarkedForDeletion")
+  deletedLogs   DeletedModelLog[] @relation("UserDeletedLogs")
 }
 
 model Model {
@@ -39,6 +41,10 @@ model Model {
   project     Project?  @relation(fields: [projectId], references: [id])
   sphere      Sphere?
   logs        Log[]
+  markedForDeletion Boolean       @default(false) // Новое поле - пометка на удаление
+  markedById       String?       // ID пользователя, запросившего удаление
+  markedBy        User?         @relation("MarkedForDeletion", fields: [markedById], references: [id])
+  markedAt        DateTime?     // Дата пометки на удаление
 }
 
 model Project {
@@ -56,6 +62,16 @@ model Log {
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model DeletedModelLog {
+  id        String   @id @default(uuid())
+  action    String
+  modelId   String?
+  userId    String?
+  user      User?    @relation("UserDeletedLogs", fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  deletedAt DateTime @default(now())
 }
 
 enum Role {

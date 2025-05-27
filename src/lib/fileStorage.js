@@ -37,3 +37,32 @@ export async function deleteFile(filePath) {
     console.error('File delete error:', err);
   }
 }
+
+
+export async function deleteModelFiles(fileUrl) {
+  if (!fileUrl) return;
+  
+  try {
+    // Удаляем основной файл
+    await deleteFile(fileUrl);
+    
+    // Удаляем связанные файлы (если есть)
+    const baseName = path.basename(fileUrl, path.extname(fileUrl));
+    const dirPath = path.join(process.cwd(), 'public', path.dirname(fileUrl));
+    
+    try {
+      const files = await fs.readdir(dirPath);
+      await Promise.all(
+        files
+          .filter(file => file.startsWith(baseName))
+          .map(file => deleteFile(path.join(path.dirname(fileUrl), file)))
+        )
+    } catch (err) {
+      // Если директории нет - игнорируем ошибку
+      if (err.code !== 'ENOENT') throw err;
+    }
+  } catch (error) {
+    console.error('Ошибка удаления файлов модели:', error);
+    throw error; // Пробрасываем ошибку для обработки выше
+  }
+}
