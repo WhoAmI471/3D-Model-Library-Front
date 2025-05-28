@@ -8,22 +8,29 @@ export default function EmployeesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [currentEmployee, setCurrentEmployee] = useState(null)
+  const [userRole, setUserRole] = useState(null) 
 
   // Загрузка сотрудников
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/employees')
-        const data = await response.json()
-        setEmployees(data)
+        // Загружаем сотрудников
+        const employeesResponse = await fetch('/api/employees')
+        const employeesData = await employeesResponse.json()
+        setEmployees(employeesData)
+
+        // Загружаем информацию о текущем пользователе
+        const userResponse = await fetch('/api/auth/me')
+        const userData = await userResponse.json()
+        setUserRole(userData.user?.role || null)
       } catch (error) {
-        console.error('Ошибка загрузки сотрудников:', error)
+        console.error('Ошибка загрузки данных:', error)
       } finally {
         setIsLoading(false)
       }
     }
     
-    fetchEmployees()
+    fetchData()
   }, [])
 
   // Поиск сотрудников
@@ -92,15 +99,17 @@ export default function EmployeesPage() {
     <div className="p-4 text-gray-800">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Сотрудники</h1>
-        <button
-          onClick={() => {
-            setCurrentEmployee(null)
-            setShowAddForm(true)
-          }}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          + Добавить сотрудника
-        </button>
+        {userRole === 'ADMIN' && ( // Показываем кнопку только для админов
+          <button
+            onClick={() => {
+              setCurrentEmployee(null)
+              setShowAddForm(true)
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            + Добавить сотрудника
+          </button>
+        )}
       </div>
 
       {/* Форма поиска */}
@@ -134,7 +143,9 @@ export default function EmployeesPage() {
               <th className="py-2 px-4 border text-left">Имя</th>
               <th className="py-2 px-4 border text-left">Email</th>
               <th className="py-2 px-4 border text-left">Роль</th>
-              <th className="py-2 px-4 border text-left">Действия</th>
+              {userRole === 'ADMIN' && ( // Показываем заголовок "Действия" только для админов
+                <th className="py-2 px-4 border text-left">Действия</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -150,28 +161,33 @@ export default function EmployeesPage() {
                      employee.role === 'PROGRAMMER' ? 'Программист' :
                      employee.role === 'MANAGER' ? 'Менеджер' : 'Аналитик'}
                   </td>
-                  <td className="py-2 px-4 border">
-                    <button 
-                      onClick={() => {
-                        setCurrentEmployee(employee)
-                        setShowAddForm(true)
-                      }}
-                      className="text-blue-600 hover:text-blue-800 mr-2"
-                    >
-                      Редактировать
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(employee.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Удалить
-                    </button>
-                  </td>
+                  {userRole === 'ADMIN' && ( // Показываем кнопки действий только для админов
+                    <td className="py-2 px-4 border">
+                      <button 
+                        onClick={() => {
+                          setCurrentEmployee(employee)
+                          setShowAddForm(true)
+                        }}
+                        className="text-blue-600 hover:text-blue-800 mr-2"
+                      >
+                        Редактировать
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(employee.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Удалить
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="4" className="py-4 px-4 border text-center text-gray-500">
+                <td 
+                  colSpan={userRole === 'ADMIN' ? 4 : 3} // Учитываем количество столбцов
+                  className="py-4 px-4 border text-center text-gray-500"
+                >
                   Сотрудники не найдены
                 </td>
               </tr>

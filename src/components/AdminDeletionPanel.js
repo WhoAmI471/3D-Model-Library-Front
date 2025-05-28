@@ -54,7 +54,7 @@ export default function AdminDeletionPanel({ userRole }) {
   if (userRole !== 'ADMIN') return null;
 
   return (
-    <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border border-gray-200 w-96 max-h-[80vh] overflow-y-auto">
+    <div className="bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border border-gray-200 w-96 max-h-[80vh] overflow-y-auto">
       <h3 className="font-bold text-lg mb-4">Запросы на удаление моделей</h3>
       
       {error && (
