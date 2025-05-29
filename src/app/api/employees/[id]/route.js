@@ -4,7 +4,9 @@ import { prisma } from '@/lib/prisma'
 export async function DELETE(request, { params }) {
   try {
     // const data = 
-    const { id } = await request.json()
+    const { id } = params
+    // console.log(request)
+    // console.log(params)
 
     if (!id) {
       return NextResponse.json(
@@ -13,7 +15,7 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    const existingProject = await prisma.employees.findUnique({
+    const existingProject = await prisma.user.findUnique({
       where: { id },
     })
 
@@ -31,7 +33,7 @@ export async function DELETE(request, { params }) {
     //   )
     // }
 
-    await prisma.project.delete({
+    await prisma.user.delete({
       where: { id }
     })
 
