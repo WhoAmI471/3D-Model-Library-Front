@@ -7,6 +7,7 @@ import { ru } from 'date-fns/locale'
 export default function LogsPage() {
   const [logs, setLogs] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [filters, setFilters] = useState({
@@ -49,6 +50,19 @@ export default function LogsPage() {
     setPage(1) // Сброс на первую страницу при изменении фильтров
   }
 
+  const requestSort = (key) => {
+    let direction = 'asc'
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return null
+    return sortConfig.direction === 'asc' ? '↑' : '↓'
+  }
+
   const resetFilters = () => {
     setFilters({
       action: '',
@@ -60,7 +74,7 @@ export default function LogsPage() {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 text-gray-800">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Журнал событий</h1>
       </div>
@@ -120,14 +134,54 @@ export default function LogsPage() {
       </div>
 
       {/* Таблица логов */}
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <table className="min-w-full">
-          <thead className="bg-gray-100">
+      <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="py-3 px-4 text-left">Дата</th>
-              <th className="py-3 px-4 text-left">Действие</th>
+              <th 
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => requestSort('date')}
+              >
+                <div className="flex items-center">
+                  Дата
+                  {getSortIcon('date')}
+                </div>
+              </th>
+              <th 
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => requestSort('move')}
+              >
+                <div className="flex items-center">
+                  Действие
+                  {/* {getSortIcon('move')} */}
+                </div>
+              </th>
+              <th 
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => requestSort('user')}
+              >
+                <div className="flex items-center">
+                  Пользователь
+                  {/* {getSortIcon('user')} */}
+                </div>
+              </th>
+              <th 
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => requestSort('model')}
+              >
+                <div className="flex items-center">
+                  Модель
+                  {/* {getSortIcon('model')} */}
+                </div>
+              </th>
+              {/* <th className="py-3 px-4 text-left">Дата</th> */}
+              {/* <th className="py-3 px-4 text-left">Действие</th>
               <th className="py-3 px-4 text-left">Пользователь</th>
-              <th className="py-3 px-4 text-left">Модель</th>
+              <th className="py-3 px-4 text-left">Модель</th> */}
             </tr>
           </thead>
           <tbody>
@@ -139,15 +193,15 @@ export default function LogsPage() {
               </tr>
             ) : logs.length > 0 ? (
               logs.map((log) => (
-                <tr key={log.id} className="border-t hover:bg-gray-50">
-                  <td className="py-3 px-4">
+                <tr key={log.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
+                  <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                     {format(new Date(log.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}
                   </td>
-                  <td className="py-3 px-4">{log.action}</td>
-                  <td className="py-3 px-4">
+                  <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">{log.action}</td>
+                  <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
                     {log.user ? `${log.user.name} (${log.user.email})` : 'Система'}
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
                     {log.model?.title || '-'}
                   </td>
                 </tr>
