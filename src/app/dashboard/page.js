@@ -62,7 +62,7 @@ export default function DashboardPage() {
   };
 
   const handleDeleteRequest = async (model) => {
-    if (user.Role === 'ADMIN') {
+    if (user.role === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
         const result = await onDeleteRequest(model.id, true);
         if (result?.success && result.redirect) {
@@ -266,7 +266,7 @@ export default function DashboardPage() {
                         <button className="text-yellow-600 hover:text-yellow-900">
                           <Image 
                             src={Edit} 
-                            alt="DigiTech Logo" 
+                            alt="Edit" 
                             width={20} 
                             height={20}
                           />
@@ -279,7 +279,7 @@ export default function DashboardPage() {
                       >
                         <Image 
                           src={Delete} 
-                          alt="DigiTech Logo" 
+                          alt="Delete" 
                           width={20} 
                           height={20}
                         />
@@ -290,7 +290,7 @@ export default function DashboardPage() {
                         onClick={() => handleDownload(model)}>
                         <Image 
                           src={Download} 
-                          alt="DigiTech Logo" 
+                          alt="Download" 
                           width={20} 
                           height={20}
                         />

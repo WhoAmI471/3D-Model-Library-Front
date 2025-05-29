@@ -15,6 +15,7 @@ export default function ProjectsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [currentProject, setCurrentProject] = useState(null)
+  const [userRole, setUserRole] = useState(null) 
 
   // Загрузка проектов
   useEffect(() => {
@@ -23,6 +24,9 @@ export default function ProjectsPage() {
         const response = await fetch('/api/projects')
         const data = await response.json()
         setProjects(data)
+        const userResponse = await fetch('/api/auth/me')
+        const userData = await userResponse.json()
+        setUserRole(userData.user?.role || null)
       } catch (error) {
         console.error('Ошибка загрузки проектов:', error)
       } finally {
@@ -104,6 +108,8 @@ export default function ProjectsPage() {
         {/* Заголовок и кнопки */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Проекты</h1>
+          
+          {userRole === 'ADMIN' && (
           <div className="flex gap-4">
             <button
               onClick={() => {
@@ -118,6 +124,7 @@ export default function ProjectsPage() {
               Добавить проект
             </button>
           </div>
+          )}
         </div>
 
         {/* Поиск */}
@@ -164,9 +171,11 @@ export default function ProjectsPage() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Кол-во моделей
                 </th>
+                {userRole === 'ADMIN' && (
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Действия
                 </th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -182,35 +191,38 @@ export default function ProjectsPage() {
                     <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
                       {project.models?.length || 0}
                     </td>
-                    <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-3">
-                        <button
-                          onClick={() => {
-                            setCurrentProject(project)
-                            setShowAddForm(true)
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Image 
-                            src={Edit} 
-                            alt="Редактировать" 
-                            width={20} 
-                            height={20}
-                          />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(project)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Image 
-                            src={Delete} 
-                            alt="Удалить" 
-                            width={20} 
-                            height={20}
-                          />
-                        </button>
-                      </div>
-                    </td>
+                    
+                    {userRole === 'ADMIN' && (
+                      <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-3">
+                          <button
+                            onClick={() => {
+                              setCurrentProject(project)
+                              setShowAddForm(true)
+                            }}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Image 
+                              src={Edit} 
+                              alt="Редактировать" 
+                              width={20} 
+                              height={20}
+                            />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(project)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Image 
+                              src={Delete} 
+                              alt="Удалить" 
+                              width={20} 
+                              height={20}
+                            />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               ) : (

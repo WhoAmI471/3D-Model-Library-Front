@@ -7,7 +7,7 @@ export default async function DashboardLayout({ children }) {
   const role = user?.role || null
 
   return (
-    <div className="min-h-full flex flex-col">
+    <div className="flex flex-col">
       <MainHeader />
       <div className="flex flex-1">
         <Navigation userRole={role} />

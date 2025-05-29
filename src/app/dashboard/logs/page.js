@@ -7,7 +7,7 @@ import { ru } from 'date-fns/locale'
 export default function LogsPage() {
   const [logs, setLogs] = useState([])
   const [isLoading, setIsLoading] = useState(true)
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+  const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' })
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [filters, setFilters] = useState({
@@ -22,6 +22,8 @@ export default function LogsPage() {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
+        sortBy: sortConfig.key,
+        sortOrder: sortConfig.direction,
         ...(filters.action && { action: filters.action }),
         ...(filters.user && { user: filters.user }),
         ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
@@ -42,18 +44,18 @@ export default function LogsPage() {
 
   useEffect(() => {
     loadLogs()
-  }, [page, filters])
+  }, [page, filters, sortConfig]) // Добавляем sortConfig в зависимости
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target
     setFilters(prev => ({ ...prev, [name]: value }))
-    setPage(1) // Сброс на первую страницу при изменении фильтров
+    setPage(1)
   }
 
   const requestSort = (key) => {
-    let direction = 'asc'
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc'
+    let direction = 'desc'
+    if (sortConfig.key === key) {
+      direction = sortConfig.direction === 'desc' ? 'asc' : 'desc'
     }
     setSortConfig({ key, direction })
   }
@@ -72,7 +74,7 @@ export default function LogsPage() {
     })
     setPage(1)
   }
-
+  
   return (
     <div className="p-4 text-gray-800">
       <div className="flex justify-between items-center mb-6">
