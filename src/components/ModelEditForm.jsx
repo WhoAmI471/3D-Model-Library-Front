@@ -9,11 +9,11 @@ export default function ModelEditForm({ id }) {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    projectId: '',
     authorId: '',
     sphere: '',
-    zip: '' // Добавляем поле для хранения текущего пути к ZIP-архиву
+    zip: ''
   })
+  const [selectedProjects, setSelectedProjects] = useState([])
   const [zipFile, setZipFile] = useState(null)
   const [screenshots, setScreenshots] = useState([])
   const [users, setUsers] = useState([])
@@ -36,7 +36,6 @@ export default function ModelEditForm({ id }) {
         const usersData = await usersRes.json()
         const projectsData = await projectsRes.json()
         
-        // Убедимся, что данные - массивы
         setUsers(Array.isArray(usersData) ? usersData : [])
         setProjects(Array.isArray(projectsData) ? projectsData : [])
       } catch (error) {
@@ -53,24 +52,23 @@ export default function ModelEditForm({ id }) {
     const loadModel = async () => {
       try {
         setIsLoading(true)
-        const res = await fetch(`/api/models/${id}`)
+        const res = await fetch(`/api/models/${id}?include=projects`)
         if (!res.ok) throw new Error('Не удалось загрузить модель')
         const data = await res.json()
         
-        // Заполняем форму данными модели
         setForm({
           title: data.title || '',
           description: data.description || '',
-          projectId: data.projectId || '',
           authorId: data.authorId || '',
           sphere: data.sphere || '',
-          zip: data.zip || '' // Сохраняем текущий путь к ZIP-файлу
+          zip: data.fileUrl || ''
         })
         
-        // Сохраняем информацию о текущих файлах
+        setSelectedProjects(data.projects?.map(p => p.id) || [])
+        
         setCurrentFiles({
-          zip: data.zip,
-          screenshots: data.screenshots || []
+          zip: data.fileUrl,
+          screenshots: data.images || []
         })
         
       } catch (err) {
@@ -89,6 +87,14 @@ export default function ModelEditForm({ id }) {
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
+  const toggleProject = (projectId) => {
+    setSelectedProjects(prev => 
+      prev.includes(projectId)
+        ? prev.filter(id => id !== projectId)
+        : [...prev, projectId]
+    )
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
@@ -101,6 +107,11 @@ export default function ModelEditForm({ id }) {
       for (const key in form) {
         formData.append(key, form[key])
       }
+      
+      // Добавляем выбранные проекты
+      selectedProjects.forEach(projectId => {
+        formData.append('projectIds', projectId)
+      })
       
       formData.append('id', id)
       
@@ -147,7 +158,6 @@ export default function ModelEditForm({ id }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl mx-auto">
-      {/* Поля формы остаются без изменений */}
       <div>
         <label className="block mb-1 font-medium">Название модели</label>
         <input
@@ -173,29 +183,12 @@ export default function ModelEditForm({ id }) {
         
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block mb-1 font-medium">Проект</label>
-          <select
-            name="projectId"
-            value={form.projectId}
-            onChange={handleChange}
-            className="block w-full border px-2 py-1"
-          >
-            <option value="">Выберите проект</option>
-            {Array.isArray(projects) && projects.map(project => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
           <label className="block mb-1 font-medium">Автор</label>
           <select
             name="authorId"
             value={form.authorId}
             onChange={handleChange}
-            className="block w-full border px-2 py-1"
+            className="w-full p-2 border rounded"
           >
             <option value="">Выберите автора</option>
             {users.map(user => (
@@ -205,17 +198,44 @@ export default function ModelEditForm({ id }) {
             ))}
           </select>
         </div>
+
+        <div>
+          <label className="block mb-1 font-medium">Сфера применения</label>
+          <select
+            name="sphere"
+            value={form.sphere}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+            required
+          >
+            <option value="">Выберите сферу</option>
+            <option value="CONSTRUCTION">Строительство</option>
+            <option value="CHEMISTRY">Химия</option>
+            <option value="INDUSTRIAL">Промышленность</option>
+            <option value="MEDICAL">Медицина</option>
+            <option value="OTHER">Другое</option>
+          </select>
+        </div>
       </div>
 
       <div>
-        <label className="block mb-1 font-medium">Сфера применения</label>
-        <input
-          name="sphere"
-          value={form.sphere}
-          onChange={handleChange}
-          className="w-full p-2 border rounded"
-          placeholder="Укажите сферу применения"
-        />
+        <label className="block mb-1 font-medium">Проекты</label>
+        <div className="space-y-2 max-h-60 overflow-y-auto p-2 border rounded">
+          {projects.map(project => (
+            <div key={project.id} className="flex items-center">
+              <input
+                type="checkbox"
+                id={`project-${project.id}`}
+                checked={selectedProjects.includes(project.id)}
+                onChange={() => toggleProject(project.id)}
+                className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+              <label htmlFor={`project-${project.id}`} className="ml-2">
+                {project.name}
+              </label>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div>
@@ -254,7 +274,6 @@ export default function ModelEditForm({ id }) {
         )}
       </div>
 
-
       {error && (
         <div className="p-3 bg-red-100 text-red-700 rounded">
           {error}
@@ -275,7 +294,7 @@ export default function ModelEditForm({ id }) {
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-blue-400"
           disabled={isLoading}
         >
-          {isLoading ? 'Сохранение...' : '💾 Сохранить'}
+          {isLoading ? 'Сохранение...' : 'Сохранить изменения'}
         </button>
       </div>
     </form>

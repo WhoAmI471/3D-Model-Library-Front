@@ -6,6 +6,7 @@ export default function ModelUploadForm() {
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
+  const [selectedProjects, setSelectedProjects] = useState([])
   const [formState, setFormState] = useState({
     title: '',
     description: '',
@@ -15,6 +16,14 @@ export default function ModelUploadForm() {
     zipFile: null,
     screenshots: []
   })
+
+  const toggleProject = (projectId) => {
+    setSelectedProjects(prev => 
+      prev.includes(projectId)
+        ? prev.filter(id => id !== projectId)
+        : [...prev, projectId]
+    )
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,7 +76,9 @@ export default function ModelUploadForm() {
     const formData = new FormData()
     formData.append('title', formState.title)
     formData.append('description', formState.description)
-    formData.append('projectId', formState.projectId)
+    selectedProjects.forEach(projectId => {
+      formData.append('projectIds', projectId)
+    })
     formData.append('authorId', formState.authorId)
     formData.append('sphere', formState.sphere)
     formData.append('zipFile', formState.zipFile)
@@ -137,19 +148,26 @@ export default function ModelUploadForm() {
           ))}
         </select>
 
-        <select
-          name="projectId"
-          value={formState.projectId}
-          onChange={handleChange}
-          className="block w-full border px-2 py-1"
-        >
-          <option value="">Выберите проект</option>
-          {Array.isArray(projects) && projects.map(project => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+        
+        <div className="mb-4">
+          <label className="block mb-2">Проекты</label>
+          <div className="space-y-2 max-h-60 overflow-y-auto p-2 border rounded">
+            {projects.map(project => (
+              <div key={project.id} className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={`project-${project.id}`}
+                  checked={selectedProjects.includes(project.id)}
+                  onChange={() => toggleProject(project.id)}
+                  className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <label htmlFor={`project-${project.id}`} className="ml-2">
+                  {project.name}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <select
           name="sphere"

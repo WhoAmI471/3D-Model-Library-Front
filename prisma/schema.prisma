@@ -34,23 +34,22 @@ model Model {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   fileUrl     String
-  images      String[]  @default([]) // массив ссылок на изображения
+  images      String[]  @default([])
   authorId    String?
   author      User?     @relation("UserModels", fields: [authorId], references: [id])
-  projectId   String?
-  project     Project?  @relation(fields: [projectId], references: [id])
   sphere      Sphere?
   logs        Log[]
-  markedForDeletion Boolean       @default(false) // Новое поле - пометка на удаление
-  markedById       String?       // ID пользователя, запросившего удаление
-  markedBy        User?         @relation("MarkedForDeletion", fields: [markedById], references: [id])
-  markedAt        DateTime?     // Дата пометки на удаление
+  markedForDeletion Boolean @default(false)
+  markedById  String?
+  markedBy    User?     @relation("MarkedForDeletion", fields: [markedById], references: [id])
+  markedAt    DateTime?
+  projects    Project[] @relation("ModelProjects") // Многие-ко-многим
 }
 
 model Project {
   id        String   @id @default(uuid())
   name      String
-  models    Model[]
+  models    Model[]  @relation("ModelProjects") // Многие-ко-многим
   createdAt DateTime @default(now())
 }
 

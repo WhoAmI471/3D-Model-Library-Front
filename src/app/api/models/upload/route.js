@@ -4,12 +4,13 @@ import { v4 as uuidv4 } from 'uuid'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 
-export async function POST(req) {
+export async function POST(request) {
   const user = await getUserFromSession()
   if (!user) return new Response('Unauthorized', { status: 401 })
 
   try {
-    const formData = await req.formData()
+    const formData = await request.formData()
+    const projectIds = formData.getAll('projectIds')
 
     const zipFile = formData.get('zipFile')
     const title = formData.get('title') || ''
@@ -64,8 +65,11 @@ export async function POST(req) {
         fileUrl: `/uploads/models/${modelId}/model.zip`,
         images: imageUrls,
         authorId: authorId || null,
-        projectId: projectId || null,
+        // projectId: projectId || null,
         sphere: sphere.toUpperCase(),
+        projects: {
+          connect: projectIds.map(id => ({ id }))
+        },
       },
     })
 
@@ -79,7 +83,7 @@ export async function POST(req) {
 
     const allModels = await prisma.model.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { author: true, project: true },
+      include: { author: true, projects: true },
     })
 
     return new Response(JSON.stringify({ success: true, model: newModel, allModels }), {

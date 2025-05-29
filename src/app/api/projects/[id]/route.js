@@ -3,11 +3,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function PUT(request, { params }) {
   try {
-    const data = await request.json()
-    const { id } = data
-    const { name } = data
-    
-    if (!name.id) {
+    const { id } = params // Получаем id из параметров маршрута
+    const { name, modelIds } = await request.json()
+
+    if (!id) {
       return NextResponse.json(
         { error: 'ID проекта обязательно' },
         { status: 400 }
@@ -52,13 +51,20 @@ export async function PUT(request, { params }) {
       )
     }
 
+    // Обновляем проект и его связи с моделями
     const updatedProject = await prisma.project.update({
       where: { id },
-      data: { name },
+      data: {
+        name,
+        models: {
+          set: modelIds.map(modelId => ({ id: modelId }))
+        }
+      },
       include: {
         models: {
           select: {
-            id: true
+            id: true,
+            title: true
           }
         }
       }

@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { saveFile, deleteFile } from '@/lib/fileStorage'
 import { getUserFromSession } from '@/lib/auth'
-
 export async function POST(request) {
   const user = await getUserFromSession()
   if (!user) return new Response('Unauthorized', { status: 401 })
 
   try {
     const formData = await request.formData()
+    const projectIds = formData.getAll('projectIds')
     const id = formData.get('id')
     
     if (!id) {
@@ -23,7 +23,7 @@ export async function POST(request) {
     const existingModel = await prisma.model.findUnique({
       where: { id: String(id) },
       include: {
-        project: true,
+        projects: true,
         author: true
       }
     })
@@ -39,7 +39,6 @@ export async function POST(request) {
     const updateData = {
       title: formData.get('title') || existingModel.title,
       description: formData.get('description') || existingModel.description,
-      projectId: formData.get('projectId') || existingModel.projectId,
       authorId: formData.get('authorId') || existingModel.authorId,
       sphere: formData.get('sphere') || existingModel.sphere
     }
@@ -55,13 +54,24 @@ export async function POST(request) {
       changes.push('Обновлено описание')
     }
     
-    if (updateData.projectId !== existingModel.projectId) {
-      const newProject = await prisma.project.findUnique({
-        where: { id: updateData.projectId }
+    // Сравниваем проекты
+    const currentProjectIds = existingModel.projects.map(p => p.id).sort()
+    const newProjectIds = [...projectIds].sort()
+    
+    if (JSON.stringify(currentProjectIds) !== JSON.stringify(newProjectIds)) {
+      // Получаем названия проектов для лога
+      const currentProjects = existingModel.projects.map(p => p.name).join(', ') || 'нет'
+      const newProjects = await prisma.project.findMany({
+        where: { id: { in: newProjectIds } }
       })
-      changes.push(
-        `Проект: "${existingModel.project?.name || 'нет'}" → "${newProject?.name || 'нет'}"`
-      )
+      const newProjectNames = newProjects.map(p => p.name).join(', ') || 'нет'
+      
+      changes.push(`Проекты: "${currentProjects}" → "${newProjectNames}"`)
+      
+      // Добавляем связь с проектами
+      updateData.projects = {
+        set: newProjectIds.map(id => ({ id }))
+      }
     }
     
     if (updateData.authorId !== existingModel.authorId) {
@@ -105,7 +115,7 @@ export async function POST(request) {
       where: { id: String(id) },
       data: updateData,
       include: {
-        project: true,
+        projects: true,
         author: true
       }
     })

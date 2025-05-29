@@ -7,7 +7,7 @@ export default async function ModelPage({ params }) {
     where: { id: params.id },
     include: {
       author: true,
-      project: true,
+      projects: true,
       logs: {
         include: {
           user: true,

@@ -27,31 +27,59 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { name } = await request.json()
+    const { name, modelIds = [] } = await request.json()
     
-    if (!name) {
+    // Валидация
+    if (!name || name.trim() === '') {
       return NextResponse.json(
         { error: 'Название проекта обязательно' },
         { status: 400 }
       )
     }
-    
+
+    // Проверка на дубликат
+    const existingProject = await prisma.project.findFirst({
+      where: {
+        name: {
+          equals: name,
+          mode: 'insensitive'
+        }
+      }
+    })
+
+    if (existingProject) {
+      return NextResponse.json(
+        { error: 'Проект с таким названием уже существует' },
+        { status: 400 }
+      )
+    }
+
+    // Создание проекта с привязкой моделей
     const newProject = await prisma.project.create({
-      data: { name },
+      data: {
+        name,
+        models: {
+          connect: modelIds.map(id => ({ id }))
+        }
+      },
       include: {
         models: {
           select: {
-            id: true
+            id: true,
+            title: true
           }
         }
       }
     })
     
-    return NextResponse.json(newProject)
+    return NextResponse.json(newProject, { status: 201 })
   } catch (error) {
     console.error('Error creating project:', error)
     return NextResponse.json(
-      { error: 'Ошибка создания проекта' },
+      { 
+        error: 'Ошибка создания проекта',
+        details: error.message 
+      },
       { status: 500 }
     )
   }

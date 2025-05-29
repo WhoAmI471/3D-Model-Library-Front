@@ -121,10 +121,12 @@ export default function DashboardPage() {
   })
 
   const filteredModels = selectedProjects.length > 0
-    ? sortedModels.filter(model => 
-        selectedProjects.includes(model.project?.id)
+  ? sortedModels.filter(model => 
+      model.projects?.some(project => 
+        selectedProjects.includes(project.id)
       )
-    : sortedModels
+    )
+  : sortedModels
 
   const toggleProjectFilter = (projectId) => {
     setSelectedProjects(prev => 
@@ -171,8 +173,14 @@ export default function DashboardPage() {
 
         {/* Модальное окно фильтра */}
         {showProjectFilter && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+          <div 
+            className="fixed inset-0 bg-opacity-30 flex items-center justify-center z-50"
+            onClick={() => setShowProjectFilter(false)}
+          >
+            <div 
+              className="bg-white rounded-lg shadow-xl w-full max-w-md"
+              onClick={e => e.stopPropagation()}
+            >
               <div className="p-4 border-b">
                 <h3 className="text-lg font-medium">Фильтр по проектам</h3>
               </div>
@@ -246,7 +254,7 @@ export default function DashboardPage() {
                     </Link>
                   </td>
                   <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
-                    {model.project?.name || '—'}
+                    {model.projects?.length > 0 ? model.projects.map(p => p.name).join(', ') : '—'}
                   </td>
                   <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
                     {model.author?.name || '—'}

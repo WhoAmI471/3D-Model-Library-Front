@@ -19,7 +19,7 @@ export async function GET(request) {
       include: {
         markedBy: true,
         author: true,
-        project: true
+        projects: true
       },
       orderBy: markedForDeletion
         ? { markedAt: 'desc' }

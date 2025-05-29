@@ -53,7 +53,7 @@ export default function ProjectsPage() {
         },
         body: JSON.stringify(projectData),
       })
-      
+      console.log(projectData)
       if (response.ok) {
         const result = await response.json()
         if (currentProject) {

@@ -24,7 +24,7 @@ export async function GET(request, { params }) {
       where: { id: String(id) },
       include: {
         author: true,
-        project: true,
+        projects: true,
         logs: {
           include: {
             user: true,

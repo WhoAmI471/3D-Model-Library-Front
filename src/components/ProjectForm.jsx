@@ -4,14 +4,35 @@ import { useEffect, useState } from 'react'
 export default function ProjectForm({ project, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
     name: '',
+    modelIds: []
   })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [models, setModels] = useState([])
+  const [isLoadingModels, setIsLoadingModels] = useState(false)
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      setIsLoadingModels(true)
+      try {
+        const response = await fetch('/api/models')
+        const data = await response.json()
+        setModels(data)
+      } catch (error) {
+        console.error('Ошибка загрузки моделей:', error)
+      } finally {
+        setIsLoadingModels(false)
+      }
+    }
+
+    fetchModels()
+  }, [])
 
   useEffect(() => {
     if (project) {
       setFormData({
         name: project.name,
+        modelIds: project.models?.map(model => model.id) || []
       })
     }
   }, [project])
@@ -25,6 +46,19 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
+  }
+
+  const handleModelSelect = (modelId) => {
+    setFormData(prev => {
+      const newModelIds = prev.modelIds.includes(modelId)
+        ? prev.modelIds.filter(id => id !== modelId)
+        : [...prev.modelIds, modelId]
+      
+      return {
+        ...prev,
+        modelIds: newModelIds
+      }
+    })
   }
 
   const validate = () => {
@@ -70,6 +104,35 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
               disabled={isSubmitting}
             />
             {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+          </div>
+
+          <div>
+            <label className="block mb-1">Модели в проекте</label>
+            {isLoadingModels ? (
+              <p>Загрузка моделей...</p>
+            ) : (
+              <div className="border rounded p-2 max-h-60 overflow-y-auto">
+                {models.length === 0 ? (
+                  <p className="text-gray-500">Нет доступных моделей</p>
+                ) : (
+                  models.map(model => (
+                    <div key={model.id} className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        id={`model-${model.id}`}
+                        checked={formData.modelIds.includes(model.id)}
+                        onChange={() => handleModelSelect(model.id)}
+                        className="mr-2"
+                        disabled={isSubmitting}
+                      />
+                      <label htmlFor={`model-${model.id}`} className="cursor-pointer">
+                        {model.title}
+                      </label>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
         

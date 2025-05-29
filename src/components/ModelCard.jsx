@@ -150,8 +150,9 @@ export const ModelCard = ({ model, userRole, onDeleteRequest }) => {
                 <p>{formatDate(model.updatedAt)}</p>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">Проект:</h2>
-                <p>{model.project?.name || 'Не указан'}</p>
+                <h2 className="text-lg font-semibold text-gray-800">Проекты:</h2>
+                <p>{model.projects?.map(p => p.name).join(', ') || '—'}</p>
+                
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">Сфера:</h2>
