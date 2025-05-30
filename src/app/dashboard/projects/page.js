@@ -188,7 +188,9 @@ export default function ProjectsPage() {
                 filteredProjects.map((project) => (
                   <tr key={project.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
                     <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {project.name}
+                      <Link href={`/dashboard/models/${project.id}`}>
+                        {project.name}
+                      </Link>
                     </td>
                     <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
                       {format(new Date(project.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}
