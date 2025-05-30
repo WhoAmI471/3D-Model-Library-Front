@@ -144,14 +144,19 @@ export default function EmployeesPage() {
 
         {/* Форма сотрудника */}
         {showAddForm && (
-          <EmployeeForm
-            employee={currentEmployee}
-            onSubmit={handleEmployeeSubmit}
-            onCancel={() => {
-              setShowAddForm(false)
-              setCurrentEmployee(null)
-            }}
-          />
+          <div 
+            className="fixed inset-0 bg-opacity-30 flex items-center justify-center z-50"
+            // onClick={() => setShowProjectFilter(false)}
+          >
+            <EmployeeForm
+              employee={currentEmployee}
+              onSubmit={handleEmployeeSubmit}
+              onCancel={() => {
+                setShowAddForm(false)
+                setCurrentEmployee(null)
+              }}
+            />
+          </div>
         )}
 
         {/* Таблица сотрудников */}

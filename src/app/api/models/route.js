@@ -1,73 +1,57 @@
-// /app/api/models/route.js
-import prisma from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 
-
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const markedForDeletion = searchParams.get('markedForDeletion') === 'true';
+  const { searchParams } = new URL(request.url)
+  const projectId = searchParams.get('projectId')
+  const markedForDeletion = searchParams.get('markedForDeletion') === 'true'
+  const includeAuthor = searchParams.get('includeAuthor') !== 'false' // default true
+  const includeProjects = searchParams.get('includeProjects') !== 'false' // default true
+  const includeMarkedBy = searchParams.get('includeMarkedBy') === 'true' // default false
 
   try {
-    const models = await prisma.model.findMany({
-      where: markedForDeletion 
-        ? { 
-            markedForDeletion: true,
-            markedById: { not: null } // Дополнительная проверка
-          } 
-        : {},
-      include: {
-        markedBy: true,
-        author: true,
-        projects: true
-      },
-      orderBy: markedForDeletion
-        ? { markedAt: 'desc' }
-        : { createdAt: 'desc' }
-    });
+    // Строим условия WHERE
+    const where = {}
+    
+    // Фильтр по проекту
+    if (projectId) {
+      where.projects = {
+        some: {
+          id: projectId
+        }
+      }
+    }
+    
+    // Фильтр по моделям, помеченным на удаление
+    if (markedForDeletion) {
+      where.markedForDeletion = true
+      where.markedById = { not: null }
+    }
 
-    return NextResponse.json(models);
+    // Строим параметры включения связанных данных
+    const include = {}
+    if (includeAuthor) include.author = true
+    if (includeProjects) include.projects = true
+    if (includeMarkedBy) include.markedBy = true
+
+    // Определяем сортировку
+    const orderBy = markedForDeletion 
+      ? { markedAt: 'desc' } 
+      : { createdAt: 'desc' }
+
+    const models = await prisma.model.findMany({
+      where,
+      include: Object.keys(include).length > 0 ? include : undefined,
+      orderBy
+    })
+
+    return NextResponse.json(models)
   } catch (error) {
-    console.error('Error fetching models:', error);
+    console.error('[Ошибка загрузки моделей]', error)
     return NextResponse.json(
-      { error: 'Ошибка загрузки моделей' },
+      { error: 'Ошибка сервера' },
       { status: 500 }
-    );
+    )
   }
 }
-
-// GET метод с фильтром
-// export async function GET(request) {
-//   const { searchParams } = new URL(request.url);
-//   const markedForDeletion = searchParams.get('markedForDeletion') === 'true';
-
-//   try {
-//     const models = await prisma.model.findMany({
-//       where: {
-//         markedForDeletion: markedForDeletion || undefined
-//       },
-//       include: {
-//         markedBy: {
-//           select: {
-//             id: true,
-//             name: true,
-//             email: true
-//           }
-//         },
-//         project: true,
-//         author: true
-//       },
-//       orderBy: {
-//         updatedAt: 'desc'
-//       }
-//     });
-
-//     return NextResponse.json(models);
-//   } catch (error) {
-//     console.error('Error fetching models:', error);
-//     return NextResponse.json(
-//       { error: 'Ошибка загрузки моделей' },
-//       { status: 500 }
-//     );
-//   }
-// }

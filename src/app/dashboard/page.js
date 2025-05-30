@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   const [showProjectFilter, setShowProjectFilter] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -108,25 +109,44 @@ export default function DashboardPage() {
     setSortConfig({ key, direction })
   }
 
-  const sortedModels = [...models].sort((a, b) => {
+  const filteredModels = models
+      .filter(model => 
+      selectedProjects.length === 0 || 
+      model.projects?.some(project => selectedProjects.includes(project.id)))
+      .filter(model => {
+
+      if (!searchTerm) return true
+      
+      const searchLower = searchTerm.toLowerCase()
+      return (
+        model.title?.toLowerCase().includes(searchLower) ||
+        (model.author?.name?.toLowerCase().includes(searchLower)) ||
+        (model.projects?.some(p => p.name.toLowerCase().includes(searchLower))))
+    })
+    
+
+  // Сортировка
+  const sortedModels = [...filteredModels].sort((a, b) => {
     if (sortConfig.key) {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
+      // Для вложенных свойств (например, author.name)
+      const keys = sortConfig.key.split('.')
+      let valueA = a
+      let valueB = b
+      
+      for (const key of keys) {
+        valueA = valueA?.[key]
+        valueB = valueB?.[key]
+      }
+
+      if (valueA < valueB) {
         return sortConfig.direction === 'asc' ? -1 : 1
       }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
+      if (valueA > valueB) {
         return sortConfig.direction === 'asc' ? 1 : -1
       }
     }
     return 0
   })
-
-  const filteredModels = selectedProjects.length > 0
-  ? sortedModels.filter(model => 
-      model.projects?.some(project => 
-        selectedProjects.includes(project.id)
-      )
-    )
-  : sortedModels
 
   const toggleProjectFilter = (projectId) => {
     setSelectedProjects(prev => 
@@ -168,6 +188,24 @@ export default function DashboardPage() {
               </svg>
               Добавить модель
             </button>
+          </div>
+        </div>
+
+        {/* Поиск */}
+        <div className="mb-6">
+          <div className="relative w-full">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Найти модель по названию или автору"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
 

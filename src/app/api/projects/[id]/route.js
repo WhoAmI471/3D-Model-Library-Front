@@ -1,6 +1,39 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+
+export async function GET(request, { params }) {
+  const { id } = params
+
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id },
+      include: {
+        models: {
+          include: {
+            author: true
+          }
+        }
+      }
+    })
+
+    if (!project) {
+      return NextResponse.json(
+        { error: 'Проект не найден' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json(project)
+  } catch (error) {
+    console.error('[Ошибка загрузки проекта]', error)
+    return NextResponse.json(
+      { error: 'Ошибка сервера' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PUT(request, { params }) {
   try {
     const { id } = params // Получаем id из параметров маршрута

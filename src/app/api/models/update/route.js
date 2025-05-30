@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { saveFile, deleteFile } from '@/lib/fileStorage'
 import { getUserFromSession } from '@/lib/auth'
+
 export async function POST(request) {
   const user = await getUserFromSession()
   if (!user) return new Response('Unauthorized', { status: 401 })
@@ -11,6 +12,7 @@ export async function POST(request) {
     const formData = await request.formData()
     const projectIds = formData.getAll('projectIds')
     const id = formData.get('id')
+    const deletedScreenshots = formData.getAll('deletedScreenshots')
     
     if (!id) {
       return NextResponse.json(
@@ -33,6 +35,23 @@ export async function POST(request) {
         { error: 'Модель не найдена' },
         { status: 404 }
       )
+    }
+
+    // Удаляем скриншоты, которые были помечены на удаление
+    if (deletedScreenshots.length > 0) {
+      await Promise.all(
+        deletedScreenshots.map(url => deleteFile(url))
+      )
+      
+      // Обновляем список изображений, исключая удаленные
+      const updatedImages = existingModel.images.filter(
+        image => !deletedScreenshots.includes(image)
+      )
+      
+      await prisma.model.update({
+        where: { id: String(id) },
+        data: { images: updatedImages }
+      })
     }
 
     // Подготовка данных для обновления
@@ -97,14 +116,20 @@ export async function POST(request) {
       changes.push('Обновлён файл модели')
     }
 
-    // Обработка скриншотов
+    // Обработка новых скриншотов
     const screenshots = formData.getAll('screenshots')
     if (screenshots.length > 0) {
       const newScreenshots = await Promise.all(
         screenshots.map(file => saveFile(file, 'screenshots'))
       )
+      
+      // Получаем текущие изображения (уже без удаленных)
+      const currentImages = existingModel.images
+        ? existingModel.images.filter(image => !deletedScreenshots.includes(image))
+        : []
+      
       updateData.images = [
-        ...(existingModel.images || []),
+        ...currentImages,
         ...newScreenshots
       ]
       changes.push(`Добавлено ${screenshots.length} скриншотов`)
