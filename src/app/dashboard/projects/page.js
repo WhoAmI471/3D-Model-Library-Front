@@ -188,7 +188,7 @@ export default function ProjectsPage() {
                 filteredProjects.map((project) => (
                   <tr key={project.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
                     <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <Link href={`/dashboard/models/${project.id}`}>
+                      <Link href={`/dashboard/projects/${project.id}`}>
                         {project.name}
                       </Link>
                     </td>
