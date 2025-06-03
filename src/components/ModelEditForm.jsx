@@ -1,8 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { checkPermission } from '@/lib/permission'
 
-export default function ModelEditForm({ id }) {
+export default function ModelEditForm({ id, userRole }) {
   const router = useRouter()
   const [form, setForm] = useState({
     title: '',
@@ -23,6 +24,17 @@ export default function ModelEditForm({ id }) {
   })
   const [deletedScreenshots, setDeletedScreenshots] = useState([])
 
+  
+  const [canEditModel, setCanEditModel] = useState(null);
+  const [canEditDescription, setCanEditDescription] = useState(null);
+
+  useEffect(() => {
+    
+    setCanEditModel(checkPermission(userRole, 'edit_models'))
+    setCanEditDescription(checkPermission(userRole, 'edit_model_description'))
+    console.log(userRole);
+  }, [userRole])
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -30,7 +42,7 @@ export default function ModelEditForm({ id }) {
           fetch('/api/users'),
           fetch('/api/projects')
         ])
-        
+
         const usersData = await usersRes.json()
         const projectsData = await projectsRes.json()
         
@@ -210,8 +222,9 @@ export default function ModelEditForm({ id }) {
               name="title"
               value={form.title}
               onChange={handleChange}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className={`block w-full px-3 py-2 border ${canEditModel ? 'border-gray-300' : 'border-gray-100 bg-gray-50'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
               required
+              disabled={canEditDescription}
             />
           </div>
 
@@ -236,7 +249,8 @@ export default function ModelEditForm({ id }) {
                   <button
                     type="button"
                     onClick={() => removeCurrentScreenshot(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className={`absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 ${canEditDescription ? 'group-hover:opacity-0' : 'group-hover:opacity-100'} transition-opacity`}
+                    disabled={canEditDescription}
                   >
                     <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -265,6 +279,7 @@ export default function ModelEditForm({ id }) {
                   accept="image/*"
                   onChange={handleScreenshotAdd}
                   className="sr-only"
+                  disabled={canEditDescription}
                 />
               </label>
             </div>
@@ -315,6 +330,7 @@ export default function ModelEditForm({ id }) {
                   accept=".zip"
                   onChange={(e) => setZipFile(e.target.files[0])}
                   className="sr-only"
+                  disabled={canEditDescription}
                 />
               </label>
               {currentFiles.zip && (
@@ -349,6 +365,7 @@ export default function ModelEditForm({ id }) {
               value={form.authorId}
               onChange={handleChange}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              disabled={canEditDescription}
             >
               <option value="">Выберите автора</option>
               {users.map(user => (
@@ -370,6 +387,7 @@ export default function ModelEditForm({ id }) {
               onChange={handleChange}
               required
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              disabled={canEditDescription}
             >
               <option value="">Выберите сферу</option>
               <option value="CONSTRUCTION">Строительство</option>

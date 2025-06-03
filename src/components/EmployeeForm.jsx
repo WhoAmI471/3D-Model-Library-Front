@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react'
 
 const ROLES = [
-  { value: 'ADMIN', label: 'Администратор' },
-  { value: 'LEAD', label: 'Руководитель' },
+  // { value: 'ADMIN', label: 'Администратор' },
   { value: 'ARTIST', label: 'Художник' },
   { value: 'PROGRAMMER', label: 'Программист' },
   { value: 'MANAGER', label: 'Менеджер' },

@@ -1,10 +1,10 @@
 // lib/roles.js
 export const ROLES = {
     ADMIN: 'ADMIN',
-    DEPARTMENT_LEAD: 'DEPARTMENT_LEAD',
+    // LEAD: 'LEAD',
     ARTIST: 'ARTIST',
     PROGRAMMER: 'PROGRAMMER',
-    PROJECT_MANAGER: 'PROJECT_MANAGER',
+    MANAGER: 'MANAGER',
     ANALYST: 'ANALYST'
   };
   
@@ -15,38 +15,46 @@ export const ROLES = {
       'create_projects',
       'delete_models',
       'upload_models',
-      'edit_model_descriptions',
-      'rename_models',
-      'share_model_links'
+      'edit_models',
+      'download_models'
     ],
     
     // Руководитель 3D отдела
-    [ROLES.DEPARTMENT_LEAD]: [
-      'create_projects',
-      'delete_models',
-      'upload_models',
-      'update_models',
-      'edit_model_descriptions',
-      'print_models',
-      'share_model_links'
-    ],
+    // [ROLES.LEAD]: [
+    //   'create_projects',
+    //   'delete_models',
+    //   'upload_models',
+    //   'update_models',
+    //   'edit_models',
+    // //   'print_models',
+    // //   'share_model_links',
+    //   'download_models'
+    // ],
     
     // 3D-художник
     [ROLES.ARTIST]: [
       'upload_models',
-      'update_models',
-      'edit_model_descriptions',
-      'print_models',
-      'share_model_links'
+      'delete_models',
+      'edit_models',
+      'download_models'
     ],
     
     // Программист
     [ROLES.PROGRAMMER]: [
-      'rename_models',
-      'share_model_links'
+      'download_models'
     ],
     
     // Проект-менеджер и Аналитик
-    [ROLES.PROJECT_MANAGER]: ['share_model_links'],
-    [ROLES.ANALYST]: ['share_model_links']
+    [ROLES.MANAGER]: [
+        'edit_model_description',
+        'download_models',
+        'create_projects',
+        'edit_projects'
+    ],
+    [ROLES.ANALYST]: [
+        'edit_model_description',
+        'download_models',
+        'create_projects',
+        'edit_projects'
+    ]
   };

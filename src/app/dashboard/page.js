@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { checkPermission } from '@/lib/permission';
 // import { FolderIcon, CubeIcon, UsersIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
 import Link from 'next/link'
@@ -179,15 +180,17 @@ export default function DashboardPage() {
             </button>
             
             {/* Кнопка добавления */}
-            <button 
-              onClick={handleUpload}
-              className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 shadow-sm "
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
-              Добавить модель
-            </button>
+            {checkPermission(user?.role, 'edit_models') && (
+              <button 
+                onClick={handleUpload}
+                className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 shadow-sm "
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Добавить модель
+              </button>)
+            }
           </div>
         </div>
 
@@ -300,40 +303,49 @@ export default function DashboardPage() {
                   <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-3">
                       
-                      <Link href={`/dashboard/models/update/${model.id}`}>
-                        <button className="text-yellow-600 hover:text-yellow-900">
+                      {(checkPermission(user?.role, 'edit_models') || checkPermission(user?.role, 'edit_model_description')) && (
+                        <Link href={`/dashboard/models/update/${model.id}`}>
+                          <button className="text-yellow-600 hover:text-yellow-900">
+                            <Image 
+                              src={Edit} 
+                              alt="Edit" 
+                              width={20} 
+                              height={20}
+                              className='mt-1'
+                            />
+                            {/* Редактировать */}
+                          </button>
+                        </Link>)
+                      }
+                      
+                      {checkPermission(user?.role, 'delete_models') && (
+                        <button 
+                          onClick={() => handleDeleteRequest(model)}
+                          className="text-red-600 hover:text-red-900"
+                        >
                           <Image 
-                            src={Edit} 
-                            alt="Edit" 
+                            src={Delete} 
+                            alt="Delete" 
                             width={20} 
                             height={20}
                           />
-                          {/* Редактировать */}
-                        </button>
-                      </Link>
-                      <button 
-                        onClick={() => handleDeleteRequest(model)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Image 
-                          src={Delete} 
-                          alt="Delete" 
-                          width={20} 
-                          height={20}
-                        />
-                        {/* Удалить */}
-                      </button>
-                      <button 
-                        className="text-blue-600 hover:text-blue-900" 
-                        onClick={() => handleDownload(model)}>
-                        <Image 
-                          src={Download} 
-                          alt="Download" 
-                          width={20} 
-                          height={20}
-                        />
-                        {/* Открыть */}
-                      </button>
+                          {/* Удалить */}
+                        </button>)
+                      }
+                      
+                      {checkPermission(user?.role, 'download_models') && (
+                        <button 
+                          className="text-blue-600 hover:text-blue-900" 
+                          onClick={() => handleDownload(model)}>
+                          <Image 
+                            src={Download} 
+                            alt="Download" 
+                            width={19} 
+                            height={19}
+                          />
+                          {/* Открыть */}
+                        </button>)
+                      }
                     </div>
                   </td>
                 </tr>

@@ -75,7 +75,7 @@ model DeletedModelLog {
 
 enum Role {
   ADMIN
-  LEAD
+  // LEAD
   ARTIST
   PROGRAMMER
   MANAGER

@@ -26,12 +26,14 @@ export default function Navigation({ userRole }) {
       icon: <UsersIcon className="w-5 h-5" />,
       current: pathname === '/dashboard/employees'
     },
+    
+    ...(userRole === 'ADMIN' ? [
     {
       name: 'Логи',
       href: '/dashboard/logs',
       icon: <DocumentTextIcon className="w-5 h-5" />,
       current: pathname === '/dashboard/logs'
-    },
+    }] : []),
     ...(userRole === 'ADMIN' ? [{
       name: 'Удаление моделей',
       href: '/dashboard/deletion-requests',

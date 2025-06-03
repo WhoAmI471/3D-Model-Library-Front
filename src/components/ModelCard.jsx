@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 // import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { checkPermission } from '@/lib/permission';
 
 import Download from "../../public/Download.svg"
 import Delete from "../../public/Delete.svg"
@@ -244,46 +245,55 @@ export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
         {/* кнопки */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex space-x-2">
-            <button
-              onClick={handleDownload}
-              disabled={isDownloading}
-              className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
-            >
-              <Image
-                src={Download} 
-                alt="Edit" 
-                width={18} 
-                height={18}
-                className='mr-2'
-              />
-              {isDownloading ? 'Скачивание...' : 'Скачать'}
-            </button>
-            <Link 
-              href={`/dashboard/models/update/${model.id}`}
-              className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
-            >
-              <Image
-                src={Edit} 
-                alt="Edit" 
-                width={18} 
-                height={18}
-                className='mr-2'
-              />
-              Изменить
-            </Link>
-            <button 
-              onClick={handleDeleteRequest}
-              className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
-            >
-              <Image
-                src={Delete} 
-                alt="Edit" 
-                width={18} 
-                height={18}
-                className='mr-2'
-              />
-              {userRole === 'ADMIN' ? 'Удалить' : 'Удалить'}
-            </button>
+            
+            {checkPermission(userRole, 'download_models') && (
+              <button
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
+              >
+                <Image
+                  src={Download} 
+                  alt="Edit" 
+                  width={18} 
+                  height={18}
+                  className='mr-2'
+                />
+                {isDownloading ? 'Скачивание...' : 'Скачать'}
+              </button>)
+            }
+            
+            {(checkPermission(userRole, 'edit_models') || checkPermission(userRole, 'edit_model_description')) && (
+              <Link 
+                href={`/dashboard/models/update/${model.id}`}
+                className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
+              >
+                <Image
+                  src={Edit} 
+                  alt="Edit" 
+                  width={18} 
+                  height={18}
+                  className='mr-2'
+                />
+                Изменить
+              </Link>)
+            }
+            
+            {checkPermission(userRole, 'delete_models') && (
+              <button 
+                onClick={handleDeleteRequest}
+                className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
+              >
+                <Image
+                  src={Delete} 
+                  alt="Edit" 
+                  width={18} 
+                  height={18}
+                  className='mr-2'
+                />
+                {userRole === 'ADMIN' ? 'Удалить' : 'Удалить'}
+              </button>)
+            }
           </div>
         </div>
 

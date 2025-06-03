@@ -1,17 +1,18 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import { checkPermission } from '@/lib/permission';
 
 import Download from "../../../../../public/Download.svg"
 import Delete from "../../../../../public/Delete.svg"
 import Edit from "../../../../../public/Edit.svg"
 
 export default function ProjectPage({ params }) {
-  const { id } = params
+  const { id } = use(params)
   const router = useRouter()
   const [project, setProject] = useState(null)
   const [models, setModels] = useState([])
@@ -197,7 +198,7 @@ export default function ProjectPage({ params }) {
             </p>
           </div>
           
-          {userRole === 'ADMIN' && (
+          {(userRole === 'ADMIN' || checkPermission(userRole, 'upload_models')) && (
             <div className="flex gap-4">
               <button
                 onClick={() => router.push(`/dashboard/models/upload?projectId=${project.id}`)}
@@ -285,41 +286,51 @@ export default function ProjectPage({ params }) {
                     <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
                       {format(new Date(model.createdAt), 'dd.MM.yyyy', { locale: ru })}
                     </td>
-                    <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-2 whitespace-nowrap al-i-center text-right text-sm font-medium">
                       <div className="flex justify-end space-x-3">
-                        <Link href={`/dashboard/models/update/${model.id}`}>
-                          <button className="text-yellow-600 hover:text-yellow-900">
+                        
+                        {(checkPermission(userRole, 'edit_models') || checkPermission(userRole, 'edit_model_description')) && (
+                          <Link href={`/dashboard/models/update/${model.id}`}>
+                            <button className="text-yellow-600 hover:text-yellow-900">
+                              <Image 
+                                src={Edit} 
+                                alt="Редактировать" 
+                                width={20} 
+                                height={20}
+                                className='mt-1'
+                              />
+                            </button>
+                          </Link>)
+                        }
+                        
+                        {checkPermission(userRole, 'delete_models') && (
+                          <button 
+                            onClick={() => handleDeleteRequest(model)}
+                            className="text-red-600 hover:text-red-900"
+                          >
                             <Image 
-                              src={Edit} 
-                              alt="Редактировать" 
-                              width={20} 
+                              src={Delete} 
+                              alt="Удалить" 
+                              width={19} 
+                              height={19}
+                            />
+                          </button>)
+                        }
+                        
+                        {checkPermission(userRole, 'download_models') && (
+                          <button 
+                            className="text-blue-600 hover:text-blue-900" 
+                            onClick={() => handleDownload(model)}
+                            disabled={isDownloading}
+                          >
+                            <Image 
+                              src={Download} 
+                              alt="Скачать" 
+                              width={19} 
                               height={20}
                             />
-                          </button>
-                        </Link>
-                        <button 
-                          onClick={() => handleDeleteRequest(model)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Image 
-                            src={Delete} 
-                            alt="Удалить" 
-                            width={20} 
-                            height={20}
-                          />
-                        </button>
-                        <button 
-                          className="text-blue-600 hover:text-blue-900" 
-                          onClick={() => handleDownload(model)}
-                          disabled={isDownloading}
-                        >
-                          <Image 
-                            src={Download} 
-                            alt="Скачать" 
-                            width={20} 
-                            height={20}
-                          />
-                        </button>
+                          </button>)
+                        }
                       </div>
                     </td>
                   </tr>

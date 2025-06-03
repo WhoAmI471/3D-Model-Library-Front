@@ -5,6 +5,7 @@ import ProjectForm from '@/components/ProjectForm'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import { checkPermission } from '@/lib/permission';
 
 import Delete from "../../../../public/Delete.svg"
 import Edit from "../../../../public/Edit.svg"
@@ -109,7 +110,7 @@ export default function ProjectsPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Проекты</h1>
           
-          {userRole === 'ADMIN' && (
+          {(userRole === 'ADMIN' || checkPermission(userRole, 'create_projects')) && (
           <div className="flex gap-4">
             <button
               onClick={() => {
@@ -176,7 +177,7 @@ export default function ProjectsPage() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Кол-во моделей
                 </th>
-                {userRole === 'ADMIN' && (
+                {(userRole === 'ADMIN' || checkPermission(userRole, 'create_projects') || checkPermission(userRole, 'edit_projects')) && (
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Действия
                 </th>
@@ -199,7 +200,7 @@ export default function ProjectsPage() {
                       {project.models?.length || 0}
                     </td>
                     
-                    {userRole === 'ADMIN' && (
+                    {(userRole === 'ADMIN' || checkPermission(userRole, 'create_projects') || checkPermission(userRole, 'edit_projects')) && (
                       <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-3">
                           <button
