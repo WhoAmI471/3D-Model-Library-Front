@@ -2,10 +2,10 @@ import { ModelCard } from '@/components/ModelCard';
 import { prisma } from '@/lib/prisma';
 import { getUserFromSession } from '@/lib/auth'
 
-export default async function ModelPage({ params }) {
-  // console.log(params)
-  // console.log(params.id)
+export default async function ModelPage({ params, searchParams }) {
   const id = params.id
+  const { projectid } = searchParams;
+
   const model = await prisma.model.findUnique({
     where: { id: id },
     include: {
@@ -60,7 +60,7 @@ export default async function ModelPage({ params }) {
 
   return (
     <div className="container mx-auto">
-      <ModelCard model={model} userRole={role} onDeleteRequest={handleDeleteRequest}/>
+      <ModelCard model={model} userRole={role} onDeleteRequest={handleDeleteRequest} projectId={projectid}/>
     </div>
   );
 }

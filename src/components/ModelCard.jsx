@@ -1,19 +1,22 @@
 'use client'
 import { useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation'
+// import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 import Download from "../../public/Download.svg"
 import Delete from "../../public/Delete.svg"
 import Edit from "../../public/Edit.svg"
 
 
-export const ModelCard = ({ model, userRole, onDeleteRequest }) => {
+export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
   const router = useRouter()
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // const searchParams = useSearchParams();
+  // const projectId = projectId;
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -98,11 +101,22 @@ export const ModelCard = ({ model, userRole, onDeleteRequest }) => {
 
   return (
     <div className="w-full mx-auto rounded-lg overflow-hidden">
-      {/* Хлебные крошки */}
+      {/* Умные хлебные крошки */}
       <div className="px-6 bg-gray-50 border-b border-gray-200 text-sm text-gray-600">
-        <Link href="/projects" className="hover:text-blue-600">Проекты</Link> / 
-        <Link href={`/projects/${model.project?.id}`} className="hover:text-blue-600"> {model.project?.name}</Link> / 
-        <span className="font-medium"> {model.title}</span>
+        {projectId ? (
+          <>
+            <Link href="/dashboard/projects" className="hover:text-blue-600">Проекты</Link> / 
+            <Link href={`/dashboard/projects/${projectId}`} className="hover:text-blue-600"> 
+              {model.projects?.find(p => p.id === projectId)?.name || 'Проект'}
+            </Link> / 
+            <span className="font-medium"> {model.title}</span>
+          </>
+        ) : (
+          <>
+            <Link href="/dashboard" className="hover:text-blue-600">Модели</Link> / 
+            <span className="font-medium"> {model.title}</span>
+          </>
+        )}
       </div>
 
       {/* Основное содержимое */}

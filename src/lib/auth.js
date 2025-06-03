@@ -1,8 +1,16 @@
 import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 import prisma from './prisma'
+import { ROLES, PERMISSIONS } from './roles';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-please-change'
+// lib/auth.js
+
+export const checkPermission = (userRole, permission) => {
+  if (!userRole) return false;
+  return PERMISSIONS[userRole]?.includes(permission) || false;
+};
+
 
 export async function createSession(user) {
   const token = jwt.sign(

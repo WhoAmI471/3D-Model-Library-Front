@@ -275,7 +275,7 @@ export default function ProjectPage({ params }) {
                 filteredModels.map((model) => (
                   <tr key={model.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
                     <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <Link href={`/dashboard/models/${model.id}`}>
+                      <Link href={`/dashboard/models/${model.id}?projectid=${id}`}>
                         {model.title}
                       </Link>
                     </td>
