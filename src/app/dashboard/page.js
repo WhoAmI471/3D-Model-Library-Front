@@ -10,6 +10,7 @@ import Image from 'next/image'
 import Download from "../../../public/Download.svg"
 import Delete from "../../../public/Delete.svg"
 import Edit from "../../../public/Edit.svg"
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 export default function DashboardPage() {
@@ -21,6 +22,13 @@ export default function DashboardPage() {
   const [showProjectFilter, setShowProjectFilter] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('')
+
+  const [previewModel, setPreviewModel] = useState(null);
+  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [autoPlayInterval, setAutoPlayInterval] = useState(null);
+
   const router = useRouter()
 
   useEffect(() => {
@@ -97,6 +105,78 @@ export default function DashboardPage() {
     await axios.post('/api/auth/logout')
     router.push('/login')
   }
+  
+  const handleMouseMove = (event) => {
+    if (isHovering) {
+      updatePreviewPosition(event);
+    }
+  };
+
+  const updatePreviewPosition = (event) => {
+    const x = Math.min(event.clientX + 20, window.innerWidth - 340); // 320px + отступы
+    const y = Math.min(event.clientY + 20, window.innerHeight - 260); // 240px + отступы
+    setPreviewPosition({ x, y });
+  };
+  // Переключение изображений
+  const nextImage = () => {
+    setCurrentImageIndex(prev => 
+      prev === previewModel.images.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex(prev => 
+      prev === 0 ? previewModel.images.length - 1 : prev - 1
+    );
+  };
+
+  // Автопереключение каждые 5 секунд
+  const startAutoPlay = () => {
+    if (autoPlayInterval) clearInterval(autoPlayInterval);
+    const interval = setInterval(nextImage, 5000);
+    setAutoPlayInterval(interval);
+  };
+
+  const stopAutoPlay = () => {
+    if (autoPlayInterval) {
+      clearInterval(autoPlayInterval);
+      setAutoPlayInterval(null);
+    }
+  };
+
+  // Обработчик колесика мыши
+  const handleWheel = (e) => {
+    e.preventDefault();
+    if (e.deltaY > 0) {
+      nextImage();
+    } else {
+      prevImage();
+    }
+  };
+
+  const handleMouseEnter = (model, event) => {
+    if (model?.images?.length > 0) {  // Добавлена проверка на существование
+      setPreviewModel(model);
+      setCurrentImageIndex(0);
+      setIsHovering(true);
+      updatePreviewPosition(event);
+      startAutoPlay();
+    }
+  };
+  
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    setPreviewModel(null);
+    stopAutoPlay();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+      }
+    };
+  }, [autoPlayInterval]);
 
   const handleUpload = async () => {
     router.push('/dashboard/models/upload')
@@ -288,7 +368,13 @@ export default function DashboardPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredModels.map((model) => (
-                <tr key={model.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
+                <tr 
+                  key={model.id} 
+                  className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white"
+                  onMouseEnter={(e) => handleMouseEnter(model, e)}
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}>
+
                   <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                     <Link href={`/dashboard/models/${model.id}`}>
                       {model.title}
@@ -353,6 +439,65 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+        <AnimatePresence>
+          {previewModel && isHovering && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed z-50 bg-white shadow-lg rounded-md overflow-hidden border border-gray-200 pointer-events-auto"
+              style={{
+                left: `${previewPosition.x}px`,
+                top: `${previewPosition.y}px`,
+                width: '320px',
+                height: '240px'
+              }}
+              onWheel={handleWheel}
+            >
+              <div className="relative w-full h-full">
+                <Image
+                  src={previewModel.images[currentImageIndex]}
+                  alt={`Превью ${previewModel.title}`}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+                
+                {/* Навигация */}
+                {/* <button 
+                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full"
+                >
+                  &lt;
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full"
+                >
+                  &gt;
+                </button> */}
+                
+                {/* Индикаторы */}
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1">
+                  {previewModel.images.map((_, index) => (
+                    <div 
+                      key={index}
+                      className={`w-2 h-2 rounded-full ${index === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
+                    />
+                  ))}
+                </div>
+                
+                {/* Подпись */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                  <p className="text-white text-sm font-medium truncate">
+                    {previewModel.title} ({currentImageIndex + 1}/{previewModel.images.length})
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   )

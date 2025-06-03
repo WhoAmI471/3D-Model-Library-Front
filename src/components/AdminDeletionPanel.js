@@ -26,6 +26,12 @@ export default function AdminDeletionPanel({ userRole }) {
       }
       
       const data = await response.json();
+      
+      const employeesResponse = await fetch('/api/employees')
+      const employeesData = await employeesResponse.json()
+      console.log(data);
+      console.log(employeesData);
+      console.log(data[0].markedById);
       setModelsForDeletion(data.filter(model => model.markedForDeletion));
     } catch (err) {
       console.error('Ошибка загрузки запросов на удаление:', err);
@@ -154,8 +160,8 @@ export default function AdminDeletionPanel({ userRole }) {
                     <div className="text-sm text-gray-500">{model.author?.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{model.markedBy?.name || 'Неизвестно'}</div>
-                    <div className="text-sm text-gray-500">{model.markedBy?.role}</div>
+                    <div className="text-sm text-gray-900">{model.markedById?.name || 'Неизвестно'}</div>
+                    <div className="text-sm text-gray-500">{model.markedById?.role}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(model.markedAt).toLocaleString()}
