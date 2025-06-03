@@ -219,10 +219,10 @@ export default function DashboardPage() {
               className="bg-white rounded-lg shadow-xl w-full max-w-md"
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-4 border-b">
+              <div className="p-4">
                 <h3 className="text-lg font-medium">Фильтр по проектам</h3>
               </div>
-              <div className="p-4 max-h-96 overflow-y-auto">
+              <div className="p-4 m-4 max-h-96 overflow-y-auto border border-gray-300 rounded-md p-3 bg-gray-50">
                 {projects.map(project => (
                   <div key={project.id} className="flex items-center py-2">
                     <input
@@ -238,7 +238,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-              <div className="p-4 border-t flex justify-end">
+              <div className="p-4 flex justify-end">
                 <button
                   onClick={() => setShowProjectFilter(false)}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
