@@ -11,7 +11,7 @@ export async function createSession(user) {
       id: user.id, 
       name: user.name,
       role: user.role,
-      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 дней
+      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
     }, 
     JWT_SECRET
   )
@@ -20,21 +20,27 @@ export async function createSession(user) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: 60 * 60 * 24 * 7, // 7 дней
+    maxAge: 60 * 60 * 24 * 7,
     sameSite: 'lax'
   })
 }
 
 export async function getUserFromSession(request) {
-  // Для API роутов
-  if (request?.cookies) {
-    const token = request.cookies.get('session')?.value
+  try {
+    // Для API роутов
+    if (request?.cookies) {
+      const token = request.cookies.get('session')?.value
+      return await verifyToken(token)
+    }
+    
+    // Для серверных компонентов
+    const cookieStore = await cookies()
+    const token = cookieStore.get('session')?.value
     return await verifyToken(token)
+  } catch (error) {
+    console.error('Error getting user from session:', error)
+    return null
   }
-  
-  // Для серверных компонентов
-  const token = cookies().get('session')?.value
-  return await verifyToken(token)
 }
 
 async function verifyToken(token) {

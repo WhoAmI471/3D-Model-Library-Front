@@ -4,14 +4,14 @@ import { getUserFromSession } from '@/lib/auth'
 import { deleteFile } from '@/lib/fileStorage'
 
 export async function GET(request, { params }) {
-  const user = await getUserFromSession()
-  if (!user) return NextResponse.json(
-    { error: 'Не авторизован' }, 
-    { status: 401 }
-  )
-
+  
   try {
-    const { id } = params
+    const user = await getUserFromSession()
+    if (!user) return NextResponse.json(
+      { error: 'Не авторизован' }, 
+      { status: 401 }
+    )
+    const { id } = await params
     
     if (!id) {
       return NextResponse.json(
@@ -58,7 +58,7 @@ export async function PUT(request, { params }) {
   if (!user) return NextResponse.json({ error: 'Не авторизован' }, { status: 401 });
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Помечаем модель на удаление
     const model = await prisma.model.update({
@@ -100,7 +100,7 @@ export async function DELETE(request, { params }) {
   }
 
   try {
-    const { id } = params;
+    const { id } = await params;
     const { approve } = await request.json();
 
     // Находим модель, помеченную на удаление
