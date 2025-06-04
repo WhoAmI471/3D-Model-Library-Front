@@ -76,41 +76,47 @@ export default function ProjectPage({ params }) {
     }
   }
 
-  // Удаление модели
   const handleDeleteRequest = async (model) => {
     if (userRole === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
         try {
           const response = await fetch(`/api/models/${model.id}`, {
-            method: 'DELETE'
-          })
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ approve: true })
+          });
+          
+          const data = await response.json();
           
           if (response.ok) {
-            setModels(models.filter(m => m.id !== model.id))
+            setModels(prev => prev.filter(m => m.id !== model.id));
+            alert('Модель успешно удалена');
           } else {
-            throw new Error('Не удалось удалить модель')
+            throw new Error(data.error || 'Ошибка при удалении');
           }
         } catch (error) {
-          console.error('Ошибка удаления:', error)
-          alert(error.message)
+          console.error('Ошибка при удалении:', error);
+          alert(error.message);
         }
       }
     } else {
       if (confirm('Отправить запрос на удаление администратору?')) {
         try {
-          const response = await fetch(`/api/models/${model.id}`, {
-            method: 'PUT'
-          })
+          // Для обычных пользователей - PUT запрос для пометки на удаление
+          const response = await axios.put(`/api/models/${model.id}`, {
+            action: 'REQUEST_DELETE'
+          });
           
-          const result = await response.json()
-          
-          if (response.ok) {
-            alert(result.message)
+          if (response.status === 200) {
+            alert(response.data.message);
           } else {
-            throw new Error(result.error)
+            throw new Error(response.data.error || 'Ошибка при отправке запроса');
           }
         } catch (error) {
-          alert(error.message)
+          console.error('Ошибка:', error);
+          alert(error.message);
         }
       }
     }
@@ -275,15 +281,19 @@ export default function ProjectPage({ params }) {
               {filteredModels.length > 0 ? (
                 filteredModels.map((model) => (
                   <tr key={model.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
-                    <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <Link href={`/dashboard/models/${model.id}?projectid=${id}`}>
-                        {model.title}
-                      </Link>
+                    <td 
+                      className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" 
+                      onClick={() => router.push(`/dashboard/models/${model.id}`)}>
+                      {model.title}
                     </td>
-                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                    <td 
+                      className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
+                      onClick={() => router.push(`/dashboard/models/${model.id}`)}>
                       {model.author?.name || '—'}
                     </td>
-                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                    <td 
+                      className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
+                      onClick={() => router.push(`/dashboard/models/${model.id}`)}>
                       {format(new Date(model.createdAt), 'dd.MM.yyyy', { locale: ru })}
                     </td>
                     <td className="px-6 py-2 whitespace-nowrap al-i-center text-right text-sm font-medium">

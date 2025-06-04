@@ -3,6 +3,31 @@ import { ModelCard } from '@/components/ModelCard'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 
+export const handleDeleteRequest = async (modelId, immediate) => {
+  'use server'
+  try {
+    if (immediate || role === 'ADMIN') {
+      await prisma.model.delete({
+        where: { id: modelId }
+      })
+      return { success: true, redirect: '/dashboard' }
+    } else {
+      await prisma.log.create({
+        data: {
+          action: `Запрос на удаление модели ${modelId}`,
+          userId: user.id,
+          modelId: modelId
+        }
+      })
+      return { success: true, message: 'Запрос на удаление отправлен администратору' }
+    }
+  } catch (error) {
+    console.error('Ошибка при удалении:', error)
+    return { success: false, error: 'Ошибка при удалении' }
+  }
+}
+
+
 export default async function ModelPage({ params, searchParams }) {
   try {
     // Получаем параметры
@@ -32,29 +57,6 @@ export default async function ModelPage({ params, searchParams }) {
     const user = await getUserFromSession()
     const role = user?.role || null
 
-    const handleDeleteRequest = async (modelId, immediate) => {
-      'use server'
-      try {
-        if (immediate || role === 'ADMIN') {
-          await prisma.model.delete({
-            where: { id: modelId }
-          })
-          return { success: true, redirect: '/projects' }
-        } else {
-          await prisma.log.create({
-            data: {
-              action: `Запрос на удаление модели ${modelId}`,
-              userId: user.id,
-              modelId: modelId
-            }
-          })
-          return { success: true, message: 'Запрос на удаление отправлен администратору' }
-        }
-      } catch (error) {
-        console.error('Ошибка при удалении:', error)
-        return { success: false, error: 'Ошибка при удалении' }
-      }
-    }
 
     return (
       <div className="container mx-auto">

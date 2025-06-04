@@ -39,10 +39,16 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target
+    value
+      .replace(/[^а-яА-ЯёЁa-zA-Z0-9\s]/g, '') // Удаляем недопустимые символы
+      .replace(/\s+/g, ' ') // Заменяем множественные пробелы на один
+      .trim()
+      
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
+  
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
@@ -145,10 +151,12 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                           onChange={() => handleModelSelect(model.id)}
                           className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                           disabled={isSubmitting}
+                          onClick={() => handleModelSelect(model.id)}
                         />
                         <label 
                           htmlFor={`model-${model.id}`} 
                           className="ml-3 block text-sm text-gray-700 cursor-pointer"
+                          onClick={() => handleModelSelect(model.id)}
                         >
                           <span className="font-medium">{model.title}</span>
                           {model.author?.name && (

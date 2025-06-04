@@ -10,6 +10,14 @@ import Download from "../../public/Download.svg"
 import Delete from "../../public/Delete.svg"
 import Edit from "../../public/Edit.svg"
 
+const SPHERE_TRANSLATIONS = {
+  CONSTRUCTION: 'Строительство',
+  CHEMISTRY: 'Химия',
+  INDUSTRIAL: 'Промышленность',
+  MEDICAL: 'Медицина',
+  OTHER: 'Другое',
+  // Добавьте другие значения по необходимости
+};
 
 export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
   const router = useRouter()
@@ -65,7 +73,7 @@ export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
         const result = await onDeleteRequest(model.id, true);
         if (result?.success && result.redirect) {
-          router.push(result.redirect);
+          router.push('/dashboard');
         }
       }
     } else {
@@ -238,7 +246,7 @@ export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
           
           <div className="flex items-start">
             <span className="w-34 text-gray-600">Сфера:</span>
-            <span>{model.sphere || 'Другое'}</span>
+            <span>{model.sphere ? SPHERE_TRANSLATIONS[model.sphere] || model.sphere : 'Другое'}</span>
           </div>
         </div>
 

@@ -165,6 +165,7 @@ export default function ModelUploadForm() {
               value={formState.title}
               onChange={handleChange}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              maxLength={50}
               required
             />
           </div>
@@ -261,6 +262,7 @@ export default function ModelUploadForm() {
               value={formState.description}
               onChange={handleChange}
               rows={4}
+              maxLength={1000}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>

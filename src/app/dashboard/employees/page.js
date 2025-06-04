@@ -144,10 +144,7 @@ export default function EmployeesPage() {
 
         {/* Форма сотрудника */}
         {showAddForm && (
-          <div 
-            className="fixed inset-0 bg-opacity-30 flex items-center justify-center z-50"
-            // onClick={() => setShowProjectFilter(false)}
-          >
+          <div className="fixed inset-0 bg-opacity-30 flex items-center justify-center z-50">
             <EmployeeForm
               employee={currentEmployee}
               onSubmit={handleEmployeeSubmit}
@@ -155,6 +152,7 @@ export default function EmployeesPage() {
                 setShowAddForm(false)
                 setCurrentEmployee(null)
               }}
+              userRole={userRole}
             />
           </div>
         )}
@@ -182,7 +180,7 @@ export default function EmployeesPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEmployees.length > 0 ? (
-                filteredEmployees.map((employee) => (
+                filteredEmployees.map((employee) => {if (employee.name !== 'Admin') return (
                   <tr key={employee.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
                     <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                       {employee.name}
@@ -241,7 +239,7 @@ export default function EmployeesPage() {
                       </td>
                     )}
                   </tr>
-                ))
+                )})
               ) : (
                 <tr>
                   <td 

@@ -1,16 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { checkPermission } from '@/lib/permission';
-// import { FolderIcon, CubeIcon, UsersIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
+import { checkPermission } from '@/lib/permission'
 import axios from 'axios'
 import Link from 'next/link'
 import Image from 'next/image'
+import { AnimatePresence } from 'framer-motion'
+import { ProjectFilter } from "@/components/ProjectFilter"
+import { ModelPreview } from "@/components/ModelPreview"
 
 import Download from "../../../public/Download.svg"
 import Delete from "../../../public/Delete.svg"
 import Edit from "../../../public/Edit.svg"
-import { motion, AnimatePresence } from 'framer-motion';
 
 
 export default function DashboardPage() {
@@ -20,14 +21,16 @@ export default function DashboardPage() {
   const [selectedProjects, setSelectedProjects] = useState([])
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   const [showProjectFilter, setShowProjectFilter] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [projectSearchTerm, setProjectSearchTerm] = useState('')
 
-  const [previewModel, setPreviewModel] = useState(null);
-  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
-  const [isHovering, setIsHovering] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [autoPlayInterval, setAutoPlayInterval] = useState(null);
+  const [previewModel, setPreviewModel] = useState(null)
+  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
+  const [showPreview, setShowPreview] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [autoPlayInterval, setAutoPlayInterval] = useState(null)
 
   const router = useRouter()
 
@@ -50,133 +53,160 @@ export default function DashboardPage() {
     load()
   }, [])
 
-  
   const handleDownload = async (model) => {
-    setIsDownloading(true);
+    setIsDownloading(true)
     try {
-      const response = await fetch(model.fileUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${model.title}.zip` || 'model.zip';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const response = await fetch(model.fileUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${model.title}.zip` || 'model.zip'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
     } catch (error) {
-      console.error('Ошибка при скачивании:', error);
+      console.error('Ошибка при скачивании:', error)
     } finally {
-      setIsDownloading(false);
+      setIsDownloading(false)
     }
-  };
+  }
 
   const handleDeleteRequest = async (model) => {
-    if (user.role === 'ADMIN') {
+    if (user?.role === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
-        const result = await onDeleteRequest(model.id, true);
-        if (result?.success && result.redirect) {
-          router.push(result.redirect);
+        try {
+          const response = await fetch(`/api/models/${model.id}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ approve: true })
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok) {
+            setModels(prev => prev.filter(m => m.id !== model.id));
+            alert('Модель успешно удалена');
+          } else {
+            throw new Error(data.error || 'Ошибка при удалении');
+          }
+        } catch (error) {
+          console.error('Ошибка при удалении:', error);
+          alert(error.message);
         }
       }
     } else {
       if (confirm('Отправить запрос на удаление администратору?')) {
         try {
-          const response = await fetch(`/api/models/${model.id}`, {
-            method: 'PUT'
+          // Для обычных пользователей - PUT запрос для пометки на удаление
+          const response = await axios.put(`/api/models/${model.id}`, {
+            action: 'REQUEST_DELETE'
           });
           
-          const result = await response.json();
-          
-          if (response.ok) {
-            alert(result.message);
-            router.refresh(); // Обновляем страницу
+          if (response.status === 200) {
+            alert(response.data.message);
           } else {
-            throw new Error(result.error);
+            throw new Error(response.data.error || 'Ошибка при отправке запроса');
           }
         } catch (error) {
+          console.error('Ошибка:', error);
           alert(error.message);
         }
       }
     }
-  };
-
-  const handleLogout = async () => {
-    await axios.post('/api/auth/logout')
-    router.push('/login')
   }
-  
+
   const handleMouseMove = (event) => {
     if (isHovering) {
-      updatePreviewPosition(event);
+      updatePreviewPosition(event)
     }
-  };
+  }
 
   const updatePreviewPosition = (event) => {
-    const x = Math.min(event.clientX + 20, window.innerWidth - 340); // 320px + отступы
-    const y = Math.min(event.clientY + 20, window.innerHeight - 260); // 240px + отступы
-    setPreviewPosition({ x, y });
-  };
-  // Переключение изображений
+    const x = Math.min(event.clientX + 20, window.innerWidth - 340)
+    const y = Math.min(event.clientY + 20, window.innerHeight - 260)
+    setPreviewPosition({ x, y })
+  }
+
   const nextImage = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
     setCurrentImageIndex(prev => 
       prev === previewModel.images.length - 1 ? 0 : prev + 1
-    );
-  };
+    )
+  }
 
   const prevImage = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
     setCurrentImageIndex(prev => 
       prev === 0 ? previewModel.images.length - 1 : prev - 1
-    );
-  };
+    )
+  }
 
-  // Автопереключение каждые 5 секунд
   const startAutoPlay = () => {
-    if (autoPlayInterval) clearInterval(autoPlayInterval);
-    const interval = setInterval(nextImage, 5000);
-    setAutoPlayInterval(interval);
-  };
+    if (!previewModel || !previewModel.images?.length) return
+    
+    stopAutoPlay()
+    
+    const interval = setInterval(() => {
+      if (!previewModel || !previewModel.images?.length) {
+        stopAutoPlay()
+        return
+      }
+      nextImage()
+    }, 2000)
+    
+    setAutoPlayInterval(interval)
+  }
 
   const stopAutoPlay = () => {
     if (autoPlayInterval) {
-      clearInterval(autoPlayInterval);
-      setAutoPlayInterval(null);
+      clearInterval(autoPlayInterval)
+      setAutoPlayInterval(null)
     }
-  };
+  }
 
-  // Обработчик колесика мыши
   const handleWheel = (e) => {
-    e.preventDefault();
+    if (!previewModel || !previewModel.images?.length) return
+    
+    e.preventDefault()
     if (e.deltaY > 0) {
-      nextImage();
+      nextImage()
     } else {
-      prevImage();
+      prevImage()
     }
-  };
+  }
 
   const handleMouseEnter = (model, event) => {
-    if (model?.images?.length > 0) {  // Добавлена проверка на существование
-      setPreviewModel(model);
-      setCurrentImageIndex(0);
-      setIsHovering(true);
-      updatePreviewPosition(event);
-      startAutoPlay();
+    if (model?.images?.length > 0) {
+      const rect = event.currentTarget.getBoundingClientRect()
+      setPreviewPosition({
+        x: rect.right + 10, // Позиция справа от строки
+        y: rect.top
+      })
+      setPreviewModel(model)
+      setCurrentImageIndex(0)
+      setShowPreview(true)
+      startAutoPlay()
     }
-  };
+  }
   
   const handleMouseLeave = () => {
-    setIsHovering(false);
-    setPreviewModel(null);
-    stopAutoPlay();
-  };
-
+    setShowPreview(false)
+    setPreviewModel(null)
+    stopAutoPlay()
+  }
   useEffect(() => {
     return () => {
       if (autoPlayInterval) {
-        clearInterval(autoPlayInterval);
+        clearInterval(autoPlayInterval)
       }
-    };
-  }, [autoPlayInterval]);
+    }
+  }, [autoPlayInterval])
 
   const handleUpload = async () => {
     router.push('/dashboard/models/upload')
@@ -191,25 +221,23 @@ export default function DashboardPage() {
   }
 
   const filteredModels = models
-      .filter(model => 
-      selectedProjects.length === 0 || 
-      model.projects?.some(project => selectedProjects.includes(project.id)))
-      .filter(model => {
-
-      if (!searchTerm) return true
-      
-      const searchLower = searchTerm.toLowerCase()
-      return (
-        model.title?.toLowerCase().includes(searchLower) ||
-        (model.author?.name?.toLowerCase().includes(searchLower)) ||
-        (model.projects?.some(p => p.name.toLowerCase().includes(searchLower))))
-    })
+  .filter(model => 
+    selectedProjects.length === 0 || 
+    model.projects?.some(project => selectedProjects.includes(project.id)))
+  .filter(model => {
+    if (!searchTerm) return true
+    
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      model.title?.toLowerCase().includes(searchLower) ||
+      (model.author?.name?.toLowerCase().includes(searchLower)) ||
+      (model.projects?.some(p => p.name.toLowerCase().includes(searchLower)))
+    )
+  })
     
 
-  // Сортировка
   const sortedModels = [...filteredModels].sort((a, b) => {
     if (sortConfig.key) {
-      // Для вложенных свойств (например, author.name)
       const keys = sortConfig.key.split('.')
       let valueA = a
       let valueB = b
@@ -243,12 +271,11 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
+    <div className="min-h-screen bg-gray-50 text-gray-800" onMouseMove={handleMouseMove}>
       <main className="p-6 max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Модели</h2>
           <div className="flex gap-4">
-            {/* Кнопка фильтра */}
             <button 
               onClick={() => setShowProjectFilter(!showProjectFilter)}
               className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 shadow-sm"
@@ -259,11 +286,10 @@ export default function DashboardPage() {
               Фильтр
             </button>
             
-            {/* Кнопка добавления */}
             {checkPermission(user?.role, 'edit_models') && (
               <button 
                 onClick={handleUpload}
-                className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 shadow-sm "
+                className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 shadow-sm"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -274,7 +300,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Поиск */}
         <div className="mb-6">
           <div className="relative w-full">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -292,48 +317,17 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Модальное окно фильтра */}
         {showProjectFilter && (
-          <div 
-            className="fixed inset-0 bg-opacity-30 flex items-center justify-center z-50"
-            onClick={() => setShowProjectFilter(false)}
-          >
-            <div 
-              className="bg-white rounded-lg shadow-xl w-full max-w-md"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="p-4">
-                <h3 className="text-lg font-medium">Фильтр по проектам</h3>
-              </div>
-              <div className="p-4 m-4 max-h-96 overflow-y-auto border border-gray-300 rounded-md p-3 bg-gray-50">
-                {projects.map(project => (
-                  <div key={project.id} className="flex items-center py-2">
-                    <input
-                      type="checkbox"
-                      id={`project-${project.id}`}
-                      checked={selectedProjects.includes(project.id)}
-                      onChange={() => toggleProjectFilter(project.id)}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <label htmlFor={`project-${project.id}`} className="ml-3 block text-gray-700">
-                      {project.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
-              <div className="p-4 flex justify-end">
-                <button
-                  onClick={() => setShowProjectFilter(false)}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-                >
-                  Закрыть
-                </button>
-              </div>
-            </div>
-          </div>
+          <ProjectFilter
+            projects={projects}
+            selectedProjects={selectedProjects}
+            onToggleProject={toggleProjectFilter}
+            onClose={() => setShowProjectFilter(false)}
+            searchTerm={projectSearchTerm}
+            onSearchChange={setProjectSearchTerm}
+          />
         )}
 
-        {/* Таблица */}
         <div className="bg-white shadow-sm rounded-lg overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -367,28 +361,32 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredModels.map((model) => (
+              {sortedModels.map((model) => (
                 <tr 
                   key={model.id} 
                   className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white"
                   onMouseEnter={(e) => handleMouseEnter(model, e)}
-                  onMouseMove={handleMouseMove}
-                  onMouseLeave={handleMouseLeave}>
-
-                  <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                    <Link href={`/dashboard/models/${model.id}`}>
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <td 
+                    className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" 
+                    onClick={() => router.push(`/dashboard/models/${model.id}`)}>
+                    {/* <Link href={`/dashboard/models/${model.id}`}> */}
                       {model.title}
-                    </Link>
+                    {/* </Link> */}
                   </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                  <td 
+                    className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
+                    onClick={() => router.push(`/dashboard/models/${model.id}`)}>
                     {model.projects?.length > 0 ? model.projects.map(p => p.name).join(', ') : '—'}
                   </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                  <td 
+                    className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
+                    onClick={() => router.push(`/dashboard/models/${model.id}`)}>
                     {model.author?.name || '—'}
                   </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium" >
                     <div className="flex justify-end space-x-3">
-                      
                       {(checkPermission(user?.role, 'edit_models') || checkPermission(user?.role, 'edit_model_description')) && (
                         <Link href={`/dashboard/models/update/${model.id}`}>
                           <button className="text-yellow-600 hover:text-yellow-900">
@@ -399,7 +397,6 @@ export default function DashboardPage() {
                               height={20}
                               className='mt-1'
                             />
-                            {/* Редактировать */}
                           </button>
                         </Link>)
                       }
@@ -415,21 +412,20 @@ export default function DashboardPage() {
                             width={20} 
                             height={20}
                           />
-                          {/* Удалить */}
                         </button>)
                       }
                       
                       {checkPermission(user?.role, 'download_models') && (
                         <button 
                           className="text-blue-600 hover:text-blue-900" 
-                          onClick={() => handleDownload(model)}>
+                          onClick={() => handleDownload(model)}
+                        >
                           <Image 
                             src={Download} 
                             alt="Download" 
                             width={19} 
                             height={19}
                           />
-                          {/* Открыть */}
                         </button>)
                       }
                     </div>
@@ -439,63 +435,19 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+
         <AnimatePresence>
-          {previewModel && isHovering && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed z-50 bg-white shadow-lg rounded-md overflow-hidden border border-gray-200 pointer-events-auto"
-              style={{
-                left: `${previewPosition.x}px`,
-                top: `${previewPosition.y}px`,
-                width: '320px',
-                height: '240px'
-              }}
+          {showPreview && previewModel && (
+            <ModelPreview
+              model={previewModel}
+              position={previewPosition}
+              currentImageIndex={currentImageIndex}
+              onNextImage={nextImage}
+              onPrevImage={prevImage}
               onWheel={handleWheel}
-            >
-              <div className="relative w-full h-full">
-                <Image
-                  src={previewModel.images[currentImageIndex]}
-                  alt={`Превью ${previewModel.title}`}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                
-                {/* Навигация */}
-                {/* <button 
-                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full"
-                >
-                  &lt;
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full"
-                >
-                  &gt;
-                </button> */}
-                
-                {/* Индикаторы */}
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1">
-                  {previewModel.images.map((_, index) => (
-                    <div 
-                      key={index}
-                      className={`w-2 h-2 rounded-full ${index === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
-                    />
-                  ))}
-                </div>
-                
-                {/* Подпись */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                  <p className="text-white text-sm font-medium truncate">
-                    {previewModel.title} ({currentImageIndex + 1}/{previewModel.images.length})
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+              isHovering={isHovering}
+              setIsHovering={setShowPreview}
+            />
           )}
         </AnimatePresence>
       </main>

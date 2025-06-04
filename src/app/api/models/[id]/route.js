@@ -98,6 +98,8 @@ export async function DELETE(request, { params }) {
   if (!user || user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
   }
+  // console.log(request.json())
+  // console.log(params)
 
   try {
     const { id } = await params;
@@ -106,8 +108,7 @@ export async function DELETE(request, { params }) {
     // Находим модель, помеченную на удаление
     const model = await prisma.model.findUnique({
       where: { 
-        id,
-        markedForDeletion: true // Только помеченные на удаление
+        id
       },
       include: {
         logs: true
@@ -122,20 +123,16 @@ export async function DELETE(request, { params }) {
     }
 
     if (approve) {
-      // 1. Удаляем файлы модели
+      // Удаляем файлы и запись из БД
       await deleteFile(model.fileUrl);
       await Promise.all(model.images.map(img => deleteFile(img)));
-
-      // 2. Удаляем модель из базы
-      await prisma.model.delete({
-        where: { id }
-      });
+      await prisma.model.delete({ where: { id } });
 
       return NextResponse.json(
         { success: true, message: 'Модель удалена' }
       );
     } else {
-      // Отменяем пометку на удаление
+      // Отмена пометки на удаление
       await prisma.model.update({
         where: { id },
         data: {

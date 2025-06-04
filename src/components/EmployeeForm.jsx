@@ -2,20 +2,20 @@
 import { useState, useEffect } from 'react'
 
 const ROLES = [
-  // { value: 'ADMIN', label: 'Администратор' },
   { value: 'ARTIST', label: 'Художник' },
   { value: 'PROGRAMMER', label: 'Программист' },
   { value: 'MANAGER', label: 'Менеджер' },
   { value: 'ANALYST', label: 'Аналитик' }
 ]
 
-export default function EmployeeForm({ employee, onSubmit, onCancel }) {
+export default function EmployeeForm({ employee, onSubmit, onCancel, userRole }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     role: 'ARTIST',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    changePassword: false
   })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -27,16 +27,17 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }) {
         email: employee.email,
         role: employee.role,
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        changePassword: false
       })
     }
   }, [employee])
 
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value, type, checked } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }))
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
@@ -53,7 +54,10 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }) {
       newErrors.email = 'Некорректный email'
     }
     
-    if (!employee) {
+    // Валидация пароля только если:
+    // 1. Это новый сотрудник ИЛИ
+    // 2. Админ включил смену пароля
+    if (!employee || (employee && formData.changePassword && userRole === 'ADMIN')) {
       if (!formData.password) {
         newErrors.password = 'Введите пароль'
       } else if (formData.password.length < 6) {
@@ -81,7 +85,10 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }) {
         role: formData.role
       }
       
-      if (!employee) {
+      // Добавляем пароль только если:
+      // 1. Это новый сотрудник ИЛИ
+      // 2. Админ включил смену пароля
+      if (!employee || (formData.changePassword && userRole === 'ADMIN')) {
         submitData.password = formData.password
       }
       
@@ -165,46 +172,66 @@ export default function EmployeeForm({ employee, onSubmit, onCancel }) {
             </select>
           </div>
 
-          {/* Пароль (только для нового сотрудника) */}
-          {!employee && (
+          {/* Поля для пароля */}
+          {(!employee || (employee && userRole === 'ADMIN')) && (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Пароль <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.password ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Не менее 6 символов"
-                />
-                {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-                )}
-              </div>
+              {employee && userRole === 'ADMIN' && (
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="changePassword"
+                    name="changePassword"
+                    checked={formData.changePassword}
+                    onChange={handleChange}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="changePassword" className="ml-2 block text-sm text-gray-700">
+                    Сменить пароль
+                  </label>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Подтверждение пароля <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Повторите пароль"
-                />
-                {errors.confirmPassword && (
-                  <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-                )}
-              </div>
+              {(formData.changePassword || !employee) && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Пароль <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.password ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Не менее 6 символов"
+                    />
+                    {errors.password && (
+                      <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Подтверждение пароля <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Повторите пароль"
+                    />
+                    {errors.confirmPassword && (
+                      <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

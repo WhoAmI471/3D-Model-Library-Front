@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission } from '@/lib/permission';
+import { useRouter } from 'next/navigation'
 
 import Delete from "../../../../public/Delete.svg"
 import Edit from "../../../../public/Edit.svg"
@@ -17,6 +18,7 @@ export default function ProjectsPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [currentProject, setCurrentProject] = useState(null)
   const [userRole, setUserRole] = useState(null) 
+  const router = useRouter()
 
   // Загрузка проектов
   useEffect(() => {
@@ -188,15 +190,19 @@ export default function ProjectsPage() {
               {filteredProjects.length > 0 ? (
                 filteredProjects.map((project) => (
                   <tr key={project.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
-                    <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <Link href={`/dashboard/projects/${project.id}`}>
-                        {project.name}
-                      </Link>
+                    <td 
+                      className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" 
+                      onClick={() => router.push(`/dashboard/projects/${project.id}`)}>
+                      {project.name}
                     </td>
-                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                    <td 
+                      className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
+                      onClick={() => router.push(`/dashboard/projects/${project.id}`)}>
                       {format(new Date(project.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}
                     </td>
-                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                    <td 
+                      className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
+                      onClick={() => router.push(`/dashboard/projects/${project.id}`)}>
                       {project.models?.length || 0}
                     </td>
                     
