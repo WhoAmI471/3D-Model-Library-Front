@@ -15,6 +15,7 @@ export default function ModelUploadForm() {
     zipFile: null,
     screenshots: []
   })
+  const [projectSearchTerm, setProjectSearchTerm] = useState('')
 
   const toggleProject = (projectId) => {
     setSelectedProjects(prev => 
@@ -147,6 +148,9 @@ export default function ModelUploadForm() {
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
+
+  const filteredProjects = projects.filter(project =>
+    project.name.toLowerCase().includes(projectSearchTerm.toLowerCase()))
 
   return (
     <div className="w-full mx-auto">
@@ -308,13 +312,27 @@ export default function ModelUploadForm() {
             </select>
           </div>
 
+          <div className='w-full'>
+            <h3 className="block text-sm font-medium text-gray-700 mb-1">Поиск проектов</h3>
+            <div className="mt-2 relative">
+              <input
+                type="text"
+                placeholder="Поиск проектов..."
+                className=" w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={projectSearchTerm}
+                onChange={(e) => setProjectSearchTerm(e.target.value)}
+                maxLength={50}
+              />
+            </div>
+          </div>
+
           {/* Проекты */}
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Проекты
             </label>
             <div className="space-y-2 max-h-40 overflow-y-auto p-3 border border-gray-300 rounded-md">
-              {projects.map(project => (
+              {filteredProjects.map(project => (
                 <div key={project.id} className="flex items-center">
                   <input
                     type="checkbox"

@@ -30,6 +30,7 @@ export const ProjectFilter = ({
                 className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
+                maxLength={50}
               />
             </div>
           </div>

@@ -20,6 +20,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
   const [isHovering, setIsHovering] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [autoPlayInterval, setAutoPlayInterval] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -190,6 +191,8 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
       setIsSubmitting(false)
     }
   }
+  const filteredModels = models.filter(model =>
+    model.title.toLowerCase().includes(searchTerm.toLowerCase()))
 
   return (
     <div className="mb-6 p-6 rounded-lg bg-white shadow-sm" onMouseLeave={handleMouseLeave}>
@@ -213,12 +216,22 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
               }`}
               disabled={isSubmitting}
               placeholder="Введите название проекта"
+              maxLength={50}
             />
             {errors.name && (
               <p className="mt-1 text-sm text-red-600">{errors.name}</p>
             )}
           </div>
-
+          <input
+            type="text"
+            placeholder="Поиск моделей..."
+            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                errors.name ? 'border-red-500' : 'border-gray-300'
+              }`}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            maxLength={50}
+          />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Модели в проекте
@@ -233,7 +246,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                   <p className="text-gray-500 text-sm">Нет доступных моделей</p>
                 ) : (
                   <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {models.map(model => (
+                    {filteredModels.map(model => (
                       <div 
                         key={model.id} 
                         className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
@@ -261,7 +274,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                           <span className="font-medium">{model.title}</span>
                           {model.author?.name && (
                             <span className="text-xs text-gray-500 ml-2">
-                              (автор: {model.author.name})
+                              (проекты: {model.projects?.length > 0 ? model.projects.map(p => p.name).join(', ') : '—'})
                             </span>
                           )}
                         </label>

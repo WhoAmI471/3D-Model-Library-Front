@@ -23,6 +23,7 @@ export default function ModelEditForm({ id, userRole }) {
     screenshots: []
   })
   const [deletedScreenshots, setDeletedScreenshots] = useState([])
+  const [projectSearchTerm, setProjectSearchTerm] = useState('')
 
   
   const [canEditModel, setCanEditModel] = useState(null);
@@ -207,6 +208,9 @@ export default function ModelEditForm({ id, userRole }) {
     )
   }
 
+  const filteredProjects = projects.filter(project =>
+    project.name.toLowerCase().includes(projectSearchTerm.toLowerCase()))
+
   return (
     <div className="w-full mx-auto">
       <h1 className="text-2xl font-bold mb-6">Редактирование модели</h1>
@@ -224,6 +228,7 @@ export default function ModelEditForm({ id, userRole }) {
               onChange={handleChange}
               className={`block w-full px-3 py-2 border ${canEditModel ? 'border-gray-300' : 'border-gray-100 bg-gray-50'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
               required
+              maxLength={50}
               disabled={canEditDescription}
             />
           </div>
@@ -352,6 +357,7 @@ export default function ModelEditForm({ id, userRole }) {
               onChange={handleChange}
               rows={4}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              maxLength={1000}
             />
           </div>
 
@@ -399,12 +405,27 @@ export default function ModelEditForm({ id, userRole }) {
           </div>
 
           {/* Проекты */}
+          
+          <div className='w-full'>
+            <h3 className="block text-sm font-medium text-gray-700 mb-1">Поиск проектов</h3>
+            <div className="mt-2 relative">
+              <input
+                type="text"
+                placeholder="Поиск проектов..."
+                className=" w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={projectSearchTerm}
+                onChange={(e) => setProjectSearchTerm(e.target.value)}
+                maxLength={50}
+              />
+            </div>
+          </div>
+
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Проекты
             </label>
             <div className="space-y-2 max-h-40 overflow-y-auto p-3 border border-gray-300 rounded-md">
-              {projects.map(project => (
+              {filteredProjects.map(project => (
                 <div key={project.id} className="flex items-center">
                   <input
                     type="checkbox"

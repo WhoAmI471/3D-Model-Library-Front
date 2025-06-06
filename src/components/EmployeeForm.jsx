@@ -127,6 +127,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                 errors.name ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="Иван Иванов"
+              maxLength={50}
             />
             {errors.name && (
               <p className="mt-1 text-sm text-red-600">{errors.name}</p>
@@ -147,6 +148,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                 errors.email ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="example@company.com"
+              maxLength={50}
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
@@ -184,6 +186,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                     checked={formData.changePassword}
                     onChange={handleChange}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    maxLength={50}
                   />
                   <label htmlFor="changePassword" className="ml-2 block text-sm text-gray-700">
                     Сменить пароль
@@ -206,6 +209,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                         errors.password ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="Не менее 6 символов"
+                      maxLength={50}
                     />
                     {errors.password && (
                       <p className="mt-1 text-sm text-red-600">{errors.password}</p>
@@ -225,6 +229,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                         errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="Повторите пароль"
+                      maxLength={50}
                     />
                     {errors.confirmPassword && (
                       <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>

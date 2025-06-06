@@ -204,7 +204,7 @@ export default function AdminDeletionPanel({ userRole }) {
           Нет ожидающих запросов на удаление
         </div>
       ) : (
-        <div className="overflow-x-auto" onMouseLeave={handleMouseLeave}>
+        <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>

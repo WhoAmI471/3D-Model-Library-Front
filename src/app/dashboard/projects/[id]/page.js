@@ -391,17 +391,17 @@ export default function ProjectPage({ params }) {
                     onMouseEnter={(e) => handleMouseEnter(model, e)}>
                     <td 
                       className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" 
-                      onClick={() => router.push(`/dashboard/models/${model.id}`)}>
+                      onClick={() => router.push(`/dashboard/models/${model.id}?projectid=${id}`)}>
                       {model.title}
                     </td>
                     <td 
                       className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
-                      onClick={() => router.push(`/dashboard/models/${model.id}`)}>
+                      onClick={() => router.push(`/dashboard/models/${model.id}?projectid=${id}`)}>
                       {model.author?.name || '—'}
                     </td>
                     <td 
                       className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
-                      onClick={() => router.push(`/dashboard/models/${model.id}`)}>
+                      onClick={() => router.push(`/dashboard/models/${model.id}?projectid=${id}`)}>
                       {format(new Date(model.createdAt), 'dd.MM.yyyy', { locale: ru })}
                     </td>
                     <td className="px-6 py-2 whitespace-nowrap al-i-center text-right text-sm font-medium">
