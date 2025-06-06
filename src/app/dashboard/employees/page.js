@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import EmployeeForm from '@/components/EmployeeForm'
+import { checkPermission } from '@/lib/permission'
 import Image from 'next/image'
 
 import Delete from "../../../../public/Delete.svg"
@@ -13,7 +14,7 @@ export default function EmployeesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [currentEmployee, setCurrentEmployee] = useState(null)
-  const [userRole, setUserRole] = useState(null) 
+  const [user, setUser] = useState(null) 
 
   // Загрузка сотрудников
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function EmployeesPage() {
         // Загружаем информацию о текущем пользователе
         const userResponse = await fetch('/api/auth/me')
         const userData = await userResponse.json()
-        setUserRole(userData.user?.role || null)
+        setUser(userData.user || null)
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
       } finally {
@@ -101,13 +102,13 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="h-full bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Заголовок и кнопки */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold text-gray-800">Сотрудники</h1>
           
-          {userRole === 'ADMIN' && (
+          {(user?.role === 'ADMIN' || checkPermission(user, 'manage_users')) && (
             <button
               onClick={() => {
                 setCurrentEmployee(null)
@@ -152,7 +153,7 @@ export default function EmployeesPage() {
                 setShowAddForm(false)
                 setCurrentEmployee(null)
               }}
-              userRole={userRole}
+              userRole={user?.role}
             />
           </div>
         )}
@@ -171,7 +172,7 @@ export default function EmployeesPage() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Роль
                 </th>
-                {userRole === 'ADMIN' && (
+                {(user?.role === 'ADMIN' || checkPermission(user, 'manage_users')) && (
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Действия
                   </th>
@@ -204,7 +205,7 @@ export default function EmployeesPage() {
                          employee.role === 'MANAGER' ? 'Менеджер' : 'Аналитик'}
                       </span>
                     </td>
-                    {userRole === 'ADMIN' && (
+                    {(user?.role === 'ADMIN' || checkPermission(user, 'manage_users')) && (
                       <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-3">
                           <button
@@ -243,7 +244,7 @@ export default function EmployeesPage() {
               ) : (
                 <tr>
                   <td 
-                    colSpan={userRole === 'ADMIN' ? 4 : 3} 
+                    colSpan={user?.role === 'ADMIN' ? 4 : 3} 
                     className="px-6 py-4 text-center text-sm text-gray-500"
                   >
                     Сотрудники не найдены

@@ -1,10 +1,11 @@
 'use client'
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation'
+import { checkAnyPermission, checkPermission } from '@/lib/permission'
 // import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import axios from 'axios'
 import Image from 'next/image';
-import { checkPermission } from '@/lib/permission';
 
 import Download from "../../public/Download.svg"
 import Delete from "../../public/Delete.svg"
@@ -19,13 +20,23 @@ const SPHERE_TRANSLATIONS = {
   // Добавьте другие значения по необходимости
 };
 
-export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
+export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const router = useRouter()
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // const searchParams = useSearchParams();
-  // const projectId = projectId;
+  const [user, setUser] = useState();
+  
+  useEffect(() => {
+    const load = async () =>
+    {
+      const userRes = await axios.get('/api/auth/me')
+      setUser(userRes.data.user)
+      console.log(userRes.data.user)
+      setUser(userRes.data.user)
+    }
+    load()
+  }, [])
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -254,7 +265,7 @@ export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
         <div className="flex justify-between items-start mb-6">
           <div className="flex space-x-2">
             
-            {checkPermission(userRole, 'download_models') && (
+            {checkPermission(user, 'download_models') && (
               <button
                 onClick={handleDownload}
                 disabled={isDownloading}
@@ -271,7 +282,7 @@ export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
               </button>)
             }
             
-            {(checkPermission(userRole, 'edit_models') || checkPermission(userRole, 'edit_model_description')) && (
+            {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
               <Link 
                 href={`/dashboard/models/update/${model.id}`}
                 className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
@@ -287,7 +298,7 @@ export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
               </Link>)
             }
             
-            {checkPermission(userRole, 'delete_models') && (
+            {checkPermission(user, 'delete_models') && (
               <button 
                 onClick={handleDeleteRequest}
                 className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
@@ -299,7 +310,7 @@ export const ModelCard = ({ model, userRole, onDeleteRequest, projectId }) => {
                   height={18}
                   className='mr-2'
                 />
-                {userRole === 'ADMIN' ? 'Удалить' : 'Удалить'}
+                {user?.role === 'ADMIN' ? 'Удалить' : 'Удалить'}
               </button>)
             }
           </div>

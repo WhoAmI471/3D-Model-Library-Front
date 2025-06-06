@@ -5,7 +5,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { checkPermission } from '@/lib/permission';
+import { checkPermission, checkAnyPermission } from '@/lib/permission';
+import axios from 'axios'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
 
@@ -30,6 +31,18 @@ export default function ProjectPage({ params }) {
   const [isHovering, setIsHovering] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [autoPlayInterval, setAutoPlayInterval] = useState(null)
+  const [user, setUser] = useState();
+  
+  useEffect(() => {
+    const load = async () =>
+    {
+      const userRes = await axios.get('/api/auth/me')
+      setUser(userRes.data.user)
+      console.log(userRes.data.user)
+      setUser(userRes.data.user)
+    }
+    load()
+  }, [])
 
   // Загрузка данных проекта и моделей
   useEffect(() => {
@@ -291,7 +304,7 @@ export default function ProjectPage({ params }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="h-full bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto" onMouseLeave={handleMouseLeave}>
         {/* Заголовок и кнопки */}
         <div className="flex justify-between items-center mb-6">
@@ -302,7 +315,7 @@ export default function ProjectPage({ params }) {
             </p>
           </div>
           
-          {(userRole === 'ADMIN' || checkPermission(userRole, 'upload_models')) && (
+          {(userRole === 'ADMIN' || checkPermission(user, 'upload_models')) && (
             <div className="flex gap-4">
               <button
                 onClick={() => router.push(`/dashboard/models/upload?projectId=${project.id}`)}
@@ -407,7 +420,7 @@ export default function ProjectPage({ params }) {
                     <td className="px-6 py-2 whitespace-nowrap al-i-center text-right text-sm font-medium">
                       <div className="flex justify-end space-x-3">
                         
-                        {(checkPermission(userRole, 'edit_models') || checkPermission(userRole, 'edit_model_description')) && (
+                        {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
                           <Link href={`/dashboard/models/update/${model.id}`}>
                             <button className="text-yellow-600 hover:text-yellow-900">
                               <Image 
@@ -421,7 +434,7 @@ export default function ProjectPage({ params }) {
                           </Link>)
                         }
                         
-                        {checkPermission(userRole, 'delete_models') && (
+                        {checkPermission(user, 'delete_models') && (
                           <button 
                             onClick={() => handleDeleteRequest(model)}
                             className="text-red-600 hover:text-red-900"
@@ -435,7 +448,7 @@ export default function ProjectPage({ params }) {
                           </button>)
                         }
                         
-                        {checkPermission(userRole, 'download_models') && (
+                        {checkPermission(user, 'download_models') && (
                           <button 
                             className="text-blue-600 hover:text-blue-900" 
                             onClick={() => handleDownload(model)}

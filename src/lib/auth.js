@@ -4,19 +4,20 @@ import prisma from './prisma'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-please-change'
 
-
 export async function createSession(user) {
   const token = jwt.sign(
     { 
       id: user.id, 
       name: user.name,
+      email: user.email,
       role: user.role,
+      permissions: user.permissions, // Исправлена опечатка (было prmissions)
       exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
     }, 
     JWT_SECRET
   )
 
-  cookies().set('session', token, {
+  await cookies().set('session', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
@@ -25,17 +26,10 @@ export async function createSession(user) {
   })
 }
 
-export async function getUserFromSession(request) {
+export async function getUserFromSession() {
   try {
-    // Для API роутов
-    if (request?.cookies) {
-      const token = request.cookies.get('session')?.value
-      return await verifyToken(token)
-    }
-    
-    // Для серверных компонентов
     const cookieStore = await cookies()
-    const token = cookieStore.get('session')?.value
+    const token = await cookieStore.get('session')?.value
     return await verifyToken(token)
   } catch (error) {
     console.error('Error getting user from session:', error)
@@ -62,6 +56,7 @@ async function verifyToken(token) {
         name: true,
         email: true,
         role: true,
+        permissions: true,
         createdAt: true
       }
     })
@@ -79,7 +74,7 @@ async function verifyToken(token) {
 }
 
 export async function clearSession() {
-  cookies().set('session', '', {
+  await cookies().set('session', '', {
     httpOnly: true,
     path: '/',
     expires: new Date(0)

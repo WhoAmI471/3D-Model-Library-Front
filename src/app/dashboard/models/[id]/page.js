@@ -1,6 +1,7 @@
 // app/dashboard/models/[id]/page.js
 import { ModelCard } from '@/components/ModelCard'
 import { prisma } from '@/lib/prisma'
+import axios from 'axios'
 import { getUserFromSession } from '@/lib/auth'
 
 export const handleDeleteRequest = async (modelId, immediate) => {
@@ -31,8 +32,8 @@ export const handleDeleteRequest = async (modelId, immediate) => {
 export default async function ModelPage({ params, searchParams }) {
   try {
     // Получаем параметры
-    const {id} = await params
-    const {projectid} = await searchParams
+    const { id } = await params
+    const { projectid } = await searchParams
 
     const model = await prisma.model.findUnique({
       where: { id },
@@ -54,15 +55,11 @@ export default async function ModelPage({ params, searchParams }) {
       return <div>Модель не найдена</div>
     }
 
-    const user = await getUserFromSession()
-    const role = user?.role || null
-
 
     return (
       <div className="container mx-auto">
         <ModelCard 
           model={model} 
-          userRole={role} 
           onDeleteRequest={handleDeleteRequest}
           projectId={projectid}
         />

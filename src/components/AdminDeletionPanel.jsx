@@ -1,8 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react';
-import { TrashIcon, XCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, XCircleIcon, CheckCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
+import {Tooltip} from '@/components/Tooltip';
 
 export default function AdminDeletionPanel({ userRole }) {
   const [modelsForDeletion, setModelsForDeletion] = useState([]);
@@ -117,20 +118,14 @@ export default function AdminDeletionPanel({ userRole }) {
     setError(null);
     
     try {
-      const response = await fetch(`/api/models?markedForDeletion=true&t=${Date.now()}`);
+      const response = await fetch(
+        `/api/models?markedForDeletion=true&includeAuthor=true&includeMarkedBy=true&t=${Date.now()}`
+      );
       
-      if (!response.ok) {
-        throw new Error(`Ошибка загрузки: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Ошибка загрузки: ${response.status}`);
       
       const data = await response.json();
-      
-      const employeesResponse = await fetch('/api/employees')
-      const employeesData = await employeesResponse.json()
-      // console.log(data);
-      // console.log(employeesData);
-      // console.log(data[0].markedById);
-      setModelsForDeletion(data.filter(model => model.markedForDeletion));
+      setModelsForDeletion(data);
     } catch (err) {
       console.error('Ошибка загрузки запросов на удаление:', err);
       setError(err.message);
@@ -138,6 +133,7 @@ export default function AdminDeletionPanel({ userRole }) {
       setIsLoading(false);
     }
   };
+
 
   const handleDecision = async (modelId, approve) => {
     try {
@@ -177,7 +173,7 @@ export default function AdminDeletionPanel({ userRole }) {
   if (userRole !== 'ADMIN') return null;
 
   return (
-    <div className="rounded-lg p-6 w-full max-w-7xl mx-auto" onMouseLeave={handleMouseLeave}>
+    <div className="rounded-lg p-2 w-full max-w-8xl mx-auto" onMouseLeave={handleMouseLeave}>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Запросы на удаление моделей</h2>
         <button 
@@ -212,6 +208,7 @@ export default function AdminDeletionPanel({ userRole }) {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => requestSort('title')}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <div className="flex items-center">
                     Модель
@@ -222,16 +219,20 @@ export default function AdminDeletionPanel({ userRole }) {
                     )}
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" onMouseLeave={handleMouseLeave}>
                   Автор модели
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" onMouseLeave={handleMouseLeave}>
                   Запросил удаление
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" onMouseLeave={handleMouseLeave}>
+                  Причина
                 </th>
                 <th 
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => requestSort('markedAt')}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <div className="flex items-center">
                     Дата запроса
@@ -242,7 +243,7 @@ export default function AdminDeletionPanel({ userRole }) {
                     )}
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" onMouseLeave={handleMouseLeave}>
                   Действия
                 </th>
               </tr>
@@ -252,15 +253,37 @@ export default function AdminDeletionPanel({ userRole }) {
                 <tr key={model.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white" onMouseEnter={(e) => handleMouseEnter(model, e)}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{model.title}</div>
-                    <div className="text-sm text-gray-500">{model.description?.substring(0, 50)}...</div>
+                    <div className="text-sm text-gray-500">{model.description?.substring(0, 30)}...</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{model.author?.name || 'Неизвестно'}</div>
                     <div className="text-sm text-gray-500">{model.author?.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{model.markedById || 'Неизвестно'}</div>
-                    <div className="text-sm text-gray-500">{model.markedById}</div>
+                    <div className="text-sm text-gray-900">{model.markedBy ? `${model.markedBy.name} (${model.markedBy.email})` : 'Пользователь не найден'}</div>
+                    <div className="text-sm text-gray-500">
+                      {{
+                        ADMIN: 'Администратор',
+                        ARTIST: 'Художник',
+                        PROGRAMMER: 'Программист',
+                        MANAGER: 'Менеджер',
+                        ANALYST: 'Аналитик'
+                      }[model.markedBy?.role] || model.markedBy?.role || ''}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap" onMouseLeave={handleMouseLeave}>
+                    {model.deletionComment ? (
+                      <Tooltip content={model.deletionComment}>
+                        <div className="flex items-center text-sm text-gray-500 max-w-xs truncate">
+                          <InformationCircleIcon className="h-4 w-4 mr-1 text-blue-500" />
+                          {model.deletionComment.length > 30 
+                            ? `${model.deletionComment.substring(0, 30)}...` 
+                            : model.deletionComment}
+                        </div>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-sm text-gray-400">Не указана</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(model.markedAt).toLocaleString()}

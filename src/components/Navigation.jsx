@@ -43,7 +43,7 @@ export default function Navigation({ userRole }) {
   ]
 
   return (
-    <div className="hidden md:flex md:w-64 md:flex-col md:inset-y-0 bg-white border-r">
+    <div className="hidden md:flex h-full md:w-64 md:flex-col md:inset-y-0 bg-white border-r">
       {/* Логотип и заголовок */}
       <div className="flex items-center h-16 px-4 border-b">
         <div className="flex items-center">

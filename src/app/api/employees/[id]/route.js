@@ -3,14 +3,18 @@ import { getUserFromSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcrypt'
 
+// GET /api/employees/[id]/route.js
 export async function GET(request, { params }) {
   try {
     const user = await getUserFromSession()
-    if (!user && user?.role !== 'ADMIN') return NextResponse.json(
-      { error: 'Не авторизован' }, 
-      { status: 401 }
-    )
-    const { id } = await params
+    if (!user || user?.role !== 'ADMIN') { // Исправлено условие
+      return NextResponse.json(
+        { error: 'Не авторизован или недостаточно прав' }, 
+        { status: 401 }
+      )
+    }
+    
+    const { id } = params // Убрали await перед params
     
     if (!id) {
       return NextResponse.json(
@@ -20,14 +24,14 @@ export async function GET(request, { params }) {
     }
 
     const employer = await prisma.user.findUnique({
-      where: { id: id },
+      where: { id },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        // Не возвращаем пароль в ответе
-      },
+        permissions: true
+      }
     })
 
     if (!employer) {
@@ -57,8 +61,8 @@ export async function PUT(request, { params }) {
       )
     }
 
-    const { id } = params
-    const { name, email, role, password } = await request.json()
+    const { id } = await params
+    const { name, email, role, password, permissions = [] } = await request.json()
 
     if (!id) {
       return NextResponse.json(
@@ -70,7 +74,8 @@ export async function PUT(request, { params }) {
     const updateData = {
       name,
       email,
-      role
+      role,
+      permissions
     }
 
     // Если передан пароль, хешируем его
@@ -87,8 +92,10 @@ export async function PUT(request, { params }) {
         name: true,
         email: true,
         role: true,
+        permissions: true
       }
     })
+
 
     return NextResponse.json(updatedEmployer)
   } catch (error) {
@@ -110,7 +117,7 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    const { id } = params
+    const { id } = await params
 
     if (!id) {
       return NextResponse.json(

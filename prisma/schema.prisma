@@ -20,6 +20,7 @@ model User {
   email     String   @unique
   password  String
   role      Role
+  permissions String[] // Добавляем массив строк для кастомных прав
   createdAt DateTime @default(now())
   models    Model[]  @relation("UserModels")
   logs      Log[]
@@ -43,6 +44,7 @@ model Model {
   markedById  String?
   markedBy    User?     @relation("MarkedForDeletion", fields: [markedById], references: [id])
   markedAt    DateTime?
+  deletionComment String?
   projects    Project[] @relation("ModelProjects") // Многие-ко-многим
 }
 

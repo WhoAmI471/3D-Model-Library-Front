@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { checkPermission } from '@/lib/permission'
+import { checkAnyPermission, checkPermission } from '@/lib/permission'
 import axios from 'axios'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -99,11 +99,12 @@ export default function DashboardPage() {
         }
       }
     } else {
-      if (confirm('Отправить запрос на удаление администратору?')) {
+      const comment = prompt('Укажите причину удаления:');
+      if (comment !== null) { // Если пользователь не нажал "Отмена"
         try {
-          // Для обычных пользователей - PUT запрос для пометки на удаление
           const response = await axios.put(`/api/models/${model.id}`, {
-            action: 'REQUEST_DELETE'
+            action: 'REQUEST_DELETE',
+            comment: comment || '' // Отправляем комментарий
           });
           
           if (response.status === 200) {
@@ -186,7 +187,7 @@ export default function DashboardPage() {
       const rect = event.currentTarget.getBoundingClientRect()
       setPreviewPosition({
         x: rect.right + 10, // Позиция справа от строки
-        y: rect.top
+        y: rect.top - 80
       })
       setPreviewModel(model)
       setCurrentImageIndex(0)
@@ -271,7 +272,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+    <div className="h-full bg-gray-50 text-gray-800" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
       <main className="p-6 max-w-6xl mx-auto" onMouseLeave={handleMouseLeave}>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Модели</h2>
@@ -286,7 +287,7 @@ export default function DashboardPage() {
               Фильтр
             </button>
             
-            {checkPermission(user?.role, 'edit_models') && (
+            {checkPermission(user, 'upload_models') && (
               <button 
                 onClick={handleUpload}
                 className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 shadow-sm"
@@ -389,7 +390,7 @@ export default function DashboardPage() {
                   </td>
                   <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium" >
                     <div className="flex justify-end space-x-3">
-                      {(checkPermission(user?.role, 'edit_models') || checkPermission(user?.role, 'edit_model_description')) && (
+                      {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
                         <Link href={`/dashboard/models/update/${model.id}`}>
                           <button className="text-yellow-600 hover:text-yellow-900">
                             <Image 
@@ -403,7 +404,7 @@ export default function DashboardPage() {
                         </Link>)
                       }
                       
-                      {checkPermission(user?.role, 'delete_models') && (
+                      {checkPermission(user, 'delete_models') && (
                         <button 
                           onClick={() => handleDeleteRequest(model)}
                           className="text-red-600 hover:text-red-900"
@@ -417,7 +418,7 @@ export default function DashboardPage() {
                         </button>)
                       }
                       
-                      {checkPermission(user?.role, 'download_models') && (
+                      {checkPermission(user, 'download_models') && (
                         <button 
                           className="text-blue-600 hover:text-blue-900" 
                           onClick={() => handleDownload(model)}

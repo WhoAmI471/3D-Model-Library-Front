@@ -11,6 +11,7 @@ export async function GET() {
         name: true,
         email: true,
         role: true,
+        permissions: true,
       },
       orderBy: {
         name: 'asc',
@@ -28,7 +29,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { name, email, role, password } = await request.json()
+    const { name, email, role, password, permissions = [] } = await request.json()
     
     // Валидация данных
     if (!name || !email || !role || !password) {
@@ -61,11 +62,13 @@ export async function POST(request) {
     const hashedPassword = await bcrypt.hash(password, 10)
     
     // Создание пользователя
+    
     const newEmployee = await prisma.user.create({
       data: {
         name,
         email,
         role,
+        permissions, // Сохраняем кастомные права
         password: hashedPassword,
       },
     })

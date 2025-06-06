@@ -1,60 +1,69 @@
-// lib/roles.js
 export const ROLES = {
-    ADMIN: 'ADMIN',
-    // LEAD: 'LEAD',
-    ARTIST: 'ARTIST',
-    PROGRAMMER: 'PROGRAMMER',
-    MANAGER: 'MANAGER',
-    ANALYST: 'ANALYST'
-  };
-  
-  export const PERMISSIONS = {
-    // Администратор (Руководитель компании)
-    [ROLES.ADMIN]: [
-      'manage_users',
-      'create_projects',
-      'delete_models',
-      'upload_models',
-      'edit_models',
-      'download_models'
-    ],
-    
-    // Руководитель 3D отдела
-    // [ROLES.LEAD]: [
-    //   'create_projects',
-    //   'delete_models',
-    //   'upload_models',
-    //   'update_models',
-    //   'edit_models',
-    // //   'print_models',
-    // //   'share_model_links',
-    //   'download_models'
-    // ],
-    
-    // 3D-художник
-    [ROLES.ARTIST]: [
-      'upload_models',
-      'delete_models',
-      'edit_models',
-      'download_models'
-    ],
-    
-    // Программист
-    [ROLES.PROGRAMMER]: [
-      'download_models'
-    ],
-    
-    // Проект-менеджер и Аналитик
-    [ROLES.MANAGER]: [
-        'edit_model_description',
-        'download_models',
-        'create_projects',
-        'edit_projects'
-    ],
-    [ROLES.ANALYST]: [
-        'edit_model_description',
-        'download_models',
-        'create_projects',
-        'edit_projects'
-    ]
-  };
+  ADMIN: 'ADMIN',
+  ARTIST: 'ARTIST',
+  PROGRAMMER: 'PROGRAMMER',
+  MANAGER: 'MANAGER',
+  ANALYST: 'ANALYST'
+};
+
+export const ALL_PERMISSIONS = {
+  MANAGE_USERS: 'manage_users',
+  CREATE_PROJECTS: 'create_projects',
+  DELETE_MODELS: 'delete_models',
+  UPLOAD_MODELS: 'upload_models',
+  EDIT_MODELS: 'edit_models',
+  EDIT_MODEL_DESCRIPTION: 'edit_model_description',
+  DOWNLOAD_MODELS: 'download_models',
+  EDIT_PROJECTS: 'edit_projects'
+};
+
+export const PERMISSION_LABELS = {
+  [ALL_PERMISSIONS.MANAGE_USERS]: 'Управление пользователями',
+  [ALL_PERMISSIONS.CREATE_PROJECTS]: 'Создание проектов',
+  [ALL_PERMISSIONS.DELETE_MODELS]: 'Удаление моделей',
+  [ALL_PERMISSIONS.UPLOAD_MODELS]: 'Загрузка моделей',
+  [ALL_PERMISSIONS.EDIT_MODELS]: 'Редактирование моделей',
+  [ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION]: 'Редактирование описания',
+  [ALL_PERMISSIONS.DOWNLOAD_MODELS]: 'Скачивание моделей',
+  [ALL_PERMISSIONS.EDIT_PROJECTS]: 'Редактирование проектов'
+}
+
+export const ROLE_OPTIONS = [
+  { value: 'ARTIST', label: 'Художник' },
+  { value: 'PROGRAMMER', label: 'Программист' },
+  { value: 'MANAGER', label: 'Менеджер' },
+  { value: 'ANALYST', label: 'Аналитик' }
+];
+
+
+export const DEFAULT_PERMISSIONS = {
+  [ROLES.ADMIN]: [
+    ALL_PERMISSIONS.MANAGE_USERS,
+    ALL_PERMISSIONS.CREATE_PROJECTS,
+    ALL_PERMISSIONS.DELETE_MODELS,
+    ALL_PERMISSIONS.UPLOAD_MODELS,
+    ALL_PERMISSIONS.EDIT_MODELS,
+    ALL_PERMISSIONS.DOWNLOAD_MODELS,
+    ALL_PERMISSIONS.EDIT_PROJECTS
+  ],
+  [ROLES.ARTIST]: [
+    ALL_PERMISSIONS.UPLOAD_MODELS,
+    ALL_PERMISSIONS.EDIT_MODELS,
+    ALL_PERMISSIONS.DOWNLOAD_MODELS
+  ],
+  [ROLES.PROGRAMMER]: [
+    ALL_PERMISSIONS.DOWNLOAD_MODELS
+  ],
+  [ROLES.MANAGER]: [
+    ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION,
+    ALL_PERMISSIONS.DOWNLOAD_MODELS,
+    ALL_PERMISSIONS.CREATE_PROJECTS,
+    ALL_PERMISSIONS.EDIT_PROJECTS
+  ],
+  [ROLES.ANALYST]: [
+    ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION,
+    ALL_PERMISSIONS.DOWNLOAD_MODELS,
+    ALL_PERMISSIONS.CREATE_PROJECTS,
+    ALL_PERMISSIONS.EDIT_PROJECTS
+  ]
+};

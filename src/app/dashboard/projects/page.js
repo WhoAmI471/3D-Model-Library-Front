@@ -5,7 +5,7 @@ import ProjectForm from '@/components/ProjectForm'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { checkPermission } from '@/lib/permission';
+import { checkPermission, checkAnyPermission } from '@/lib/permission';
 import { useRouter } from 'next/navigation'
 
 import Delete from "../../../../public/Delete.svg"
@@ -17,7 +17,7 @@ export default function ProjectsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [currentProject, setCurrentProject] = useState(null)
-  const [userRole, setUserRole] = useState(null) 
+  const [user, setUser] = useState(null) 
   const router = useRouter()
 
   // Загрузка проектов
@@ -29,7 +29,7 @@ export default function ProjectsPage() {
         setProjects(data)
         const userResponse = await fetch('/api/auth/me')
         const userData = await userResponse.json()
-        setUserRole(userData.user?.role || null)
+        setUser(userData.user || null)
       } catch (error) {
         console.error('Ошибка загрузки проектов:', error)
       } finally {
@@ -106,13 +106,13 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="h-full bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Заголовок и кнопки */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Проекты</h1>
           
-          {(userRole === 'ADMIN' || checkPermission(userRole, 'create_projects')) && (
+          {(user?.role === 'ADMIN' || checkPermission(user, 'create_projects')) && (
           <div className="flex gap-4">
             <button
               onClick={() => {
@@ -179,7 +179,7 @@ export default function ProjectsPage() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Кол-во моделей
                 </th>
-                {(userRole === 'ADMIN' || checkPermission(userRole, 'create_projects') || checkPermission(userRole, 'edit_projects')) && (
+                {(user?.role === 'ADMIN' || checkAnyPermission(user, 'create_projects', 'edit_projects')) && (
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Действия
                 </th>
@@ -206,7 +206,7 @@ export default function ProjectsPage() {
                       {project.models?.length || 0}
                     </td>
                     
-                    {(userRole === 'ADMIN' || checkPermission(userRole, 'create_projects') || checkPermission(userRole, 'edit_projects')) && (
+                    {(user?.role === 'ADMIN' || checkAnyPermission(user, 'create_projects', 'edit_projects')) && (
                       <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-3">
                           <button

@@ -59,21 +59,23 @@ export async function PUT(request, { params }) {
 
   try {
     const { id } = await params;
+    const { comment } = await request.json();
 
-    // Помечаем модель на удаление
+    // Помечаем модель на удаление с комментарием
     const model = await prisma.model.update({
       where: { id },
       data: {
         markedForDeletion: true,
         markedById: user.id,
-        markedAt: new Date()
+        markedAt: new Date(),
+        deletionComment: comment || null // Сохраняем комментарий
       }
     });
 
-    // Создаём запись в логах
+    // Создаём запись в логах с комментарием
     await prisma.log.create({
       data: {
-        action: `Запрос на удаление модели`,
+        action: `Запрос на удаление модели${comment ? ` (${comment})` : ''}`,
         userId: user.id,
         modelId: id
       }

@@ -1,22 +1,19 @@
 'use client'
 import { useState, useEffect } from 'react'
-
-const ROLES = [
-  { value: 'ARTIST', label: 'Художник' },
-  { value: 'PROGRAMMER', label: 'Программист' },
-  { value: 'MANAGER', label: 'Менеджер' },
-  { value: 'ANALYST', label: 'Аналитик' }
-]
+import { ROLES, ROLE_OPTIONS, ALL_PERMISSIONS, PERMISSION_LABELS, DEFAULT_PERMISSIONS } from '@/lib/roles'
 
 export default function EmployeeForm({ employee, onSubmit, onCancel, userRole }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     role: 'ARTIST',
+    permissions: [],
     password: '',
     confirmPassword: '',
     changePassword: false
   })
+  
+  const [useDefaultPermissions, setUseDefaultPermissions] = useState(true)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -26,12 +23,40 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
         name: employee.name,
         email: employee.email,
         role: employee.role,
+        permissions: employee.permissions || [],
         password: '',
         confirmPassword: '',
         changePassword: false
       })
+      setUseDefaultPermissions(employee.permissions?.length === 0)
     }
   }, [employee])
+
+  useEffect(() => {
+    if (useDefaultPermissions) {
+      setFormData(prev => ({
+        ...prev,
+        permissions: DEFAULT_PERMISSIONS[prev.role] || []
+      }))
+    }
+  }, [formData.role, useDefaultPermissions])
+
+  const handlePermissionChange = (permission) => {
+    setFormData(prev => {
+      const newPermissions = prev.permissions.includes(permission)
+        ? prev.permissions.filter(p => p !== permission)
+        : [...prev.permissions, permission]
+      
+      return { ...prev, permissions: newPermissions }
+    })
+    setUseDefaultPermissions(false)
+  }
+
+  const handleRoleChange = (e) => {
+    const { value } = e.target
+    setFormData(prev => ({ ...prev, role: value }))
+    setUseDefaultPermissions(true)
+  }
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -72,6 +97,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
     return Object.keys(newErrors).length === 0
   }
 
+  // EmployeeForm.js - обновлённая функция handleSubmit
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) return
@@ -82,7 +108,8 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
       const submitData = {
         name: formData.name,
         email: formData.email,
-        role: formData.role
+        role: formData.role,
+        permissions: formData.permissions // Добавляем permissions
       }
       
       // Добавляем пароль только если:
@@ -163,10 +190,10 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
             <select
               name="role"
               value={formData.role}
-              onChange={handleChange}
+              onChange={handleRoleChange}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              {ROLES.map((role) => (
+              {ROLE_OPTIONS.map((role) => (
                 <option key={role.value} value={role.value}>
                   {role.label}
                 </option>
@@ -240,13 +267,57 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
             </>
           )}
         </div>
-
+          
         {/* Общие ошибки формы */}
         {errors.form && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4">
             <p className="text-sm text-red-700">{errors.form}</p>
           </div>
         )}
+
+        {/* Блок прав доступа */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">Права доступа</h3>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="useDefaultPermissions"
+                checked={useDefaultPermissions}
+                onChange={(e) => setUseDefaultPermissions(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="useDefaultPermissions" className="ml-2 text-sm text-gray-700">
+                Использовать права по умолчанию для роли
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(ALL_PERMISSIONS).map(([key, permission]) => (
+              <div key={permission} className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={`permission-${permission}`}
+                  checked={formData.permissions.includes(permission)}
+                  onChange={() => handlePermissionChange(permission)}
+                  disabled={useDefaultPermissions}
+                  className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                    useDefaultPermissions ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                />
+                <label 
+                  htmlFor={`permission-${permission}`} 
+                  className={`ml-2 text-sm text-gray-700 ${
+                    useDefaultPermissions ? 'opacity-50' : ''
+                  }`}
+                >
+                  {PERMISSION_LABELS[permission]}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Кнопки действий */}
         <div className="flex justify-end space-x-3 pt-2">

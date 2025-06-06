@@ -6,15 +6,13 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const projectId = searchParams.get('projectId')
   const markedForDeletion = searchParams.get('markedForDeletion') === 'true'
-  const includeAuthor = searchParams.get('includeAuthor') !== 'false' // default true
-  const includeProjects = searchParams.get('includeProjects') !== 'false' // default true
-  const includeMarkedBy = searchParams.get('includeMarkedBy') === 'true' // default false
+  const includeAuthor = searchParams.get('includeAuthor') !== 'false'
+  const includeProjects = searchParams.get('includeProjects') !== 'false'
+  const includeMarkedBy = searchParams.get('includeMarkedBy') === 'true'
 
   try {
-    // Строим условия WHERE
     const where = {}
     
-    // Фильтр по проекту
     if (projectId) {
       where.projects = {
         some: {
@@ -23,19 +21,45 @@ export async function GET(request) {
       }
     }
     
-    // Фильтр по моделям, помеченным на удаление
     if (markedForDeletion) {
       where.markedForDeletion = true
       where.markedById = { not: null }
     }
 
-    // Строим параметры включения связанных данных
+    // Явно указываем какие поля включать для связанных моделей
     const include = {}
-    if (includeAuthor) include.author = true
-    if (includeProjects) include.projects = true
-    if (includeMarkedBy) include.markedBy = true
+    
+    if (includeAuthor) {
+      include.author = {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      }
+    }
+    
+    if (includeProjects) {
+      include.projects = {
+        select: {
+          id: true,
+          name: true
+        }
+      }
+    }
+    
+    if (includeMarkedBy) {
+      include.markedBy = {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      }
+    }
 
-    // Определяем сортировку
     const orderBy = markedForDeletion 
       ? { markedAt: 'desc' } 
       : { createdAt: 'desc' }
