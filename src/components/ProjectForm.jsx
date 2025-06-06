@@ -1,5 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import { ModelPreview } from "@/components/ModelPreview"
+
 
 export default function ProjectForm({ project, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
@@ -10,6 +13,13 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [models, setModels] = useState([])
   const [isLoadingModels, setIsLoadingModels] = useState(false)
+  
+  const [previewModel, setPreviewModel] = useState(null)
+  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
+  const [showPreview, setShowPreview] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [autoPlayInterval, setAutoPlayInterval] = useState(null)
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -76,6 +86,95 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     return Object.keys(newErrors).length === 0
   }
 
+  const handleMouseMove = (event) => {
+    if (isHovering) {
+      updatePreviewPosition(event)
+    }
+  }
+
+  const updatePreviewPosition = (event) => {
+    const x = Math.min(event.clientX + 20, window.innerWidth - 340)
+    const y = Math.min(event.clientY + 20, window.innerHeight - 260)
+    setPreviewPosition({ x, y })
+  }
+
+  const nextImage = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    setCurrentImageIndex(prev => 
+      prev === previewModel.images.length - 1 ? 0 : prev + 1
+    )
+  }
+
+  const prevImage = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    setCurrentImageIndex(prev => 
+      prev === 0 ? previewModel.images.length - 1 : prev - 1
+    )
+  }
+
+  const startAutoPlay = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    stopAutoPlay()
+    
+    const interval = setInterval(() => {
+      if (!previewModel || !previewModel.images?.length) {
+        stopAutoPlay()
+        return
+      }
+      nextImage()
+    }, 2000)
+    
+    setAutoPlayInterval(interval)
+  }
+
+  const stopAutoPlay = () => {
+    if (autoPlayInterval) {
+      clearInterval(autoPlayInterval)
+      setAutoPlayInterval(null)
+    }
+  }
+
+  const handleWheel = (e) => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    e.preventDefault()
+    if (e.deltaY > 0) {
+      nextImage()
+    } else {
+      prevImage()
+    }
+  }
+
+  const handleMouseEnter = (model, event) => {
+    if (model?.images?.length > 0) {
+      const rect = event.currentTarget.getBoundingClientRect()
+      setPreviewPosition({
+        x: rect.right + 1000, // Позиция справа от строки
+        y: rect.top - 100
+      })
+      setPreviewModel(model)
+      setCurrentImageIndex(0)
+      setShowPreview(true)
+      startAutoPlay()
+    }
+  }
+  
+  const handleMouseLeave = () => {
+    setShowPreview(false)
+    setPreviewModel(null)
+    stopAutoPlay()
+  }
+  useEffect(() => {
+    return () => {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval)
+      }
+    }
+  }, [autoPlayInterval])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) return
@@ -93,14 +192,14 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
   }
 
   return (
-    <div className="mb-6 p-6 rounded-lg bg-white shadow-sm">
+    <div className="mb-6 p-6 rounded-lg bg-white shadow-sm" onMouseLeave={handleMouseLeave}>
       <h2 className="text-xl font-semibold mb-6 text-gray-800">
         {project ? 'Редактировать проект' : 'Создать новый проект'}
       </h2>
       
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" onMouseLeave={handleMouseLeave}>
         <div className="space-y-4">
-          <div>
+          <div onMouseLeave={handleMouseLeave}>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Название проекта <span className="text-red-500">*</span>
             </label>
@@ -143,6 +242,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                             : 'hover:bg-gray-100'
                         }`}
                         onClick={() => handleModelSelect(model.id)}
+                        onMouseEnter={(e) => handleMouseEnter(model, e)}
                       >
                         <input
                           type="checkbox"
@@ -186,6 +286,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             onClick={onCancel}
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             disabled={isSubmitting}
+            onMouseLeave={handleMouseLeave}
           >
             Отмена
           </button>
@@ -195,6 +296,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
               isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
             }`}
             disabled={isSubmitting}
+            onMouseLeave={handleMouseLeave}
           >
             {isSubmitting ? (
               <span className="flex items-center">
@@ -207,6 +309,21 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             ) : project ? 'Сохранить изменения' : 'Создать проект'}
           </button>
         </div>
+        
+        <AnimatePresence>
+          {showPreview && previewModel && (
+            <ModelPreview
+              model={previewModel}
+              position={previewPosition}
+              currentImageIndex={currentImageIndex}
+              onNextImage={nextImage}
+              onPrevImage={prevImage}
+              onWheel={handleWheel}
+              isHovering={isHovering}
+              setIsHovering={setShowPreview}
+            />
+          )}
+        </AnimatePresence>
       </form>
     </div>
   )

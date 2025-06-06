@@ -1,18 +1,116 @@
 'use client'
 import { useEffect, useState } from 'react';
 import { TrashIcon, XCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { AnimatePresence } from 'framer-motion'
+import { ModelPreview } from "@/components/ModelPreview"
 
 export default function AdminDeletionPanel({ userRole }) {
   const [modelsForDeletion, setModelsForDeletion] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'markedAt', direction: 'desc' });
+  
+  const [previewModel, setPreviewModel] = useState(null)
+  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
+  const [showPreview, setShowPreview] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [autoPlayInterval, setAutoPlayInterval] = useState(null)
 
   useEffect(() => {
     if (userRole === 'ADMIN') {
       fetchPendingDeletions();
     }
   }, [userRole]);
+
+  const handleMouseMove = (event) => {
+    if (isHovering) {
+      updatePreviewPosition(event)
+    }
+  }
+
+  const updatePreviewPosition = (event) => {
+    const x = Math.min(event.clientX + 20, window.innerWidth - 340)
+    const y = Math.min(event.clientY + 20, window.innerHeight - 260)
+    setPreviewPosition({ x, y })
+  }
+
+  const nextImage = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    setCurrentImageIndex(prev => 
+      prev === previewModel.images.length - 1 ? 0 : prev + 1
+    )
+  }
+
+  const prevImage = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    setCurrentImageIndex(prev => 
+      prev === 0 ? previewModel.images.length - 1 : prev - 1
+    )
+  }
+
+  const startAutoPlay = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    stopAutoPlay()
+    
+    const interval = setInterval(() => {
+      if (!previewModel || !previewModel.images?.length) {
+        stopAutoPlay()
+        return
+      }
+      nextImage()
+    }, 2000)
+    
+    setAutoPlayInterval(interval)
+  }
+
+  const stopAutoPlay = () => {
+    if (autoPlayInterval) {
+      clearInterval(autoPlayInterval)
+      setAutoPlayInterval(null)
+    }
+  }
+
+  const handleWheel = (e) => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    e.preventDefault()
+    if (e.deltaY > 0) {
+      nextImage()
+    } else {
+      prevImage()
+    }
+  }
+
+  const handleMouseEnter = (model, event) => {
+    if (model?.images?.length > 0) {
+      const rect = event.currentTarget.getBoundingClientRect()
+      setPreviewPosition({
+        x: rect.right + 100, // Позиция справа от строки
+        y: rect.top - 80
+      })
+      setPreviewModel(model)
+      setCurrentImageIndex(0)
+      setShowPreview(true)
+      startAutoPlay()
+    }
+  }
+  
+  const handleMouseLeave = () => {
+    setShowPreview(false)
+    setPreviewModel(null)
+    stopAutoPlay()
+  }
+  useEffect(() => {
+    return () => {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval)
+      }
+    }
+  }, [autoPlayInterval])
 
   const fetchPendingDeletions = async () => {
     setIsLoading(true);
@@ -79,12 +177,13 @@ export default function AdminDeletionPanel({ userRole }) {
   if (userRole !== 'ADMIN') return null;
 
   return (
-    <div className="rounded-lg p-6 w-full max-w-7xl mx-auto">
+    <div className="rounded-lg p-6 w-full max-w-7xl mx-auto" onMouseLeave={handleMouseLeave}>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Запросы на удаление моделей</h2>
         <button 
           onClick={fetchPendingDeletions}
           className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100"
+          onMouseLeave={handleMouseLeave}
         >
           Обновить
         </button>
@@ -105,7 +204,7 @@ export default function AdminDeletionPanel({ userRole }) {
           Нет ожидающих запросов на удаление
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" onMouseLeave={handleMouseLeave}>
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -150,7 +249,7 @@ export default function AdminDeletionPanel({ userRole }) {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedModels.map(model => (
-                <tr key={model.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
+                <tr key={model.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white" onMouseEnter={(e) => handleMouseEnter(model, e)}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{model.title}</div>
                     <div className="text-sm text-gray-500">{model.description?.substring(0, 50)}...</div>
@@ -190,6 +289,20 @@ export default function AdminDeletionPanel({ userRole }) {
           </table>
         </div>
       )}
+      <AnimatePresence>
+        {showPreview && previewModel && (
+          <ModelPreview
+            model={previewModel}
+            position={previewPosition}
+            currentImageIndex={currentImageIndex}
+            onNextImage={nextImage}
+            onPrevImage={prevImage}
+            onWheel={handleWheel}
+            isHovering={isHovering}
+            setIsHovering={setShowPreview}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

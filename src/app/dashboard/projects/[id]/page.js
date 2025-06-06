@@ -6,6 +6,8 @@ import Image from 'next/image'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission } from '@/lib/permission';
+import { AnimatePresence } from 'framer-motion'
+import { ModelPreview } from "@/components/ModelPreview"
 
 import Download from "../../../../../public/Download.svg"
 import Delete from "../../../../../public/Delete.svg"
@@ -21,6 +23,13 @@ export default function ProjectPage({ params }) {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   const [userRole, setUserRole] = useState(null)
   const [isDownloading, setIsDownloading] = useState(false)
+  
+  const [previewModel, setPreviewModel] = useState(null)
+  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
+  const [showPreview, setShowPreview] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [autoPlayInterval, setAutoPlayInterval] = useState(null)
 
   // Загрузка данных проекта и моделей
   useEffect(() => {
@@ -122,6 +131,95 @@ export default function ProjectPage({ params }) {
     }
   }
 
+  const handleMouseMove = (event) => {
+    if (isHovering) {
+      updatePreviewPosition(event)
+    }
+  }
+
+  const updatePreviewPosition = (event) => {
+    const x = Math.min(event.clientX + 20, window.innerWidth - 340)
+    const y = Math.min(event.clientY + 20, window.innerHeight - 260)
+    setPreviewPosition({ x, y })
+  }
+
+  const nextImage = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    setCurrentImageIndex(prev => 
+      prev === previewModel.images.length - 1 ? 0 : prev + 1
+    )
+  }
+
+  const prevImage = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    setCurrentImageIndex(prev => 
+      prev === 0 ? previewModel.images.length - 1 : prev - 1
+    )
+  }
+
+  const startAutoPlay = () => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    stopAutoPlay()
+    
+    const interval = setInterval(() => {
+      if (!previewModel || !previewModel.images?.length) {
+        stopAutoPlay()
+        return
+      }
+      nextImage()
+    }, 2000)
+    
+    setAutoPlayInterval(interval)
+  }
+
+  const stopAutoPlay = () => {
+    if (autoPlayInterval) {
+      clearInterval(autoPlayInterval)
+      setAutoPlayInterval(null)
+    }
+  }
+
+  const handleWheel = (e) => {
+    if (!previewModel || !previewModel.images?.length) return
+    
+    e.preventDefault()
+    if (e.deltaY > 0) {
+      nextImage()
+    } else {
+      prevImage()
+    }
+  }
+
+  const handleMouseEnter = (model, event) => {
+    if (model?.images?.length > 0) {
+      const rect = event.currentTarget.getBoundingClientRect()
+      setPreviewPosition({
+        x: rect.right + 100, // Позиция справа от строки
+        y: rect.top - 80
+      })
+      setPreviewModel(model)
+      setCurrentImageIndex(0)
+      setShowPreview(true)
+      startAutoPlay()
+    }
+  }
+  
+  const handleMouseLeave = () => {
+    setShowPreview(false)
+    setPreviewModel(null)
+    stopAutoPlay()
+  }
+  useEffect(() => {
+    return () => {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval)
+      }
+    }
+  }, [autoPlayInterval])
+
   // Сортировка таблицы
   const requestSort = (key) => {
     let direction = 'asc'
@@ -194,7 +292,7 @@ export default function ProjectPage({ params }) {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto" onMouseLeave={handleMouseLeave}>
         {/* Заголовок и кнопки */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -246,6 +344,7 @@ export default function ProjectPage({ params }) {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => requestSort('title')}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <div className="flex items-center">
                     Название модели
@@ -256,6 +355,7 @@ export default function ProjectPage({ params }) {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => requestSort('author.name')}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <div className="flex items-center">
                     Автор
@@ -266,13 +366,18 @@ export default function ProjectPage({ params }) {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => requestSort('createdAt')}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <div className="flex items-center">
                     Дата создания
                     {getSortIcon('createdAt')}
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th 
+                  scope="col" 
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" 
+                  onMouseLeave={handleMouseLeave}
+                >
                   Действия
                 </th>
               </tr>
@@ -280,7 +385,10 @@ export default function ProjectPage({ params }) {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredModels.length > 0 ? (
                 filteredModels.map((model) => (
-                  <tr key={model.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white">
+                  <tr 
+                    key={model.id} 
+                    className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white" 
+                    onMouseEnter={(e) => handleMouseEnter(model, e)}>
                     <td 
                       className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" 
                       onClick={() => router.push(`/dashboard/models/${model.id}`)}>
@@ -355,6 +463,21 @@ export default function ProjectPage({ params }) {
             </tbody>
           </table>
         </div>
+        
+        <AnimatePresence>
+          {showPreview && previewModel && (
+            <ModelPreview
+              model={previewModel}
+              position={previewPosition}
+              currentImageIndex={currentImageIndex}
+              onNextImage={nextImage}
+              onPrevImage={prevImage}
+              onWheel={handleWheel}
+              isHovering={isHovering}
+              setIsHovering={setShowPreview}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

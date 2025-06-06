@@ -271,8 +271,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800" onMouseMove={handleMouseMove}>
-      <main className="p-6 max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gray-50 text-gray-800" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+      <main className="p-6 max-w-6xl mx-auto" onMouseLeave={handleMouseLeave}>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Модели</h2>
           <div className="flex gap-4">
@@ -336,6 +336,7 @@ export default function DashboardPage() {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => requestSort('title')}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <div className="flex items-center">
                     Название
@@ -346,16 +347,17 @@ export default function DashboardPage() {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => requestSort('project.name')}
+                  onMouseLeave={handleMouseLeave}
                 >
                   <div className="flex items-center">
                     Проект
                     {getSortIcon('project.name')}
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" onMouseLeave={handleMouseLeave}>
                   Автор
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" onMouseLeave={handleMouseLeave}>
                   Действия
                 </th>
               </tr>
@@ -366,7 +368,7 @@ export default function DashboardPage() {
                   key={model.id} 
                   className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white"
                   onMouseEnter={(e) => handleMouseEnter(model, e)}
-                  onMouseLeave={handleMouseLeave}
+                  // onMouseLeave={handleMouseLeave}
                 >
                   <td 
                     className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" 
