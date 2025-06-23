@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation'
+import { formatDateTime } from '@/lib/utils'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
 // import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -114,15 +115,6 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
     }
   };
 
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${day}.${month}.${year} ${hours}:${minutes}`;
-  };
 
   return (
     <div className="w-full mx-auto rounded-lg overflow-hidden">

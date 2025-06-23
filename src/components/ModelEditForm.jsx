@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { formatFileSize } from '@/lib/utils'
 import { checkPermission } from '@/lib/permission'
 
 export default function ModelEditForm({ id, userRole }) {
@@ -131,13 +132,6 @@ export default function ModelEditForm({ id, userRole }) {
     })
   }
 
-  const formatFileSize = (bytes) => {
-    if (!bytes) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
 
   const handleSubmit = async (e) => {
   e.preventDefault()
