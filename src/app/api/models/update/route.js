@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { saveModelFile, deleteFile } from '@/lib/fileStorage'
 import { getUserFromSession } from '@/lib/auth'
+import { logModelAction } from '@/lib/logger'
 
 export async function POST(request) {
   const user = await getUserFromSession()
@@ -159,13 +160,11 @@ export async function POST(request) {
 
     // Создаём запись в логах, если были изменения
     if (changes.length > 0) {
-      await prisma.log.create({
-        data: {
-          action: `Обновлена модель: ${changes.join(', ')}`,
-          modelId: updatedModel.id,
-          userId: user.id
-        }
-      })
+      await logModelAction(
+        `Обновлена модель: ${changes.join(', ')}`,
+        updatedModel.id,
+        user.id
+      )
     }
 
     return NextResponse.json({ 

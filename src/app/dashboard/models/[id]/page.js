@@ -3,6 +3,7 @@ import { ModelCard } from '@/components/ModelCard'
 import { prisma } from '@/lib/prisma'
 import axios from 'axios'
 import { getUserFromSession } from '@/lib/auth'
+import { logModelAction } from '@/lib/logger'
 
 export const handleDeleteRequest = async (modelId, immediate) => {
   'use server'
@@ -13,13 +14,11 @@ export const handleDeleteRequest = async (modelId, immediate) => {
       })
       return { success: true, redirect: '/dashboard' }
     } else {
-      await prisma.log.create({
-        data: {
-          action: `Запрос на удаление модели ${modelId}`,
-          userId: user.id,
-          modelId: modelId
-        }
-      })
+      await logModelAction(
+        `Запрос на удаление модели ${modelId}`,
+        modelId,
+        user.id
+      )
       return { success: true, message: 'Запрос на удаление отправлен администратору' }
     }
   } catch (error) {

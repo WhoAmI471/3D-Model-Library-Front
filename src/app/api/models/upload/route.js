@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { saveModelFile } from '@/lib/fileStorage'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
+import { logModelAction } from '@/lib/logger'
 
 export async function POST(request) {
   const user = await getUserFromSession()
@@ -70,13 +71,11 @@ export async function POST(request) {
       }
     })
 
-    await prisma.log.create({
-      data: {
-        action: `Добавлена модель: ${title}`,
-        modelId: modelId,
-        userId: authorId || null,
-      },
-    })
+    await logModelAction(
+      `Добавлена модель: ${title}`,
+      modelId,
+      authorId || null
+    )
 
     const allModels = await prisma.model.findMany({
       orderBy: { createdAt: 'desc' },
