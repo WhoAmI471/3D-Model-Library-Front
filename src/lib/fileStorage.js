@@ -16,6 +16,12 @@ function getNextcloudConfig() {
   return null;
 }
 
+export function modelSubfolder(modelId, version, isScreenshot = false) {
+  const parts = ['models', String(modelId), `v${version}`]
+  if (isScreenshot) parts.push('screenshots')
+  return parts.join('/')
+}
+
 export async function saveFile(file, subfolder = 'models') {
   const nextcloud = getNextcloudConfig();
   try {
@@ -56,6 +62,11 @@ export async function saveFile(file, subfolder = 'models') {
     console.error('File save error:', err);
     throw err;
   }
+}
+
+export async function saveModelFile(file, modelId, version, isScreenshot = false) {
+  const folder = modelSubfolder(modelId, version, isScreenshot)
+  return saveFile(file, folder)
 }
 
 export async function deleteFile(filePath) {

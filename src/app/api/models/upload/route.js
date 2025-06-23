@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid'
-import { saveFile } from '@/lib/fileStorage'
+import { saveModelFile } from '@/lib/fileStorage'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 
@@ -37,12 +37,12 @@ export async function POST(request) {
 
     const modelId = uuidv4()
 
-    const fileUrl = await saveFile(zipFile, 'models')
+    const fileUrl = await saveModelFile(zipFile, modelId, version)
 
     const imageUrls = []
     for (const file of screenshots) {
       if (!file || typeof file.arrayBuffer !== 'function') continue
-      const url = await saveFile(file, 'models/screenshots')
+      const url = await saveModelFile(file, modelId, version, true)
       imageUrls.push(url)
     }
 

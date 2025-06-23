@@ -1,7 +1,7 @@
 // app/api/models/update/route.js
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { saveFile, deleteFile } from '@/lib/fileStorage'
+import { saveModelFile, deleteFile } from '@/lib/fileStorage'
 import { getUserFromSession } from '@/lib/auth'
 
 export async function POST(request) {
@@ -113,7 +113,7 @@ export async function POST(request) {
       if (existingModel.fileUrl) {
         await deleteFile(existingModel.fileUrl)
       }
-      updateData.fileUrl = await saveFile(zipFile, 'models')
+      updateData.fileUrl = await saveModelFile(zipFile, id, version || 'current')
       changes.push('Обновлён файл модели')
     }
 
@@ -121,7 +121,7 @@ export async function POST(request) {
     const screenshots = formData.getAll('screenshots')
     if (screenshots.length > 0) {
       const newScreenshots = await Promise.all(
-        screenshots.map(file => saveFile(file, 'models/screenshots'))
+        screenshots.map(file => saveModelFile(file, id, version || 'current', true))
       )
       
       // Получаем текущие изображения (уже без удаленных)
