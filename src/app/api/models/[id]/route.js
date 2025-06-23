@@ -25,6 +25,7 @@ export async function GET(request, { params }) {
       include: {
         author: true,
         projects: true,
+        versions: true,
         logs: {
           include: {
             user: true,

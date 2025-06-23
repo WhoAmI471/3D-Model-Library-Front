@@ -9,6 +9,7 @@ export default function ModelEditForm({ id, userRole }) {
     title: '',
     description: '',
     authorId: '',
+    version: '',
     sphere: '',
   })
   const [selectedProjects, setSelectedProjects] = useState([])
@@ -71,6 +72,7 @@ export default function ModelEditForm({ id, userRole }) {
           title: data.title || '',
           description: data.description || '',
           authorId: data.authorId || '',
+          version: '',
           sphere: data.sphere || '',
         })
         
@@ -222,16 +224,30 @@ export default function ModelEditForm({ id, userRole }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Название модели <span className="text-red-500">*</span>
             </label>
-            <input
-              name="title"
-              value={form.title}
-              onChange={handleChange}
-              className={`block w-full px-3 py-2 border ${canEditModel ? 'border-gray-300' : 'border-gray-100 bg-gray-50'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-              required
-              maxLength={50}
-              disabled={canEditDescription}
-            />
-          </div>
+          <input
+            name="title"
+            value={form.title}
+            onChange={handleChange}
+            className={`block w-full px-3 py-2 border ${canEditModel ? 'border-gray-300' : 'border-gray-100 bg-gray-50'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+            required
+            maxLength={50}
+            disabled={canEditDescription}
+          />
+        </div>
+
+        {/* Версия */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Версия
+          </label>
+          <input
+            name="version"
+            value={form.version}
+            onChange={handleChange}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            maxLength={20}
+          />
+        </div>
 
           {/* Текущие скриншоты */}
           <div className="col-span-2">

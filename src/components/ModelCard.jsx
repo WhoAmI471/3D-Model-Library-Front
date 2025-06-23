@@ -26,6 +26,11 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [user, setUser] = useState();
+  const [selectedVersion, setSelectedVersion] = useState(
+    model.versions && model.versions.length > 0
+      ? model.versions[model.versions.length - 1]
+      : { fileUrl: model.fileUrl, images: model.images, version: 'Последняя' }
+  );
   
   useEffect(() => {
     const load = async () =>
@@ -41,7 +46,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch(model.fileUrl);
+      const response = await fetch(selectedVersion.fileUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -68,14 +73,14 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   };
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => 
-      prev === model.images.length - 1 ? 0 : prev + 1
+    setCurrentImageIndex((prev) =>
+      prev === selectedVersion.images.length - 1 ? 0 : prev + 1
     );
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => 
-      prev === 0 ? model.images.length - 1 : prev - 1
+    setCurrentImageIndex((prev) =>
+      prev === 0 ? selectedVersion.images.length - 1 : prev - 1
     );
   };
 
@@ -143,11 +148,11 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
       <div className="p-6 text-gray-800">
         <h1 className="text-2xl pb-4 font-bold text-gray-800">{model.title}</h1>
         {/* Галерея изображений */}
-        {model.images?.length > 0 && (
+        {selectedVersion.images?.length > 0 && (
           <div className="mb-6">
             <div className="flex space-x-4 overflow-x-auto pb-2">
-              {model.images.map((image, index) => (
-                <div 
+              {selectedVersion.images.map((image, index) => (
+                <div
                   key={index}
                   className="relative flex-shrink-0 w-64 h-48 cursor-pointer"
                   onClick={() => openModal(index)}
@@ -178,7 +183,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
               
               <div className="relative h-[70vh] w-full">
                 <Image
-                  src={model.images[currentImageIndex]}
+                  src={selectedVersion.images[currentImageIndex]}
                   alt={`${model.title} - изображение ${currentImageIndex + 1}`}
                   fill
                   className="object-contain"
@@ -187,7 +192,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
               
               <div className="flex justify-between items-center pb-6 ml-10 mr-10">
                 <div className="flex space-x-2">
-                  {model.images.map((_, index) => (
+                  {selectedVersion.images.map((_, index) => (
                     <div 
                       key={index}
                       className={`h-2 w-2 rounded-full ${index === currentImageIndex ? 'bg-blue-600' : 'bg-blue-300'}`}
@@ -264,6 +269,24 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
         {/* кнопки */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex space-x-2">
+
+            {model.versions?.length > 0 && (
+              <select
+                value={selectedVersion.version}
+                onChange={(e) => {
+                  const ver = model.versions.find(v => v.version === e.target.value);
+                  if (ver) {
+                    setSelectedVersion(ver);
+                    setCurrentImageIndex(0);
+                  }
+                }}
+                className="px-2 py-1 border rounded text-sm"
+              >
+                {model.versions.map(v => (
+                  <option key={v.id} value={v.version}>{v.version}</option>
+                ))}
+              </select>
+            )}
             
             {checkPermission(user, 'download_models') && (
               <button

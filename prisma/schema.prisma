@@ -40,12 +40,23 @@ model Model {
   author      User?     @relation("UserModels", fields: [authorId], references: [id])
   sphere      Sphere?
   logs        Log[]
+  versions    ModelVersion[]
   markedForDeletion Boolean @default(false)
   markedById  String?
   markedBy    User?     @relation("MarkedForDeletion", fields: [markedById], references: [id])
   markedAt    DateTime?
   deletionComment String?
   projects    Project[] @relation("ModelProjects") // Многие-ко-многим
+}
+
+model ModelVersion {
+  id        String   @id @default(uuid())
+  version   String
+  fileUrl   String
+  images    String[]
+  createdAt DateTime @default(now())
+  modelId   String
+  model     Model    @relation(fields: [modelId], references: [id])
 }
 
 model Project {
