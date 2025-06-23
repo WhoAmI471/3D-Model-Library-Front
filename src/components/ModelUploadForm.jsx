@@ -82,42 +82,72 @@ export default function ModelUploadForm() {
     })
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-
-    if (!formState.title || !formState.sphere || !formState.zipFile || formState.screenshots.length < 2) {
-      alert('Пожалуйста, заполните все обязательные поля и добавьте минимум 2 скриншота')
-      setLoading(false)
-      return
-    }
-
-    const formData = new FormData()
-    formData.append('title', formState.title)
-    formData.append('description', formState.description)
-    selectedProjects.forEach(projectId => {
-      formData.append('projectIds', projectId)
-    })
-    formData.append('authorId', formState.authorId)
-    formData.append('sphere', formState.sphere)
-    formData.append('zipFile', formState.zipFile)
-
-    formState.screenshots.forEach(screenshot => {
-      formData.append('screenshots', screenshot.file)
-    })
-    
+  const uploadFileToNextcloud = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+  
     try {
-      const res = await fetch('/api/models/upload', {
+      const response = await fetch('/api/nextcloud/upload', {
         method: 'POST',
-        body: formData,
-      })
+        // Не устанавливаем Content-Type вручную!
+        body: formData
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      return await response.json();
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
 
-      const text = await res.text()
-      const result = text ? JSON.parse(text) : {}
-
-      if (res.ok && result.success) {
-        alert('Модель загружена успешно!')
-        // Сброс формы после успешной загрузки
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+  
+    // Проверка обязательных полей
+    if (!formState.title || !formState.sphere || !formState.zipFile || formState.screenshots.length < 2) {
+      alert('Пожалуйста, заполните все обязательные поля и добавьте минимум 2 скриншота');
+      setLoading(false);
+      return;
+    }
+  
+    try {
+      // Используем нашу функцию для загрузки ZIP-архива
+      const zipResult = await uploadFileToNextcloud(formState.zipFile);
+      
+      // Используем ту же функцию для загрузки скриншотов
+      const screenshotResults = await Promise.all(
+        formState.screenshots.map(screenshot => 
+          uploadFileToNextcloud(screenshot.file)
+        )
+      );
+  
+      // Отправляем метаданные модели
+      const modelResponse = await fetch('/api/models/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formState.title,
+          description: formState.description,
+          projectIds: selectedProjects,
+          authorId: formState.authorId,
+          sphere: formState.sphere,
+          zipFileUrl: zipResult.fileUrl,
+          screenshotUrls: screenshotResults.map(res => res.fileUrl)
+        }),
+      });
+  
+      const result = await modelResponse.json();
+  
+      if (modelResponse.ok && result.success) {
+        alert('Модель загружена успешно!');
+        // Сброс формы
         setFormState({
           title: '',
           description: '',
@@ -126,19 +156,18 @@ export default function ModelUploadForm() {
           sphere: '',
           zipFile: null,
           screenshots: []
-        })
-        setSelectedProjects([])
+        });
+        setSelectedProjects([]);
       } else {
-        console.error(result)
-        alert(result.error || 'Ошибка при загрузке модели')
+        throw new Error(result.error || 'Ошибка при сохранении модели');
       }
     } catch (err) {
-      console.error('Ошибка сети или сервера:', err)
-      alert('Ошибка загрузки. Попробуйте позже.')
+      console.error('Ошибка загрузки:', err);
+      alert('Ошибка загрузки. Попробуйте позже.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false)
-  }
+  };
 
   // Форматирование размера файла
   const formatFileSize = (bytes) => {

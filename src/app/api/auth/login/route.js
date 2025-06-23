@@ -9,7 +9,7 @@ const prisma = new PrismaClient()
 export async function POST(request) {
   const { email, password } = await request.json()
 
-  try {
+  // try {
     const user = await prisma.user.findUnique({ where: { email } })
     
     if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -32,10 +32,10 @@ export async function POST(request) {
       }
     })
 
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Ошибка сервера' },
-      { status: 500 }
-    )
-  }
+  // } catch (error) {
+  //   return NextResponse.json(
+  //     { error: 'Ошибка сервера' },
+  //     { status: 500 }
+  //   )
+  // }
 }
