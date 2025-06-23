@@ -12,6 +12,7 @@ export async function POST(request) {
     const formData = await request.formData()
     const projectIds = formData.getAll('projectIds')
     const id = formData.get('id')
+    const version = formData.get('version')
     const deletedScreenshots = formData.getAll('deletedScreenshots')
     
     if (!id) {
@@ -120,7 +121,7 @@ export async function POST(request) {
     const screenshots = formData.getAll('screenshots')
     if (screenshots.length > 0) {
       const newScreenshots = await Promise.all(
-        screenshots.map(file => saveFile(file, 'screenshots'))
+        screenshots.map(file => saveFile(file, 'models/screenshots'))
       )
       
       // Получаем текущие изображения (уже без удаленных)
@@ -136,14 +137,25 @@ export async function POST(request) {
     }
 
     // Обновление модели
-    const updatedModel = await prisma.model.update({
-      where: { id: String(id) },
-      data: updateData,
-      include: {
-        projects: true,
-        author: true
-      }
-    })
+  const updatedModel = await prisma.model.update({
+    where: { id: String(id) },
+    data: updateData,
+    include: {
+      projects: true,
+      author: true
+    }
+  })
+
+    if (version) {
+      await prisma.modelVersion.create({
+        data: {
+          modelId: updatedModel.id,
+          version,
+          fileUrl: updatedModel.fileUrl,
+          images: updatedModel.images
+        }
+      })
+    }
 
     // Создаём запись в логах, если были изменения
     if (changes.length > 0) {
