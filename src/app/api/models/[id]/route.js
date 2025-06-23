@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 import { deleteFile } from '@/lib/fileStorage'
+import { logModelAction } from '@/lib/logger'
 
 export async function GET(request, { params }) {
   
@@ -74,13 +75,11 @@ export async function PUT(request, { params }) {
     });
 
     // Создаём запись в логах с комментарием
-    await prisma.log.create({
-      data: {
-        action: `Запрос на удаление модели${comment ? ` (${comment})` : ''}`,
-        userId: user.id,
-        modelId: id
-      }
-    });
+    await logModelAction(
+      `Запрос на удаление модели${comment ? ` (${comment})` : ''}`,
+      id,
+      user.id
+    );
 
     return NextResponse.json({ 
       success: true, 
@@ -131,9 +130,13 @@ export async function DELETE(request, { params }) {
       await Promise.all(model.images.map(img => deleteFile(img)));
       await prisma.model.delete({ where: { id } });
 
-      return NextResponse.json(
-        { success: true, message: 'Модель удалена' }
+      await logModelAction(
+        `Модель удалена (${model.title})`,
+        id,
+        user.id
       );
+
+      return NextResponse.json({ success: true, message: 'Модель удалена' });
     } else {
       // Отмена пометки на удаление
       await prisma.model.update({
@@ -145,9 +148,12 @@ export async function DELETE(request, { params }) {
         }
       });
 
-      return NextResponse.json(
-        { success: true, message: 'Запрос на удаление отклонён' }
-      );
+      await logModelAction('Запрос на удаление отклонён', id, user.id);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Запрос на удаление отклонён'
+      });
     }
   } catch (error) {
     console.error('Error processing deletion:', error);
