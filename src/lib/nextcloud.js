@@ -87,35 +87,59 @@ async function getCurrentTags(fileId) {
   const cfg = getConfig()
   if (!cfg) return []
   const { url, username, password } = cfg
-  const res = await axios.get(`${url}/ocs/v2.php/apps/files/api/v1/systemtags-relations/files/${fileId}`, {
-    auth: { username, password },
-    headers: { 'OCS-APIRequest': 'true' }
-  })
-  return res.data?.ocs?.data?.map(t => t.name) || []
+  try {
+    const res = await axios.get(
+      `${url}/ocs/v2.php/apps/files/api/v1/systemtags-relations/files/${fileId}`,
+      {
+        auth: { username, password },
+        headers: { 'OCS-APIRequest': 'true' }
+      }
+    )
+    return res.data?.ocs?.data?.map(t => t.name) || []
+  } catch (err) {
+    if (err.response?.status === 404) {
+      return []
+    }
+    throw err
+  }
 }
 
 async function setTagsForPath(path, tags) {
   const cfg = getConfig()
   if (!cfg) return
-  const { url, username, password } = cfg
-  const fileId = await getFileId(path)
-  if (!fileId) return
-  const current = await getCurrentTags(fileId)
-  const toAdd = tags.filter(t => !current.includes(t))
-  const toRemove = current.filter(t => !tags.includes(t))
-  for (const tag of toAdd) {
-    const id = await ensureTag(tag)
-    await axios.put(`${url}/ocs/v2.php/apps/files/api/v1/systemtags-relations/files/${fileId}/${id}`, null, {
-      auth: { username, password },
-      headers: { 'OCS-APIRequest': 'true' }
-    })
-  }
-  for (const tag of toRemove) {
-    const id = await ensureTag(tag)
-    await axios.delete(`${url}/ocs/v2.php/apps/files/api/v1/systemtags-relations/files/${fileId}/${id}`, {
-      auth: { username, password },
-      headers: { 'OCS-APIRequest': 'true' }
-    })
+  try {
+    const { url, username, password } = cfg
+    const fileId = await getFileId(path)
+    if (!fileId) return
+    const current = await getCurrentTags(fileId)
+    const toAdd = tags.filter(t => !current.includes(t))
+    const toRemove = current.filter(t => !tags.includes(t))
+    for (const tag of toAdd) {
+      const id = await ensureTag(tag)
+      await axios.put(
+        `${url}/ocs/v2.php/apps/files/api/v1/systemtags-relations/files/${fileId}/${id}`,
+        null,
+        {
+          auth: { username, password },
+          headers: { 'OCS-APIRequest': 'true' }
+        }
+      )
+    }
+    for (const tag of toRemove) {
+      const id = await ensureTag(tag)
+      await axios.delete(
+        `${url}/ocs/v2.php/apps/files/api/v1/systemtags-relations/files/${fileId}/${id}`,
+        {
+          auth: { username, password },
+          headers: { 'OCS-APIRequest': 'true' }
+        }
+      )
+    }
+  } catch (err) {
+    // Missing system tag app or incorrect path should not break upload
+    if (err.response?.status !== 404) {
+      throw err
+    }
   }
 }
 
@@ -130,7 +154,11 @@ export async function syncModelFolder(model, oldTitle = null) {
     await createFolderRecursive(folder)
   }
   const tags = model.projects ? model.projects.map(p => p.name) : []
-  await setTagsForPath(folder, tags)
+  try {
+    await setTagsForPath(folder, tags)
+  } catch (err) {
+    console.error('Failed to set tags for folder', folder, err)
+  }
   return folder
 }
 
