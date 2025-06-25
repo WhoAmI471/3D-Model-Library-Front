@@ -61,7 +61,14 @@ export async function PUT(request, { params }) {
 
   try {
     const { id } = await params;
-    const { comment } = await request.json();
+    let comment = null;
+    try {
+      const data = await request.json();
+      comment = data?.comment || null;
+    } catch {
+      // ignore parsing errors when body is empty or invalid
+      comment = null;
+    }
 
     // Помечаем модель на удаление с комментарием
     const model = await prisma.model.update({
@@ -105,7 +112,13 @@ export async function DELETE(request, { params }) {
 
   try {
     const { id } = await params;
-    const { approve } = await request.json();
+    let approve = false;
+    try {
+      const data = await request.json();
+      approve = data?.approve === true;
+    } catch {
+      approve = false;
+    }
 
     // Находим модель, помеченную на удаление
     const model = await prisma.model.findUnique({
