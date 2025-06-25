@@ -1,12 +1,10 @@
 // src/lib/fileStorage.js
-import fs from 'fs/promises';
-import path from 'path';
-import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
-import { sanitizeName } from './nextcloud';
-import { createFolderRecursive } from './nextcloud';
+import path from 'path'
+import axios from 'axios'
+import { v4 as uuidv4 } from 'uuid'
+import { sanitizeName } from './nextcloud'
+import { createFolderRecursive } from './nextcloud'
 
-const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
 
 function getNextcloudConfig() {
   const url = process.env.NEXTCLOUD_URL;
@@ -31,27 +29,24 @@ export async function saveFile(file, subfolder = 'models') {
     const fileExt = path.extname(file.name);
     const fileName = `${uuidv4()}${fileExt}`;
 
-    if (nextcloud) {
-      const { url, username, password } = nextcloud;
-      await createFolderRecursive(subfolder);
-      const folderUrl = `${url}/remote.php/dav/files/${username}/${subfolder}`;
-
-      const uploadUrl = `${folderUrl}/${fileName}`;
-      const buffer = Buffer.from(await file.arrayBuffer());
-      await axios.put(uploadUrl, buffer, {
-        auth: { username, password },
-        headers: { 'OCS-APIRequest': 'true', 'Content-Type': file.type || 'application/octet-stream' }
-      });
-      return uploadUrl;
+    if (!nextcloud) {
+      throw new Error('Nextcloud configuration is missing');
     }
 
-    // Локальное хранение если нет конфигурации Nextcloud
-    const uploadDir = path.join(UPLOADS_DIR, subfolder);
-    await fs.mkdir(uploadDir, { recursive: true });
-    const filePath = path.join(uploadDir, fileName);
+    const { url, username, password } = nextcloud;
+    await createFolderRecursive(subfolder);
+    const folderUrl = `${url}/remote.php/dav/files/${username}/${subfolder}`;
+
+    const uploadUrl = `${folderUrl}/${fileName}`;
     const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(filePath, buffer);
-    return `/uploads/${subfolder}/${fileName}`;
+    await axios.put(uploadUrl, buffer, {
+      auth: { username, password },
+      headers: {
+        'OCS-APIRequest': 'true',
+        'Content-Type': file.type || 'application/octet-stream'
+      }
+    });
+    return uploadUrl;
   } catch (err) {
     console.error('File save error:', err);
     throw err;
@@ -64,23 +59,24 @@ export async function saveModelFile(file, modelTitle, version, isScreenshot = fa
 }
 
 export async function deleteFile(filePath) {
-  const nextcloud = getNextcloudConfig();
+  const nextcloud = getNextcloudConfig()
+  if (!nextcloud) {
+    throw new Error('Nextcloud configuration is missing')
+  }
   try {
-    if (!filePath) return;
+    if (!filePath) return
 
-    if (nextcloud && filePath.startsWith(nextcloud.url)) {
-      const { username, password } = nextcloud;
-      await axios.delete(filePath, {
-        auth: { username, password },
-        headers: { 'OCS-APIRequest': 'true' }
-      });
-      return;
-    }
+    const { url, username, password } = nextcloud
+    const target = filePath.startsWith(url)
+      ? filePath
+      : `${url}/remote.php/dav/files/${username}/${filePath}`
 
-    const fullPath = path.join(process.cwd(), 'public', filePath);
-    await fs.unlink(fullPath);
+    await axios.delete(target, {
+      auth: { username, password },
+      headers: { 'OCS-APIRequest': 'true' }
+    })
   } catch (err) {
-    console.error('File delete error:', err);
+    console.error('File delete error:', err)
   }
 }
 
@@ -90,24 +86,7 @@ export async function deleteModelFiles(fileUrl) {
 
   try {
     // Удаляем основной файл
-    await deleteFile(fileUrl);
-
-    const nextcloud = getNextcloudConfig();
-
-    if (!nextcloud || !fileUrl.startsWith(nextcloud.url)) {
-      const baseName = path.basename(fileUrl, path.extname(fileUrl));
-      const dirPath = path.join(process.cwd(), 'public', path.dirname(fileUrl));
-      try {
-        const files = await fs.readdir(dirPath);
-        await Promise.all(
-          files
-            .filter(file => file.startsWith(baseName))
-            .map(file => deleteFile(path.join(path.dirname(fileUrl), file)))
-        );
-      } catch (err) {
-        if (err.code !== 'ENOENT') throw err;
-      }
-    }
+    await deleteFile(fileUrl)
   } catch (error) {
     console.error('Ошибка удаления файлов модели:', error);
     throw error; // Пробрасываем ошибку для обработки выше
