@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
+import { proxyUrl } from '@/lib/utils'
 
 export const ModelPreview = ({ 
   model, 
@@ -55,7 +56,7 @@ export const ModelPreview = ({
     >
       <div className="relative w-full h-full">
         <Image
-          src={model.images[localIndex]}
+          src={proxyUrl(model.images[localIndex])}
           alt={`Превью ${model.title}`}
           fill
           className="object-cover"

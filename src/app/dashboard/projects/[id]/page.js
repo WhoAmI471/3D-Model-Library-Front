@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission, checkAnyPermission } from '@/lib/permission';
 import axios from 'axios'
+import { proxyUrl } from '@/lib/utils'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
 
@@ -81,7 +82,7 @@ export default function ProjectPage({ params }) {
   const handleDownload = async (model) => {
     setIsDownloading(true)
     try {
-      const response = await fetch(model.fileUrl)
+      const response = await fetch(proxyUrl(model.fileUrl))
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')

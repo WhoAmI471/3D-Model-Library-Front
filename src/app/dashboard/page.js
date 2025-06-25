@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
 import axios from 'axios'
+import { proxyUrl } from '@/lib/utils'
 import Link from 'next/link'
 import Image from 'next/image'
 import { AnimatePresence } from 'framer-motion'
@@ -56,7 +57,7 @@ export default function DashboardPage() {
   const handleDownload = async (model) => {
     setIsDownloading(true)
     try {
-      const response = await fetch(model.fileUrl)
+      const response = await fetch(proxyUrl(model.fileUrl))
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')

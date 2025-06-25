@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation'
-import { formatDateTime } from '@/lib/utils'
+import { formatDateTime, proxyUrl } from '@/lib/utils'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
 // import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -47,7 +47,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch(selectedVersion.fileUrl);
+      const response = await fetch(proxyUrl(selectedVersion.fileUrl));
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -150,7 +150,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
                   onClick={() => openModal(index)}
                 >
                   <Image
-                    src={image}
+                    src={proxyUrl(image)}
                     alt={`${model.title} - изображение ${index + 1}`}
                     fill
                     className="object-cover rounded-lg"
@@ -175,7 +175,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
               
               <div className="relative h-[70vh] w-full">
                 <Image
-                  src={selectedVersion.images[currentImageIndex]}
+                  src={proxyUrl(selectedVersion.images[currentImageIndex])}
                   alt={`${model.title} - изображение ${currentImageIndex + 1}`}
                   fill
                   className="object-contain"
