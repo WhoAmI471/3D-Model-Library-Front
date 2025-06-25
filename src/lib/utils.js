@@ -15,3 +15,7 @@ export function formatDateTime(dateString) {
   const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${day}.${month}.${year} ${hours}:${minutes}`
 }
+
+export function proxyUrl(url) {
+  return url ? `/api/nextcloud/file?path=${encodeURIComponent(url)}` : ''
+}

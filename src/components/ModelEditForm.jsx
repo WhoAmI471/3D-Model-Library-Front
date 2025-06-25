@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatFileSize } from '@/lib/utils'
+import { formatFileSize, proxyUrl } from '@/lib/utils'
 import { checkPermission } from '@/lib/permission'
 
 export default function ModelEditForm({ id, userRole }) {
@@ -253,7 +253,7 @@ export default function ModelEditForm({ id, userRole }) {
                 <div key={index} className="relative group">
                   <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-md overflow-hidden">
                     <img
-                      src={file}
+                      src={proxyUrl(file)}
                       alt={`Скриншот ${index + 1}`}
                       className="object-cover w-full h-full"
                     />
