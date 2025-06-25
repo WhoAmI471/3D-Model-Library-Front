@@ -3,6 +3,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { sanitizeName } from './nextcloud';
+import { createFolderRecursive } from './nextcloud';
 
 const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
 
@@ -16,8 +18,9 @@ function getNextcloudConfig() {
   return null;
 }
 
-export function modelSubfolder(modelId, version, isScreenshot = false) {
-  const parts = ['models', String(modelId), `v${version}`]
+export function modelSubfolder(modelTitle, version, isScreenshot = false) {
+  const folderName = sanitizeName(modelTitle)
+  const parts = ['models', folderName, `v${version}`]
   if (isScreenshot) parts.push('screenshots')
   return parts.join('/')
 }
@@ -30,17 +33,8 @@ export async function saveFile(file, subfolder = 'models') {
 
     if (nextcloud) {
       const { url, username, password } = nextcloud;
+      await createFolderRecursive(subfolder);
       const folderUrl = `${url}/remote.php/dav/files/${username}/${subfolder}`;
-      try {
-        await axios.request({
-          method: 'MKCOL',
-          url: folderUrl,
-          auth: { username, password },
-          headers: { 'OCS-APIRequest': 'true' }
-        });
-      } catch (err) {
-        if (err.response?.status !== 405) throw err;
-      }
 
       const uploadUrl = `${folderUrl}/${fileName}`;
       const buffer = Buffer.from(await file.arrayBuffer());
@@ -64,8 +58,8 @@ export async function saveFile(file, subfolder = 'models') {
   }
 }
 
-export async function saveModelFile(file, modelId, version, isScreenshot = false) {
-  const folder = modelSubfolder(modelId, version, isScreenshot)
+export async function saveModelFile(file, modelTitle, version, isScreenshot = false) {
+  const folder = modelSubfolder(modelTitle, version, isScreenshot)
   return saveFile(file, folder)
 }
 

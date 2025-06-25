@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { syncModelFolder } from '@/lib/nextcloud'
 
 
 export async function GET(request, { params }) {
@@ -85,23 +86,33 @@ export async function PUT(request, { params }) {
     }
 
     // Обновляем проект и его связи с моделями
-    const updatedProject = await prisma.project.update({
-      where: { id },
-      data: {
-        name,
-        models: {
-          set: modelIds.map(modelId => ({ id: modelId }))
-        }
-      },
-      include: {
-        models: {
-          select: {
-            id: true,
-            title: true
-          }
+  const updatedProject = await prisma.project.update({
+    where: { id },
+    data: {
+      name,
+      models: {
+        set: modelIds.map(modelId => ({ id: modelId }))
+      }
+    },
+    include: {
+      models: {
+        select: {
+          id: true,
+          title: true
         }
       }
-    })
+    }
+  })
+
+    await Promise.all(
+      updatedProject.models.map(async m => {
+        const model = await prisma.model.findUnique({
+          where: { id: m.id },
+          include: { projects: true }
+        })
+        if (model) await syncModelFolder(model)
+      })
+    )
 
     return NextResponse.json(updatedProject)
 
