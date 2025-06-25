@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import { saveModelFile } from '@/lib/fileStorage'
+import { syncModelFolder } from '@/lib/nextcloud'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 import { logModelAction } from '@/lib/logger'
@@ -38,12 +39,12 @@ export async function POST(request) {
 
     const modelId = uuidv4()
 
-    const fileUrl = await saveModelFile(zipFile, modelId, version)
+    const fileUrl = await saveModelFile(zipFile, title, version)
 
     const imageUrls = []
     for (const file of screenshots) {
       if (!file || typeof file.arrayBuffer !== 'function') continue
-      const url = await saveModelFile(file, modelId, version, true)
+      const url = await saveModelFile(file, title, version, true)
       imageUrls.push(url)
     }
 
@@ -60,6 +61,7 @@ export async function POST(request) {
           connect: projectIds.map(id => ({ id }))
         },
       },
+      include: { projects: true }
     })
 
     await prisma.modelVersion.create({
@@ -76,6 +78,8 @@ export async function POST(request) {
       modelId,
       authorId || null
     )
+
+    await syncModelFolder({ title, projects: newModel.projects })
 
     const allModels = await prisma.model.findMany({
       orderBy: { createdAt: 'desc' },

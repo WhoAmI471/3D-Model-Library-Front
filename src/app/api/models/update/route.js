@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { saveModelFile, deleteFile } from '@/lib/fileStorage'
+import { syncModelFolder, sanitizeName } from '@/lib/nextcloud'
 import { getUserFromSession } from '@/lib/auth'
 import { logModelAction } from '@/lib/logger'
 
@@ -69,6 +70,25 @@ export async function POST(request) {
     
     if (updateData.title !== existingModel.title) {
       changes.push(`Название: "${existingModel.title}" → "${updateData.title}"`)
+
+      const oldFolder = sanitizeName(existingModel.title)
+      const newFolder = sanitizeName(updateData.title)
+      if (!updateData.fileUrl && existingModel.fileUrl) {
+        updateData.fileUrl = existingModel.fileUrl.replace(
+          `/models/${oldFolder}/`,
+          `/models/${newFolder}/`
+        )
+      }
+      if (!updateData.images) {
+        const currentImages = existingModel.images.filter(img => !deletedScreenshots.includes(img))
+        updateData.images = currentImages.map(img =>
+          img.replace(`/models/${oldFolder}/`, `/models/${newFolder}/`)
+        )
+      } else {
+        updateData.images = updateData.images.map(img =>
+          img.replace(`/models/${oldFolder}/`, `/models/${newFolder}/`)
+        )
+      }
     }
     
     if (updateData.description !== existingModel.description) {
@@ -114,7 +134,7 @@ export async function POST(request) {
       if (existingModel.fileUrl) {
         await deleteFile(existingModel.fileUrl)
       }
-      updateData.fileUrl = await saveModelFile(zipFile, id, version || 'current')
+      updateData.fileUrl = await saveModelFile(zipFile, updateData.title, version || 'current')
       changes.push('Обновлён файл модели')
     }
 
@@ -122,7 +142,7 @@ export async function POST(request) {
     const screenshots = formData.getAll('screenshots')
     if (screenshots.length > 0) {
       const newScreenshots = await Promise.all(
-        screenshots.map(file => saveModelFile(file, id, version || 'current', true))
+        screenshots.map(file => saveModelFile(file, updateData.title, version || 'current', true))
       )
       
       // Получаем текущие изображения (уже без удаленных)
@@ -146,6 +166,8 @@ export async function POST(request) {
       author: true
     }
   })
+
+  await syncModelFolder(updatedModel, existingModel.title)
 
     if (version) {
       await prisma.modelVersion.create({

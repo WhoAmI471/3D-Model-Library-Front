@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { syncModelFolder } from '@/lib/nextcloud'
 
 export async function GET() {
   try {
@@ -71,6 +72,16 @@ export async function POST(request) {
         }
       }
     })
+
+    await Promise.all(
+      newProject.models.map(async m => {
+        const model = await prisma.model.findUnique({
+          where: { id: m.id },
+          include: { projects: true }
+        })
+        if (model) await syncModelFolder(model)
+      })
+    )
     
     return NextResponse.json(newProject, { status: 201 })
   } catch (error) {
