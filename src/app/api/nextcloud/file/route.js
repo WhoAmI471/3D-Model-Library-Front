@@ -36,6 +36,10 @@ export async function GET(request) {
     })
     return response
   } catch (err) {
+    const status = err.response?.status
+    if (status === 404) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    }
     console.error('Failed to fetch file from Nextcloud:', err)
     return NextResponse.json({ error: 'Failed to fetch file' }, { status: 500 })
   }
