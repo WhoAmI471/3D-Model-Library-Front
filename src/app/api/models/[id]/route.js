@@ -137,10 +137,14 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    if (approve) {
-      // Удаляем файлы и запись из БД
+      if (approve) {
+      // Удаляем файлы и связанные записи из БД
       await deleteFile(model.fileUrl);
       await Promise.all(model.images.map(img => deleteFile(img)));
+      // Удаляем версии модели
+      await prisma.modelVersion.deleteMany({ where: { modelId: id } });
+      // Обнуляем ссылки на модель в логах, чтобы сохранить историю
+      await prisma.log.updateMany({ where: { modelId: id }, data: { modelId: null } });
       await prisma.model.delete({ where: { id } });
 
       await logModelAction(
