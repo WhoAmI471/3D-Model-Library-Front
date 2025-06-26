@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 import { deleteFile } from '@/lib/fileStorage'
 import { logModelAction } from '@/lib/logger'
+import { deleteFolderRecursive, sanitizeName } from '@/lib/nextcloud'
 
 export async function GET(request, { params }) {
   
@@ -146,6 +147,7 @@ export async function DELETE(request, { params }) {
       // Обнуляем ссылки на модель в логах, чтобы сохранить историю
       await prisma.log.updateMany({ where: { modelId: id }, data: { modelId: null } });
       await prisma.model.delete({ where: { id } });
+      await deleteFolderRecursive(`models/${sanitizeName(model.title)}`);
 
       await logModelAction(
         `Модель удалена (${model.title})`,

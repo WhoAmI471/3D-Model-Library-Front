@@ -36,6 +36,21 @@ export async function createFolderRecursive(folder) {
   }
 }
 
+export async function deleteFolderRecursive(folder) {
+  const cfg = getConfig()
+  if (!cfg) return
+  const { url, username, password } = cfg
+  const folderUrl = `${url}/remote.php/dav/files/${username}/${folder}`
+  try {
+    await axios.delete(folderUrl, {
+      auth: { username, password },
+      headers: { 'OCS-APIRequest': 'true' }
+    })
+  } catch (err) {
+    if (err.response?.status !== 404) throw err
+  }
+}
+
 async function renameFolder(oldPath, newPath) {
   const cfg = getConfig()
   if (!cfg) return
@@ -165,5 +180,6 @@ export async function syncModelFolder(model, oldTitle = null) {
 export default {
   syncModelFolder,
   sanitizeName,
-  createFolderRecursive
+  createFolderRecursive,
+  deleteFolderRecursive
 }
