@@ -84,7 +84,7 @@ export async function PUT(request, { params }) {
     // Создаём запись в логах с комментарием
     await logModelAction(
       `Запрос на удаление модели${comment ? ` (${comment})` : ''}`,
-      id,
+      null,
       user.id
     );
 
