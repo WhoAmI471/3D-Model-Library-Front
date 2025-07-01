@@ -39,7 +39,7 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
-    const { id } = params // Получаем id из параметров маршрута
+    const { id } = await params // Получаем id из параметров маршрута
     const { name, modelIds } = await request.json()
     const user = await getUserFromSession()
 
