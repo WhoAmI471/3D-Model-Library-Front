@@ -298,7 +298,7 @@ export default function DashboardPage() {
               Фильтр
             </button>
             
-            {/* {checkPermission(user, 'upload_models') && ( */}
+            {checkPermission(user, 'upload_models') && (
               <button 
                 onClick={handleUpload}
                 className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 shadow-sm"
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                 </svg>
                 Добавить модель
               </button>)
-            {/* } */}
+            }
           </div>
         </div>
 

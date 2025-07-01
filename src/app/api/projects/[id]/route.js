@@ -127,8 +127,7 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const data = await request.json()
-    const { id } = data
+    const { id } = await params // Получаем id из параметров маршрута
 
     if (!id) {
       return NextResponse.json(
@@ -151,16 +150,31 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    if (existingProject.models.length > 0) {
-      return NextResponse.json(
-        { error: 'Нельзя удалить проект с привязанными моделями' },
-        { status: 400 }
-      )
-    }
+    // Сначала отвязываем все модели от проекта
+    await prisma.project.update({
+      where: { id },
+      data: {
+        models: {
+          set: [] // Очищаем связи с моделями
+        }
+      }
+    })
 
+    // Затем удаляем сам проект
     await prisma.project.delete({
       where: { id }
     })
+
+    // Синхронизируем папки для всех ранее связанных моделей
+    await Promise.all(
+      existingProject.models.map(async model => {
+        const updatedModel = await prisma.model.findUnique({
+          where: { id: model.id },
+          include: { projects: true }
+        })
+        if (updatedModel) await syncModelFolder(updatedModel)
+      })
+    )
 
     return NextResponse.json(
       { success: true, message: 'Проект успешно удален' },
