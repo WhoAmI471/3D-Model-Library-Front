@@ -52,7 +52,7 @@ export const ModelPreview = ({
       }}
       onWheel={onWheel}
       onMouseEnter={() => {setIsMouseOver(true); setIsHovering(true)}}
-      onMouseLeave={() => setIsMouseOver(false)}
+      onMouseLeave={() => {setIsMouseOver(false); setIsHovering(false)}}
     >
       <div className="relative w-full h-full">
         <Image
