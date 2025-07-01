@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { syncModelFolder } from '@/lib/nextcloud'
+import { getUserFromSession } from '@/lib/auth'
+import { logProjectAction } from '@/lib/logger'
 
 
 export async function GET(request, { params }) {
@@ -39,6 +41,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = params // Получаем id из параметров маршрута
     const { name, modelIds } = await request.json()
+    const user = await getUserFromSession()
 
     if (!id) {
       return NextResponse.json(
@@ -55,7 +58,8 @@ export async function PUT(request, { params }) {
     }
 
     const existingProject = await prisma.project.findUnique({
-      where: { id }
+      where: { id },
+      include: { models: true }
     })
 
     if (!existingProject) {
@@ -83,6 +87,24 @@ export async function PUT(request, { params }) {
         { error: 'Проект с таким названием уже существует' },
         { status: 400 }
       )
+    }
+
+    const changes = []
+
+    if (name !== existingProject.name) {
+      changes.push(`Название: "${existingProject.name}" → "${name}"`)
+    }
+
+    const currentModelIds = existingProject.models.map(m => m.id).sort()
+    const newModelIds = [...modelIds].sort()
+    if (JSON.stringify(currentModelIds) !== JSON.stringify(newModelIds)) {
+      const currentNames = existingProject.models.map(m => m.title).join(', ') || 'нет'
+      const newModels = await prisma.model.findMany({
+        where: { id: { in: newModelIds } },
+        select: { title: true }
+      })
+      const newNames = newModels.map(m => m.title).join(', ') || 'нет'
+      changes.push(`Модели: "${currentNames}" → "${newNames}"`)
     }
 
     // Обновляем проект и его связи с моделями
@@ -114,6 +136,10 @@ export async function PUT(request, { params }) {
       })
     )
 
+    if (changes.length > 0) {
+      await logProjectAction(`Обновлен проект: ${changes.join(', ')}`, user?.id || null)
+    }
+
     return NextResponse.json(updatedProject)
 
   } catch (error) {
@@ -128,6 +154,7 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params // Получаем id из параметров маршрута
+    const user = await getUserFromSession()
 
     if (!id) {
       return NextResponse.json(
@@ -166,7 +193,7 @@ export async function DELETE(request, { params }) {
     })
 
     // Синхронизируем папки для всех ранее связанных моделей
-    await Promise.all(
+  await Promise.all(
       existingProject.models.map(async model => {
         const updatedModel = await prisma.model.findUnique({
           where: { id: model.id },
@@ -175,6 +202,8 @@ export async function DELETE(request, { params }) {
         if (updatedModel) await syncModelFolder(updatedModel)
       })
     )
+
+    await logProjectAction(`Проект удалён: ${existingProject.name}`, user?.id || null)
 
     return NextResponse.json(
       { success: true, message: 'Проект успешно удален' },

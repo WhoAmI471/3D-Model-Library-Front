@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { syncModelFolder } from '@/lib/nextcloud'
+import { getUserFromSession } from '@/lib/auth'
+import { logProjectAction } from '@/lib/logger'
 
 export async function GET() {
   try {
@@ -29,6 +31,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const { name, modelIds = [] } = await request.json()
+    const user = await getUserFromSession()
     
     // Валидация
     if (!name || name.trim() === '') {
@@ -82,7 +85,9 @@ export async function POST(request) {
         if (model) await syncModelFolder(model)
       })
     )
-    
+
+    await logProjectAction(`Создан проект: ${newProject.name}`, user?.id || null)
+
     return NextResponse.json(newProject, { status: 201 })
   } catch (error) {
     console.error('Error creating project:', error)
