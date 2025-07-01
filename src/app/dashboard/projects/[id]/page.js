@@ -217,7 +217,6 @@ export default function ProjectPage({ params }) {
       setPreviewModel(model)
       setCurrentImageIndex(0)
       setShowPreview(true)
-      startAutoPlay()
     }
   }
   
@@ -226,6 +225,17 @@ export default function ProjectPage({ params }) {
     setPreviewModel(null)
     stopAutoPlay()
   }
+
+  useEffect(() => {
+    if (showPreview && previewModel?.images?.length) {
+      startAutoPlay()
+    } else {
+      stopAutoPlay()
+    }
+    return () => {
+      stopAutoPlay()
+    }
+  }, [previewModel, showPreview])
   useEffect(() => {
     return () => {
       if (autoPlayInterval) {

@@ -155,7 +155,7 @@ export default function LogsPage() {
   }
 
   const handleMouseEnter = (model, event) => {
-    
+
     console.log(models)
     const currentModel = models.find(item => item.id === model?.id);
     if (currentModel?.images?.length > 0) {
@@ -168,7 +168,6 @@ export default function LogsPage() {
       setPreviewModel(currentModel)
       setCurrentImageIndex(0)
       setShowPreview(true)
-      startAutoPlay()
     }
     else
     {
@@ -181,6 +180,17 @@ export default function LogsPage() {
     setPreviewModel(null)
     stopAutoPlay()
   }
+
+  useEffect(() => {
+    if (showPreview && previewModel?.images?.length) {
+      startAutoPlay()
+    } else {
+      stopAutoPlay()
+    }
+    return () => {
+      stopAutoPlay()
+    }
+  }, [previewModel, showPreview])
   useEffect(() => {
     return () => {
       if (autoPlayInterval) {

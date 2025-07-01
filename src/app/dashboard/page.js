@@ -193,7 +193,6 @@ export default function DashboardPage() {
       setPreviewModel(model)
       setCurrentImageIndex(0)
       setShowPreview(true)
-      startAutoPlay()
     }
   }
   
@@ -202,6 +201,17 @@ export default function DashboardPage() {
     setPreviewModel(null)
     stopAutoPlay()
   }
+
+  useEffect(() => {
+    if (showPreview && previewModel?.images?.length) {
+      startAutoPlay()
+    } else {
+      stopAutoPlay()
+    }
+    return () => {
+      stopAutoPlay()
+    }
+  }, [previewModel, showPreview])
   useEffect(() => {
     return () => {
       if (autoPlayInterval) {
