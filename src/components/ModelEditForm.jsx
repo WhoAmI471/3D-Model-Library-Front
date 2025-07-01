@@ -83,6 +83,21 @@ export default function ModelEditForm({ id, userRole }) {
           zip: data.fileUrl,
           screenshots: data.images || []
         })
+
+        try {
+          const scRes = await fetch(`/api/models/${id}/screenshots`)
+          if (scRes.ok) {
+            const scData = await scRes.json()
+            if (Array.isArray(scData.files) && scData.files.length > 0) {
+              setCurrentFiles(prev => ({
+                ...prev,
+                screenshots: Array.from(new Set([...prev.screenshots, ...scData.files]))
+              }))
+            }
+          }
+        } catch (e) {
+          console.error('Failed to load screenshots from Nextcloud', e)
+        }
         
       } catch (err) {
         console.error('Ошибка загрузки модели:', err)
