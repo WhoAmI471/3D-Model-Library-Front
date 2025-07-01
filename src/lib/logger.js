@@ -13,3 +13,19 @@ export async function logModelAction(action, modelId = null, userId = null) {
     console.error('[Ошибка записи лога]', error)
   }
 }
+
+// Запись действий, связанных с проектами. Проекты не имеют собственной таблицы
+// логов, поэтому сохраняем только текст действия и пользователя.
+export async function logProjectAction(action, userId = null) {
+  try {
+    await prisma.log.create({
+      data: {
+        action,
+        userId,
+        modelId: null
+      }
+    })
+  } catch (error) {
+    console.error('[Ошибка записи лога]', error)
+  }
+}
