@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcrypt'
+import { getUserFromSession } from '@/lib/auth'
+import { logEmployeeAction } from '@/lib/logger'
 
 
 export async function GET() {
@@ -72,6 +74,12 @@ export async function POST(request) {
         password: hashedPassword,
       },
     })
+
+    const user = await getUserFromSession()
+    await logEmployeeAction(
+      `Создан сотрудник: ${newEmployee.name} (${newEmployee.email})`,
+      user?.id || null
+    )
     
     // Не возвращаем пароль в ответе
     const { password: _, ...employeeWithoutPassword } = newEmployee

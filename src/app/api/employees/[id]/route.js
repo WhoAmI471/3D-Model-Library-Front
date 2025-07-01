@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUserFromSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcrypt'
+import { logEmployeeAction } from '@/lib/logger'
 
 // GET /api/employees/[id]/route.js
 export async function GET(request, { params }) {
@@ -71,6 +72,15 @@ export async function PUT(request, { params }) {
       )
     }
 
+    const existing = await prisma.user.findUnique({ where: { id } })
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Сотрудник не найден' },
+        { status: 404 }
+      )
+    }
+
     const updateData = {
       name,
       email,
@@ -95,6 +105,22 @@ export async function PUT(request, { params }) {
         permissions: true
       }
     })
+
+    const changes = []
+    if (name && name !== existing.name) changes.push(`Имя: "${existing.name}" → "${name}"`)
+    if (email && email !== existing.email) changes.push(`Email: "${existing.email}" → "${email}"`)
+    if (role && role !== existing.role) changes.push(`Роль: ${existing.role} → ${role}`)
+    if (password) changes.push('Пароль изменён')
+    if (JSON.stringify(existing.permissions) !== JSON.stringify(permissions)) {
+      changes.push('Права изменены')
+    }
+
+    if (changes.length > 0) {
+      await logEmployeeAction(
+        `Обновлен сотрудник ${existing.name}: ${changes.join(', ')}`,
+        user.id
+      )
+    }
 
 
     return NextResponse.json(updatedEmployer)
@@ -140,6 +166,11 @@ export async function DELETE(request, { params }) {
     await prisma.user.delete({
       where: { id }
     })
+
+    await logEmployeeAction(
+      `Удален сотрудник: ${existingEmployer.name} (${existingEmployer.email})`,
+      user.id
+    )
 
     return NextResponse.json(
       { success: true, message: 'Сотрудник успешно удален' },
