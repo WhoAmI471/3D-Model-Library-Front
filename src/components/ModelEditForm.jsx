@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { formatFileSize, proxyUrl } from '@/lib/utils'
 import { checkPermission } from '@/lib/permission'
 
 export default function ModelEditForm({ id, userRole }) {
@@ -9,6 +10,7 @@ export default function ModelEditForm({ id, userRole }) {
     title: '',
     description: '',
     authorId: '',
+    version: '',
     sphere: '',
   })
   const [selectedProjects, setSelectedProjects] = useState([])
@@ -71,6 +73,7 @@ export default function ModelEditForm({ id, userRole }) {
           title: data.title || '',
           description: data.description || '',
           authorId: data.authorId || '',
+          version: '',
           sphere: data.sphere || '',
         })
         
@@ -129,13 +132,6 @@ export default function ModelEditForm({ id, userRole }) {
     })
   }
 
-  const formatFileSize = (bytes) => {
-    if (!bytes) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
 
   const handleSubmit = async (e) => {
   e.preventDefault()
@@ -222,16 +218,30 @@ export default function ModelEditForm({ id, userRole }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Название модели <span className="text-red-500">*</span>
             </label>
-            <input
-              name="title"
-              value={form.title}
-              onChange={handleChange}
-              className={`block w-full px-3 py-2 border ${canEditModel ? 'border-gray-300' : 'border-gray-100 bg-gray-50'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-              required
-              maxLength={50}
-              disabled={canEditDescription}
-            />
-          </div>
+          <input
+            name="title"
+            value={form.title}
+            onChange={handleChange}
+            className={`block w-full px-3 py-2 border ${canEditModel ? 'border-gray-300' : 'border-gray-100 bg-gray-50'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+            required
+            maxLength={50}
+            disabled={canEditDescription}
+          />
+        </div>
+
+        {/* Версия */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Версия
+          </label>
+          <input
+            name="version"
+            value={form.version}
+            onChange={handleChange}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            maxLength={20}
+          />
+        </div>
 
           {/* Текущие скриншоты */}
           <div className="col-span-2">
@@ -243,7 +253,7 @@ export default function ModelEditForm({ id, userRole }) {
                 <div key={index} className="relative group">
                   <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-md overflow-hidden">
                     <img
-                      src={file}
+                      src={proxyUrl(file)}
                       alt={`Скриншот ${index + 1}`}
                       className="object-cover w-full h-full"
                     />

@@ -1,7 +1,17 @@
 /** @type {import('next').NextConfig} */
+const nextcloudUrl = process.env.NEXTCLOUD_URL
+const nextcloudDomain = nextcloudUrl ? new URL(nextcloudUrl).hostname : undefined
+
 const nextConfig = {
     images: {
-      domains: [],
+      remotePatterns: [
+        {
+          protocol: 'http',
+          hostname: 'localhost',
+          port: '8080',
+        },
+      ],
+      domains: nextcloudDomain ? [nextcloudDomain] : [],
     },
     // Разрешаем загрузку файлов определенных типов
     webpack: (config) => {
@@ -9,6 +19,7 @@ const nextConfig = {
       return config;
     },
   };
+
   
   
 export default nextConfig;

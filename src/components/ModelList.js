@@ -1,4 +1,5 @@
 // components/ModelList.js
+import { proxyUrl } from '@/lib/utils'
 export default function ModelList({ models }) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -10,7 +11,7 @@ export default function ModelList({ models }) {
             <p className="text-sm text-gray-600">Автор ID: {model.authorId}</p>
             <div className="flex gap-2 mt-2 flex-wrap">
               {model.images.map((url, idx) => (
-                <img key={idx} src={url} alt="screenshot" className="h-24 object-cover border" />
+                <img key={idx} src={proxyUrl(url)} alt="screenshot" className="h-24 object-cover border" />
               ))}
             </div>
           </div>

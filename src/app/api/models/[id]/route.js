@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 import { deleteFile } from '@/lib/fileStorage'
+import { logModelAction } from '@/lib/logger'
+import { deleteFolderRecursive, sanitizeName } from '@/lib/nextcloud'
 
 export async function GET(request, { params }) {
   
@@ -25,6 +27,7 @@ export async function GET(request, { params }) {
       include: {
         author: true,
         projects: true,
+        versions: true,
         logs: {
           include: {
             user: true,
@@ -59,7 +62,14 @@ export async function PUT(request, { params }) {
 
   try {
     const { id } = await params;
-    const { comment } = await request.json();
+    let comment = null;
+    try {
+      const data = await request.json();
+      comment = data?.comment || null;
+    } catch {
+      // ignore parsing errors when body is empty or invalid
+      comment = null;
+    }
 
     // Помечаем модель на удаление с комментарием
     const model = await prisma.model.update({
@@ -73,13 +83,11 @@ export async function PUT(request, { params }) {
     });
 
     // Создаём запись в логах с комментарием
-    await prisma.log.create({
-      data: {
-        action: `Запрос на удаление модели${comment ? ` (${comment})` : ''}`,
-        userId: user.id,
-        modelId: id
-      }
-    });
+    await logModelAction(
+      `Запрос на удаление модели${comment ? ` (${comment})` : ''}`,
+      null,
+      user.id
+    );
 
     return NextResponse.json({ 
       success: true, 
@@ -105,7 +113,13 @@ export async function DELETE(request, { params }) {
 
   try {
     const { id } = await params;
-    const { approve } = await request.json();
+    let approve = false;
+    try {
+      const data = await request.json();
+      approve = data?.approve === true;
+    } catch {
+      approve = false;
+    }
 
     // Находим модель, помеченную на удаление
     const model = await prisma.model.findUnique({
@@ -124,15 +138,24 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    if (approve) {
-      // Удаляем файлы и запись из БД
+      if (approve) {
+      // Удаляем файлы и связанные записи из БД
       await deleteFile(model.fileUrl);
       await Promise.all(model.images.map(img => deleteFile(img)));
+      // Удаляем версии модели
+      await prisma.modelVersion.deleteMany({ where: { modelId: id } });
+      // Обнуляем ссылки на модель в логах, чтобы сохранить историю
+      await prisma.log.updateMany({ where: { modelId: id }, data: { modelId: null } });
       await prisma.model.delete({ where: { id } });
+      await deleteFolderRecursive(`models/${sanitizeName(model.title)}`);
 
-      return NextResponse.json(
-        { success: true, message: 'Модель удалена' }
+      await logModelAction(
+        `Модель удалена (${model.title})`,
+        id,
+        user.id
       );
+
+      return NextResponse.json({ success: true, message: 'Модель удалена' });
     } else {
       // Отмена пометки на удаление
       await prisma.model.update({
@@ -144,9 +167,12 @@ export async function DELETE(request, { params }) {
         }
       });
 
-      return NextResponse.json(
-        { success: true, message: 'Запрос на удаление отклонён' }
-      );
+      await logModelAction('Запрос на удаление отклонён', id, user.id);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Запрос на удаление отклонён'
+      });
     }
   } catch (error) {
     console.error('Error processing deletion:', error);

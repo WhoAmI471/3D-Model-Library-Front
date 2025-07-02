@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation'
+import { formatDateTime, proxyUrl } from '@/lib/utils'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
 // import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -26,6 +27,11 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [user, setUser] = useState();
+  const [selectedVersion, setSelectedVersion] = useState(
+    model.versions && model.versions.length > 0
+      ? model.versions[model.versions.length - 1]
+      : { fileUrl: model.fileUrl, images: model.images, version: 'Последняя' }
+  );
   
   useEffect(() => {
     const load = async () =>
@@ -41,7 +47,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch(model.fileUrl);
+      const response = await fetch(proxyUrl(selectedVersion.fileUrl));
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -68,19 +74,19 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   };
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => 
-      prev === model.images.length - 1 ? 0 : prev + 1
+    setCurrentImageIndex((prev) =>
+      prev === selectedVersion.images.length - 1 ? 0 : prev + 1
     );
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => 
-      prev === 0 ? model.images.length - 1 : prev - 1
+    setCurrentImageIndex((prev) =>
+      prev === 0 ? selectedVersion.images.length - 1 : prev - 1
     );
   };
 
   const handleDeleteRequest = async () => {
-    if (userRole === 'ADMIN') {
+    if (user?.role === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
         const result = await onDeleteRequest(model.id, true);
         if (result?.success && result.redirect) {
@@ -109,15 +115,6 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
     }
   };
 
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${day}.${month}.${year} ${hours}:${minutes}`;
-  };
 
   return (
     <div className="w-full mx-auto rounded-lg overflow-hidden">
@@ -143,17 +140,17 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
       <div className="p-6 text-gray-800">
         <h1 className="text-2xl pb-4 font-bold text-gray-800">{model.title}</h1>
         {/* Галерея изображений */}
-        {model.images?.length > 0 && (
+        {selectedVersion.images?.length > 0 && (
           <div className="mb-6">
             <div className="flex space-x-4 overflow-x-auto pb-2">
-              {model.images.map((image, index) => (
-                <div 
+              {selectedVersion.images.map((image, index) => (
+                <div
                   key={index}
                   className="relative flex-shrink-0 w-64 h-48 cursor-pointer"
                   onClick={() => openModal(index)}
                 >
                   <Image
-                    src={image}
+                    src={proxyUrl(image)}
                     alt={`${model.title} - изображение ${index + 1}`}
                     fill
                     className="object-cover rounded-lg"
@@ -178,7 +175,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
               
               <div className="relative h-[70vh] w-full">
                 <Image
-                  src={model.images[currentImageIndex]}
+                  src={proxyUrl(selectedVersion.images[currentImageIndex])}
                   alt={`${model.title} - изображение ${currentImageIndex + 1}`}
                   fill
                   className="object-contain"
@@ -187,7 +184,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
               
               <div className="flex justify-between items-center pb-6 ml-10 mr-10">
                 <div className="flex space-x-2">
-                  {model.images.map((_, index) => (
+                  {selectedVersion.images.map((_, index) => (
                     <div 
                       key={index}
                       className={`h-2 w-2 rounded-full ${index === currentImageIndex ? 'bg-blue-600' : 'bg-blue-300'}`}
@@ -210,7 +207,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
                     className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full pl-5"
                   >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path fill-rule="evenodd" clip-rule="evenodd" d="M13.0607 0.43934C12.4749 -0.146447 11.5251 -0.146447 10.9393 0.43934C10.3536 1.02513 10.3536 1.97487 10.9393 2.56067L18.8787 10.5H1.5C0.671572 10.5 0 11.1716 0 12C0 12.8284 0.671572 13.5 1.5 13.5H18.8787L10.9393 21.4393C10.3536 22.0251 10.3536 22.9749 10.9393 23.5606C11.5251 24.1464 12.4749 24.1464 13.0607 23.5606L23.5596 13.0617C23.5632 13.0581 23.5668 13.0545 23.5704 13.0508C23.8351 12.7812 23.9988 12.4119 24 12.0045C24 12.003 24 12.0015 24 12C24 11.9985 24 11.997 24 11.9955C23.9994 11.7937 23.959 11.6014 23.8862 11.4258C23.8146 11.2529 23.7094 11.0907 23.5704 10.9492C23.5668 10.9456 23.5634 10.942 23.5597 10.9384" fill="#2763FE"/>
+                      <path fillRule="evenodd" clip-rule="evenodd" d="M13.0607 0.43934C12.4749 -0.146447 11.5251 -0.146447 10.9393 0.43934C10.3536 1.02513 10.3536 1.97487 10.9393 2.56067L18.8787 10.5H1.5C0.671572 10.5 0 11.1716 0 12C0 12.8284 0.671572 13.5 1.5 13.5H18.8787L10.9393 21.4393C10.3536 22.0251 10.3536 22.9749 10.9393 23.5606C11.5251 24.1464 12.4749 24.1464 13.0607 23.5606L23.5596 13.0617C23.5632 13.0581 23.5668 13.0545 23.5704 13.0508C23.8351 12.7812 23.9988 12.4119 24 12.0045C24 12.003 24 12.0015 24 12C24 11.9985 24 11.997 24 11.9955C23.9994 11.7937 23.959 11.6014 23.8862 11.4258C23.8146 11.2529 23.7094 11.0907 23.5704 10.9492C23.5668 10.9456 23.5634 10.942 23.5597 10.9384" fill="#2763FE"/>
                     </svg>
                   </button>
                 </div>
@@ -264,6 +261,24 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
         {/* кнопки */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex space-x-2">
+
+            {model.versions?.length > 0 && (
+              <select
+                value={selectedVersion.version}
+                onChange={(e) => {
+                  const ver = model.versions.find(v => v.version === e.target.value);
+                  if (ver) {
+                    setSelectedVersion(ver);
+                    setCurrentImageIndex(0);
+                  }
+                }}
+                className="px-2 py-1 border rounded text-sm"
+              >
+                {model.versions.map(v => (
+                  <option key={v.id} value={v.version}>{v.version}</option>
+                ))}
+              </select>
+            )}
             
             {checkPermission(user, 'download_models') && (
               <button
@@ -310,7 +325,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
                   height={18}
                   className='mr-2'
                 />
-                {user?.role === 'ADMIN' ? 'Удалить' : 'Удалить'}
+                Удалить
               </button>)
             }
           </div>

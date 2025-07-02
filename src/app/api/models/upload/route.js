@@ -1,8 +1,9 @@
-import { writeFile, mkdir } from 'fs/promises'
-import path, { extname } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import { saveModelFile } from '@/lib/fileStorage'
+import { syncModelFolder } from '@/lib/nextcloud'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
+import { logModelAction } from '@/lib/logger'
 
 export async function POST(request) {
   const user = await getUserFromSession()
@@ -18,6 +19,7 @@ export async function POST(request) {
     const authorId = formData.get('authorId') || null
     const projectId = formData.get('projectId') || null
     const sphere = formData.get('sphere') || ''
+    const version = formData.get('version') || '1.0'
     const screenshots = formData.getAll('screenshots') || []
 
     if (!zipFile || !title || !sphere || typeof zipFile.arrayBuffer !== 'function') {
@@ -36,23 +38,14 @@ export async function POST(request) {
     }
 
     const modelId = uuidv4()
-    const uploadRoot = path.join(process.cwd(), 'public', 'uploads', 'models', modelId)
-    const screenshotsDir = path.join(uploadRoot, 'screenshots')
 
-    await mkdir(screenshotsDir, { recursive: true })
-
-    const zipPath = path.join(uploadRoot, 'model.zip')
-    await writeFile(zipPath, Buffer.from(await zipFile.arrayBuffer()))
+    const fileUrl = await saveModelFile(zipFile, title, version)
 
     const imageUrls = []
-
     for (const file of screenshots) {
       if (!file || typeof file.arrayBuffer !== 'function') continue
-      const ext = extname(file.name) || '.png'
-      const fileName = uuidv4() + ext
-      const filePath = path.join(screenshotsDir, fileName)
-      await writeFile(filePath, Buffer.from(await file.arrayBuffer()))
-      imageUrls.push(`/uploads/models/${modelId}/screenshots/${fileName}`)
+      const url = await saveModelFile(file, title, version, true)
+      imageUrls.push(url)
     }
 
     const newModel = await prisma.model.create({
@@ -60,26 +53,33 @@ export async function POST(request) {
         id: modelId,
         title,
         description,
-        // createdAt: new Date(),
-        // updatedAt: new Date(),
-        fileUrl: `/uploads/models/${modelId}/model.zip`,
+        fileUrl,
         images: imageUrls,
         authorId: authorId || null,
-        // projectId: projectId || null,
         sphere: sphere.toUpperCase(),
         projects: {
           connect: projectIds.map(id => ({ id }))
         },
       },
+      include: { projects: true }
     })
 
-    await prisma.log.create({
+    await prisma.modelVersion.create({
       data: {
-        action: `Добавлена модель: ${title}`,
-        modelId: modelId,
-        userId: authorId || null,
-      },
+        modelId: newModel.id,
+        version,
+        fileUrl,
+        images: imageUrls
+      }
     })
+
+    await logModelAction(
+      `Добавлена модель: ${title}`,
+      modelId,
+      authorId || null
+    )
+
+    await syncModelFolder({ title, projects: newModel.projects })
 
     const allModels = await prisma.model.findMany({
       orderBy: { createdAt: 'desc' },

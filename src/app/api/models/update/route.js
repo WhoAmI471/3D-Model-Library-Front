@@ -1,8 +1,10 @@
 // app/api/models/update/route.js
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { saveFile, deleteFile } from '@/lib/fileStorage'
+import { saveModelFile, deleteFile } from '@/lib/fileStorage'
+import { syncModelFolder, sanitizeName } from '@/lib/nextcloud'
 import { getUserFromSession } from '@/lib/auth'
+import { logModelAction } from '@/lib/logger'
 
 export async function POST(request) {
   const user = await getUserFromSession()
@@ -12,6 +14,7 @@ export async function POST(request) {
     const formData = await request.formData()
     const projectIds = formData.getAll('projectIds')
     const id = formData.get('id')
+    const version = formData.get('version')
     const deletedScreenshots = formData.getAll('deletedScreenshots')
     
     if (!id) {
@@ -67,6 +70,25 @@ export async function POST(request) {
     
     if (updateData.title !== existingModel.title) {
       changes.push(`Название: "${existingModel.title}" → "${updateData.title}"`)
+
+      const oldFolder = sanitizeName(existingModel.title)
+      const newFolder = sanitizeName(updateData.title)
+      if (!updateData.fileUrl && existingModel.fileUrl) {
+        updateData.fileUrl = existingModel.fileUrl.replace(
+          `/models/${oldFolder}/`,
+          `/models/${newFolder}/`
+        )
+      }
+      if (!updateData.images) {
+        const currentImages = existingModel.images.filter(img => !deletedScreenshots.includes(img))
+        updateData.images = currentImages.map(img =>
+          img.replace(`/models/${oldFolder}/`, `/models/${newFolder}/`)
+        )
+      } else {
+        updateData.images = updateData.images.map(img =>
+          img.replace(`/models/${oldFolder}/`, `/models/${newFolder}/`)
+        )
+      }
     }
     
     if (updateData.description !== existingModel.description) {
@@ -112,7 +134,7 @@ export async function POST(request) {
       if (existingModel.fileUrl) {
         await deleteFile(existingModel.fileUrl)
       }
-      updateData.fileUrl = await saveFile(zipFile, 'models')
+      updateData.fileUrl = await saveModelFile(zipFile, updateData.title, version || 'current')
       changes.push('Обновлён файл модели')
     }
 
@@ -120,7 +142,7 @@ export async function POST(request) {
     const screenshots = formData.getAll('screenshots')
     if (screenshots.length > 0) {
       const newScreenshots = await Promise.all(
-        screenshots.map(file => saveFile(file, 'screenshots'))
+        screenshots.map(file => saveModelFile(file, updateData.title, version || 'current', true))
       )
       
       // Получаем текущие изображения (уже без удаленных)
@@ -136,24 +158,35 @@ export async function POST(request) {
     }
 
     // Обновление модели
-    const updatedModel = await prisma.model.update({
-      where: { id: String(id) },
-      data: updateData,
-      include: {
-        projects: true,
-        author: true
-      }
-    })
+  const updatedModel = await prisma.model.update({
+    where: { id: String(id) },
+    data: updateData,
+    include: {
+      projects: true,
+      author: true
+    }
+  })
+
+  await syncModelFolder(updatedModel, existingModel.title)
+
+    if (version) {
+      await prisma.modelVersion.create({
+        data: {
+          modelId: updatedModel.id,
+          version,
+          fileUrl: updatedModel.fileUrl,
+          images: updatedModel.images
+        }
+      })
+    }
 
     // Создаём запись в логах, если были изменения
     if (changes.length > 0) {
-      await prisma.log.create({
-        data: {
-          action: `Обновлена модель: ${changes.join(', ')}`,
-          modelId: updatedModel.id,
-          userId: user.id
-        }
-      })
+      await logModelAction(
+        `Обновлена модель: ${changes.join(', ')}`,
+        updatedModel.id,
+        user.id
+      )
     }
 
     return NextResponse.json({ 

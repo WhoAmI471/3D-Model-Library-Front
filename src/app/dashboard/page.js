@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
 import axios from 'axios'
+import { proxyUrl } from '@/lib/utils'
 import Link from 'next/link'
 import Image from 'next/image'
 import { AnimatePresence } from 'framer-motion'
@@ -56,7 +57,7 @@ export default function DashboardPage() {
   const handleDownload = async (model) => {
     setIsDownloading(true)
     try {
-      const response = await fetch(model.fileUrl)
+      const response = await fetch(proxyUrl(model.fileUrl))
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -192,7 +193,6 @@ export default function DashboardPage() {
       setPreviewModel(model)
       setCurrentImageIndex(0)
       setShowPreview(true)
-      startAutoPlay()
     }
   }
   
@@ -201,6 +201,17 @@ export default function DashboardPage() {
     setPreviewModel(null)
     stopAutoPlay()
   }
+
+  useEffect(() => {
+    if (showPreview && previewModel?.images?.length) {
+      startAutoPlay()
+    } else {
+      stopAutoPlay()
+    }
+    return () => {
+      stopAutoPlay()
+    }
+  }, [previewModel, showPreview])
   useEffect(() => {
     return () => {
       if (autoPlayInterval) {
@@ -287,7 +298,7 @@ export default function DashboardPage() {
               Фильтр
             </button>
             
-            {/* {checkPermission(user, 'upload_models') && ( */}
+            {checkPermission(user, 'upload_models') && (
               <button 
                 onClick={handleUpload}
                 className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 shadow-sm"
@@ -297,7 +308,7 @@ export default function DashboardPage() {
                 </svg>
                 Добавить модель
               </button>)
-            {/* } */}
+            }
           </div>
         </div>
 

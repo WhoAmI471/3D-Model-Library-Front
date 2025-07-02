@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
+import { proxyUrl } from '@/lib/utils'
 
 export const ModelPreview = ({ 
   model, 
@@ -51,11 +52,11 @@ export const ModelPreview = ({
       }}
       onWheel={onWheel}
       onMouseEnter={() => {setIsMouseOver(true); setIsHovering(true)}}
-      onMouseLeave={() => setIsMouseOver(false)}
+      onMouseLeave={() => {setIsMouseOver(false); setIsHovering(false)}}
     >
       <div className="relative w-full h-full">
         <Image
-          src={model.images[localIndex]}
+          src={proxyUrl(model.images[localIndex])}
           alt={`Превью ${model.title}`}
           fill
           className="object-cover"

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { formatFileSize } from '@/lib/utils'
 
 export default function ModelUploadForm() {
   const [loading, setLoading] = useState(false)
@@ -11,6 +12,7 @@ export default function ModelUploadForm() {
     description: '',
     projectId: '',
     authorId: '',
+    version: '1.0',
     sphere: '',
     zipFile: null,
     screenshots: []
@@ -82,27 +84,6 @@ export default function ModelUploadForm() {
     })
   }
 
-  const uploadFileToNextcloud = async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-  
-    try {
-      const response = await fetch('/api/nextcloud/upload', {
-        method: 'POST',
-        // Не устанавливаем Content-Type вручную!
-        body: formData
-      });
-  
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-  
-      return await response.json();
-    } catch (error) {
-      console.error('Upload error:', error);
-      throw error;
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -116,31 +97,21 @@ export default function ModelUploadForm() {
     }
   
     try {
-      // Используем нашу функцию для загрузки ZIP-архива
-      const zipResult = await uploadFileToNextcloud(formState.zipFile);
-      
-      // Используем ту же функцию для загрузки скриншотов
-      const screenshotResults = await Promise.all(
-        formState.screenshots.map(screenshot => 
-          uploadFileToNextcloud(screenshot.file)
-        )
-      );
-  
-      // Отправляем метаданные модели
+      const data = new FormData();
+      data.append('title', formState.title);
+      data.append('description', formState.description);
+      data.append('authorId', formState.authorId);
+      data.append('sphere', formState.sphere);
+      data.append('version', formState.version);
+
+      selectedProjects.forEach(id => data.append('projectIds', id));
+
+      data.append('zipFile', formState.zipFile);
+      formState.screenshots.forEach(sc => data.append('screenshots', sc.file));
+
       const modelResponse = await fetch('/api/models/upload', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: formState.title,
-          description: formState.description,
-          projectIds: selectedProjects,
-          authorId: formState.authorId,
-          sphere: formState.sphere,
-          zipFileUrl: zipResult.fileUrl,
-          screenshotUrls: screenshotResults.map(res => res.fileUrl)
-        }),
+        body: data
       });
   
       const result = await modelResponse.json();
@@ -153,6 +124,7 @@ export default function ModelUploadForm() {
           description: '',
           projectId: '',
           authorId: '',
+          version: '1.0',
           sphere: '',
           zipFile: null,
           screenshots: []
@@ -169,14 +141,6 @@ export default function ModelUploadForm() {
     }
   };
 
-  // Форматирование размера файла
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(projectSearchTerm.toLowerCase()))
@@ -192,16 +156,31 @@ export default function ModelUploadForm() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Название модели <span className="text-red-500">*</span>
             </label>
-            <input
-              name="title"
-              placeholder="Введите название модели"
-              value={formState.title}
-              onChange={handleChange}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              maxLength={50}
-              required
-            />
-          </div>
+          <input
+            name="title"
+            placeholder="Введите название модели"
+            value={formState.title}
+            onChange={handleChange}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            maxLength={50}
+            required
+          />
+        </div>
+
+        {/* Версия */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Версия <span className="text-red-500">*</span>
+          </label>
+          <input
+            name="version"
+            value={formState.version}
+            onChange={handleChange}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            required
+            maxLength={20}
+          />
+        </div>
 
           {/* Скриншоты */}
           <div className="col-span-2">
