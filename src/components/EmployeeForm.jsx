@@ -16,30 +16,71 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
   const [useDefaultPermissions, setUseDefaultPermissions] = useState(true)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
     if (employee) {
+      const hasPermissions = employee.permissions && Array.isArray(employee.permissions) && employee.permissions.length > 0
+      const employeePermissions = Array.isArray(employee.permissions) ? employee.permissions : []
+      
+      // ВАЖНО: Никогда не загружаем пароль из данных сотрудника
+      // Пароль всегда остается пустым при редактировании
       setFormData({
-        name: employee.name,
-        email: employee.email,
-        role: employee.role,
-        permissions: employee.permissions || [],
+        name: employee.name || '',
+        email: employee.email || '',
+        role: employee.role || 'ARTIST',
+        permissions: [...employeePermissions], // Создаем копию массива
+        password: '', // Пароль всегда пустой - никогда не показываем существующий пароль
+        confirmPassword: '',
+        changePassword: false
+      })
+      
+      // Если у сотрудника есть права, не используем дефолтные
+      setUseDefaultPermissions(!hasPermissions)
+      setIsInitialized(true)
+    } else {
+      // Сброс формы для нового сотрудника
+      setFormData({
+        name: '',
+        email: '',
+        role: 'ARTIST',
+        permissions: [],
         password: '',
         confirmPassword: '',
         changePassword: false
       })
-      setUseDefaultPermissions(employee.permissions?.length === 0)
+      setUseDefaultPermissions(true)
+      setIsInitialized(true)
     }
   }, [employee])
 
   useEffect(() => {
+    // Применяем права по умолчанию только если:
+    // 1. Форма инициализирована
+    // 2. Это новый сотрудник (нет employee) ИЛИ у сотрудника нет прав
+    // 3. Флаг useDefaultPermissions установлен в true
+    if (!isInitialized) return
+    
     if (useDefaultPermissions) {
+      // Если это редактирование существующего сотрудника с правами, не трогаем их
+      if (employee && employee.permissions && Array.isArray(employee.permissions) && employee.permissions.length > 0) {
+        // Восстанавливаем права сотрудника, если они были случайно очищены
+        setFormData(prev => {
+          if (prev.permissions.length === 0) {
+            return { ...prev, permissions: [...employee.permissions] }
+          }
+          return prev
+        })
+        return
+      }
+      
+      // Применяем права по умолчанию для новой роли
       setFormData(prev => ({
         ...prev,
         permissions: DEFAULT_PERMISSIONS[prev.role] || []
       }))
     }
-  }, [formData.role, useDefaultPermissions])
+  }, [formData.role, useDefaultPermissions, isInitialized, employee])
 
   const handlePermissionChange = (permission) => {
     setFormData(prev => {
@@ -55,7 +96,15 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
   const handleRoleChange = (e) => {
     const { value } = e.target
     setFormData(prev => ({ ...prev, role: value }))
-    setUseDefaultPermissions(true)
+    // Если это редактирование и у сотрудника есть права, сохраняем их
+    // Иначе используем права по умолчанию для новой роли
+    if (employee && employee.permissions && Array.isArray(employee.permissions) && employee.permissions.length > 0) {
+      // Сохраняем текущие права, не переключаем на дефолтные
+      setUseDefaultPermissions(false)
+    } else {
+      // Для нового сотрудника или сотрудника без прав используем дефолтные
+      setUseDefaultPermissions(true)
+    }
   }
 
   const handleChange = (e) => {
@@ -223,9 +272,17 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
 
               {(formData.changePassword || !employee) && (
                 <>
+                  {employee && (
+                    <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                      <p className="text-sm text-blue-800">
+                        <strong>Внимание:</strong> Существующий пароль сотрудника не может быть просмотрен по соображениям безопасности. 
+                        Для изменения пароля установите новый пароль в полях ниже.
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Пароль <span className="text-red-500">*</span>
+                      {employee ? 'Новый пароль' : 'Пароль'} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="password"
@@ -235,8 +292,9 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                       className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.password ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="Не менее 6 символов"
+                      placeholder={employee ? "Введите новый пароль (не менее 6 символов)" : "Не менее 6 символов"}
                       maxLength={50}
+                      autoComplete="new-password"
                     />
                     {errors.password && (
                       <p className="mt-1 text-sm text-red-600">{errors.password}</p>
@@ -245,7 +303,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Подтверждение пароля <span className="text-red-500">*</span>
+                      {employee ? 'Подтверждение нового пароля' : 'Подтверждение пароля'} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="password"
@@ -255,8 +313,9 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                       className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="Повторите пароль"
+                      placeholder={employee ? "Повторите новый пароль" : "Повторите пароль"}
                       maxLength={50}
+                      autoComplete="new-password"
                     />
                     {errors.confirmPassword && (
                       <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>

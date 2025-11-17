@@ -1,12 +1,16 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { formatFileSize } from '@/lib/utils'
 
 export default function ModelUploadForm() {
+  const zipFileInputRef = useRef(null)
   const [loading, setLoading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadComplete, setUploadComplete] = useState(false)
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
   const [selectedProjects, setSelectedProjects] = useState([])
+  const [currentUser, setCurrentUser] = useState(null)
   const [formState, setFormState] = useState({
     title: '',
     description: '',
@@ -30,34 +34,126 @@ export default function ModelUploadForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, projectsRes] = await Promise.all([
+        const [usersRes, projectsRes, currentUserRes] = await Promise.all([
           fetch('/api/users'),
-          fetch('/api/projects')
+          fetch('/api/projects'),
+          fetch('/api/auth/me')
         ])
         
         const usersData = await usersRes.json()
         const projectsData = await projectsRes.json()
+        const currentUserData = await currentUserRes.json()
         
-        setUsers(Array.isArray(usersData) ? usersData : [])
+        const usersList = Array.isArray(usersData) ? usersData : []
+        const user = currentUserData?.user || null
+        
+        setUsers(usersList)
         setProjects(Array.isArray(projectsData) ? projectsData : [])
+        setCurrentUser(user)
+        
+        // Устанавливаем текущего пользователя по умолчанию, если автор еще не выбран
+        if (user) {
+          setFormState(prev => {
+            // Устанавливаем только если автор еще не выбран
+            if (!prev.authorId) {
+              return {
+                ...prev,
+                authorId: user.id
+              }
+            }
+            return prev
+          })
+        }
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
         setUsers([])
         setProjects([])
+        setCurrentUser(null)
       }
     }
     
     fetchData()
   }, [])
 
+  // Функция для фильтрации символов - разрешает только латиницу, кириллицу, цифры, пробелы и основные знаки препинания
+  const filterAllowedCharacters = (text) => {
+    // Регулярное выражение: латиница, кириллица, цифры, пробелы, точка, запятая, дефис, подчеркивание, скобки, двоеточие, точка с запятой
+    const allowedPattern = /[a-zA-Zа-яА-ЯёЁ0-9\s.,\-_():;]/g
+    const matches = text.match(allowedPattern)
+    return matches ? matches.join('') : ''
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormState(prev => ({ ...prev, [name]: value }))
+    
+    // Применяем фильтрацию только для полей "title" и "description"
+    if (name === 'title' || name === 'description') {
+      const filteredValue = filterAllowedCharacters(value)
+      setFormState(prev => ({ ...prev, [name]: filteredValue }))
+    } else {
+      setFormState(prev => ({ ...prev, [name]: value }))
+    }
+  }
+
+  // Обработчик для предотвращения ввода недопустимых символов с клавиатуры
+  const handleKeyDown = (e) => {
+    const { name } = e.target
+    if (name === 'title' || name === 'description') {
+      // Разрешаем служебные клавиши (Backspace, Delete, стрелки, Tab, Enter и т.д.)
+      const allowedKeys = [
+        'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+        'Home', 'End', 'Tab', 'Enter', 'Escape'
+      ]
+      
+      // Разрешаем комбинации с Ctrl/Cmd (копирование, вставка и т.д.)
+      if (e.ctrlKey || e.metaKey || allowedKeys.includes(e.key)) {
+        return
+      }
+      
+      // Проверяем вводимый символ
+      const char = e.key
+      if (char && char.length === 1 && !/[a-zA-Zа-яА-ЯёЁ0-9\s.,\-_():;]/.test(char)) {
+        e.preventDefault()
+      }
+    }
+  }
+
+  // Обработчик для предотвращения вставки недопустимых символов
+  const handlePaste = (e) => {
+    const { name, selectionStart, selectionEnd, value } = e.target
+    if (name === 'title' || name === 'description') {
+      e.preventDefault()
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+      const filteredText = filterAllowedCharacters(pastedText)
+      // Вставляем отфильтрованный текст в позицию курсора
+      const newValue = value.substring(0, selectionStart) + filteredText + value.substring(selectionEnd)
+      setFormState(prev => ({ ...prev, [name]: newValue }))
+      // Восстанавливаем позицию курсора после обновления состояния
+      setTimeout(() => {
+        const input = e.target
+        const newCursorPos = selectionStart + filteredText.length
+        input.setSelectionRange(newCursorPos, newCursorPos)
+      }, 0)
+    }
   }
 
   const handleZipFileChange = (e) => {
     const file = e.target.files[0]
     if (file) {
+      // Проверка расширения файла
+      const fileName = file.name.toLowerCase()
+      const isZip = fileName.endsWith('.zip')
+      
+      if (!isZip) {
+        alert('Можно загружать только .zip файлы!')
+        // Очищаем input
+        if (zipFileInputRef.current) {
+          zipFileInputRef.current.value = ''
+        }
+        setFormState(prev => ({ ...prev, zipFile: null }))
+        return
+      }
+      
       setFormState(prev => ({ ...prev, zipFile: file }))
     }
   }
@@ -84,61 +180,120 @@ export default function ModelUploadForm() {
     })
   }
 
+  const removeZipFile = () => {
+    setFormState(prev => ({ ...prev, zipFile: null }))
+    // Очищаем input
+    if (zipFileInputRef.current) {
+      zipFileInputRef.current.value = ''
+    }
+  }
 
-  const handleSubmit = async (e) => {
+
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
-  
+    
     // Проверка обязательных полей
     if (!formState.title || !formState.sphere || !formState.zipFile || formState.screenshots.length < 2) {
       alert('Пожалуйста, заполните все обязательные поля и добавьте минимум 2 скриншота');
-      setLoading(false);
+      return;
+    }
+
+    // Если загрузка уже идет, не отправляем повторно
+    if (loading) {
       return;
     }
   
-    try {
-      const data = new FormData();
-      data.append('title', formState.title);
-      data.append('description', formState.description);
-      data.append('authorId', formState.authorId);
-      data.append('sphere', formState.sphere);
-      data.append('version', formState.version);
+    setLoading(true);
+    setUploadProgress(0);
+    setUploadComplete(false);
 
-      selectedProjects.forEach(id => data.append('projectIds', id));
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    
+    formData.append('title', formState.title);
+    formData.append('description', formState.description);
+    formData.append('authorId', formState.authorId);
+    formData.append('sphere', formState.sphere);
+    formData.append('version', formState.version);
 
-      data.append('zipFile', formState.zipFile);
-      formState.screenshots.forEach(sc => data.append('screenshots', sc.file));
+    selectedProjects.forEach(id => formData.append('projectIds', id));
 
-      const modelResponse = await fetch('/api/models/upload', {
-        method: 'POST',
-        body: data
-      });
-  
-      const result = await modelResponse.json();
-  
-      if (modelResponse.ok && result.success) {
-        alert('Модель загружена успешно!');
-        // Сброс формы
-        setFormState({
-          title: '',
-          description: '',
-          projectId: '',
-          authorId: '',
-          version: '1.0',
-          sphere: '',
-          zipFile: null,
-          screenshots: []
-        });
-        setSelectedProjects([]);
-      } else {
-        throw new Error(result.error || 'Ошибка при сохранении модели');
+    formData.append('zipFile', formState.zipFile);
+    formState.screenshots.forEach(sc => formData.append('screenshots', sc.file));
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        setUploadProgress(percentComplete);
       }
-    } catch (err) {
-      console.error('Ошибка загрузки:', err);
-      alert('Ошибка загрузки. Попробуйте позже.');
-    } finally {
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200) {
+        try {
+          const result = JSON.parse(xhr.responseText);
+          if (result.success) {
+            setUploadProgress(100);
+            setUploadComplete(true);
+            // Небольшая задержка перед показом сообщения об успехе
+            setTimeout(() => {
+              alert('Модель загружена успешно!');
+              // Сброс формы
+              setFormState({
+                title: '',
+                description: '',
+                projectId: '',
+                authorId: currentUser ? currentUser.id : 'UNKNOWN',
+                version: '1.0',
+                sphere: '',
+                zipFile: null,
+                screenshots: []
+              });
+              setSelectedProjects([]);
+              setUploadProgress(0);
+              setUploadComplete(false);
+              // Очищаем input файла
+              if (zipFileInputRef.current) {
+                zipFileInputRef.current.value = ''
+              }
+            }, 500);
+          } else {
+            throw new Error(result.error || 'Ошибка при сохранении модели');
+          }
+        } catch (err) {
+          console.error('Ошибка парсинга ответа:', err);
+          alert('Ошибка при сохранении модели');
+          setUploadProgress(0);
+          setUploadComplete(false);
+        }
+      } else {
+        setUploadProgress(0);
+        setUploadComplete(false);
+        try {
+          const error = JSON.parse(xhr.responseText);
+          alert(error.error || 'Ошибка загрузки файлов. Попробуйте снова.');
+        } catch {
+          alert('Ошибка загрузки файлов. Попробуйте снова.');
+        }
+      }
       setLoading(false);
-    }
+    });
+
+    xhr.addEventListener('error', () => {
+      setUploadProgress(0);
+      setUploadComplete(false);
+      setLoading(false);
+      alert('Ошибка загрузки файлов. Проверьте подключение к интернету.');
+    });
+
+    xhr.addEventListener('abort', () => {
+      setUploadProgress(0);
+      setUploadComplete(false);
+      setLoading(false);
+    });
+
+    xhr.open('POST', '/api/models/upload');
+    xhr.send(formData);
   };
 
 
@@ -161,6 +316,8 @@ export default function ModelUploadForm() {
             placeholder="Введите название модели"
             value={formState.title}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             maxLength={50}
             required
@@ -242,10 +399,11 @@ export default function ModelUploadForm() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               ZIP-архив модели <span className="text-red-500">*</span>
             </label>
-            <div className="mt-1 flex items-center">
+            <div className="mt-1 flex items-center gap-4">
               <label className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Выберите файл
+                {formState.zipFile ? 'Выбрать другой файл' : 'Выберите файл'}
                 <input
+                  ref={zipFileInputRef}
                   name="zipFile"
                   type="file"
                   onChange={handleZipFileChange}
@@ -255,9 +413,21 @@ export default function ModelUploadForm() {
                 />
               </label>
               {formState.zipFile && (
-                <div className="ml-4 text-sm text-gray-700">
-                  <p>{formState.zipFile.name}</p>
-                  <p className="text-gray-500">{formatFileSize(formState.zipFile.size)}</p>
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md group">
+                  <div className="text-sm text-gray-700">
+                    <p className="font-medium">{formState.zipFile.name}</p>
+                    <p className="text-gray-500">{formatFileSize(formState.zipFile.size)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeZipFile}
+                    className="ml-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    title="Удалить файл"
+                  >
+                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
               )}
             </div>
@@ -273,6 +443,8 @@ export default function ModelUploadForm() {
               placeholder="Добавьте описание модели"
               value={formState.description}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               rows={4}
               maxLength={1000}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -286,16 +458,21 @@ export default function ModelUploadForm() {
             </label>
             <select
               name="authorId"
-              value={formState.authorId}
+              value={formState.authorId || (currentUser ? currentUser.id : 'UNKNOWN')}
               onChange={handleChange}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              required
             >
-              <option value="">Выберите автора</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
+              {/* Текущий пользователь (Я) - по умолчанию */}
+              {currentUser && (
+                <option value={currentUser.id}>
+                  {currentUser.name} (Я)
                 </option>
-              ))}
+              )}
+              {/* Неизвестно */}
+              <option value="UNKNOWN">Неизвестно</option>
+              {/* Сторонняя модель */}
+              <option value="EXTERNAL">Сторонняя модель</option>
             </select>
           </div>
 
@@ -359,6 +536,30 @@ export default function ModelUploadForm() {
         </div>
 
 
+        {/* Индикатор прогресса загрузки */}
+        {(loading || uploadProgress > 0) && (
+          <div className="pt-4">
+            <div className="mb-2">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm font-medium text-gray-700">
+                  {uploadComplete ? 'Готово' : `Загрузка: ${uploadProgress}%`}
+                </span>
+                {uploadComplete && (
+                  <span className="text-sm text-green-600 font-semibold">✓</span>
+                )}
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full transition-all duration-300 ${
+                    uploadComplete ? 'bg-green-600' : 'bg-blue-600'
+                  }`}
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Кнопка отправки */}
         <div className="pt-4">
           <button
@@ -376,10 +577,12 @@ export default function ModelUploadForm() {
                 </svg>
                 Загрузка...
               </>
-            ) : 'Сохранить модель'}
+            ) : 'Загрузить модель'}
           </button>
           <p className="mt-2 text-xs text-gray-500 text-center">
-            Заполните все обязательные поля (отмечены *) для сохранения модели
+            {uploadComplete 
+              ? 'Модель загружена успешно!'
+              : 'Заполните все обязательные поля (отмечены *) и нажмите "Загрузить модель"'}
           </p>
         </div>
       </form>

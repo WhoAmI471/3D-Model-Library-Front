@@ -70,7 +70,7 @@ export async function POST(request) {
         name,
         email,
         role,
-        permissions, // Сохраняем кастомные права
+        permissions: permissions || [], // Убеждаемся, что permissions всегда массив
         password: hashedPassword,
       },
     })
