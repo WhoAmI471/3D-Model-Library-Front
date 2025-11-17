@@ -29,6 +29,15 @@ export async function POST(request) {
       })
     }
 
+    // Проверка расширения файла - только .zip
+    const fileName = zipFile.name || ''
+    if (!fileName.toLowerCase().endsWith('.zip')) {
+      return new Response(JSON.stringify({ error: 'Можно загружать только .zip файлы!' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     const validSpheres = ['CONSTRUCTION', 'CHEMISTRY', 'INDUSTRIAL', 'MEDICAL', 'OTHER']
     if (!validSpheres.includes(sphere.toUpperCase())) {
       return new Response(JSON.stringify({ error: 'Неверная сфера применения' }), {

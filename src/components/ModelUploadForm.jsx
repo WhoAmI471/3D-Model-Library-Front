@@ -1,8 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { formatFileSize } from '@/lib/utils'
 
 export default function ModelUploadForm() {
+  const zipFileInputRef = useRef(null)
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
@@ -58,6 +59,20 @@ export default function ModelUploadForm() {
   const handleZipFileChange = (e) => {
     const file = e.target.files[0]
     if (file) {
+      // Проверка расширения файла
+      const fileName = file.name.toLowerCase()
+      const isZip = fileName.endsWith('.zip')
+      
+      if (!isZip) {
+        alert('Можно загружать только .zip файлы!')
+        // Очищаем input
+        if (zipFileInputRef.current) {
+          zipFileInputRef.current.value = ''
+        }
+        setFormState(prev => ({ ...prev, zipFile: null }))
+        return
+      }
+      
       setFormState(prev => ({ ...prev, zipFile: file }))
     }
   }
@@ -82,6 +97,14 @@ export default function ModelUploadForm() {
       newScreenshots.splice(index, 1)
       return { ...prev, screenshots: newScreenshots }
     })
+  }
+
+  const removeZipFile = () => {
+    setFormState(prev => ({ ...prev, zipFile: null }))
+    // Очищаем input
+    if (zipFileInputRef.current) {
+      zipFileInputRef.current.value = ''
+    }
   }
 
 
@@ -135,7 +158,8 @@ export default function ModelUploadForm() {
       }
     } catch (err) {
       console.error('Ошибка загрузки:', err);
-      alert('Ошибка загрузки. Попробуйте позже.');
+      const errorMessage = err.message || 'Ошибка загрузки. Попробуйте позже.';
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -242,10 +266,11 @@ export default function ModelUploadForm() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               ZIP-архив модели <span className="text-red-500">*</span>
             </label>
-            <div className="mt-1 flex items-center">
+            <div className="mt-1 flex items-center gap-4">
               <label className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Выберите файл
+                {formState.zipFile ? 'Выбрать другой файл' : 'Выберите файл'}
                 <input
+                  ref={zipFileInputRef}
                   name="zipFile"
                   type="file"
                   onChange={handleZipFileChange}
@@ -255,9 +280,21 @@ export default function ModelUploadForm() {
                 />
               </label>
               {formState.zipFile && (
-                <div className="ml-4 text-sm text-gray-700">
-                  <p>{formState.zipFile.name}</p>
-                  <p className="text-gray-500">{formatFileSize(formState.zipFile.size)}</p>
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md group">
+                  <div className="text-sm text-gray-700">
+                    <p className="font-medium">{formState.zipFile.name}</p>
+                    <p className="text-gray-500">{formatFileSize(formState.zipFile.size)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeZipFile}
+                    className="ml-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    title="Удалить файл"
+                  >
+                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
               )}
             </div>
