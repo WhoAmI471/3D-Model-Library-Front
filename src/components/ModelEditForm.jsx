@@ -178,6 +178,22 @@ export default function ModelEditForm({ id, userRole }) {
   setError(null)
 
   try {
+    // Проверка количества скриншотов: должно быть минимум 2
+    // Текущие скриншоты (которые останутся после удаления)
+    const remainingCurrentScreenshots = currentFiles.screenshots.filter(
+      screenshot => !deletedScreenshots.includes(screenshot)
+    )
+    // Новые скриншоты, которые будут добавлены
+    const newScreenshotsCount = screenshots.length
+    // Итоговое количество = оставшиеся текущие + новые
+    const totalScreenshots = remainingCurrentScreenshots.length + newScreenshotsCount
+    
+    if (totalScreenshots < 2) {
+      alert('Должно быть минимум 2 скриншота. Добавьте скриншоты или не удаляйте существующие.')
+      setIsLoading(false)
+      return
+    }
+
     const formData = new FormData()
     
     // Добавляем все поля формы
