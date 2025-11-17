@@ -18,6 +18,7 @@ export default function ModelEditForm({ id, userRole }) {
   const [screenshots, setScreenshots] = useState([])
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
+  const [currentUser, setCurrentUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [currentFiles, setCurrentFiles] = useState({
@@ -26,6 +27,7 @@ export default function ModelEditForm({ id, userRole }) {
   })
   const [deletedScreenshots, setDeletedScreenshots] = useState([])
   const [projectSearchTerm, setProjectSearchTerm] = useState('')
+  const [existingModel, setExistingModel] = useState(null)
 
   
   const [canEditModel, setCanEditModel] = useState(null);
@@ -41,20 +43,24 @@ export default function ModelEditForm({ id, userRole }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, projectsRes] = await Promise.all([
+        const [usersRes, projectsRes, currentUserRes] = await Promise.all([
           fetch('/api/users'),
-          fetch('/api/projects')
+          fetch('/api/projects'),
+          fetch('/api/auth/me')
         ])
 
         const usersData = await usersRes.json()
         const projectsData = await projectsRes.json()
+        const currentUserData = await currentUserRes.json()
         
         setUsers(Array.isArray(usersData) ? usersData : [])
         setProjects(Array.isArray(projectsData) ? projectsData : [])
+        setCurrentUser(currentUserData?.user || null)
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
         setUsers([])
         setProjects([])
+        setCurrentUser(null)
       }
     }
     
@@ -69,10 +75,22 @@ export default function ModelEditForm({ id, userRole }) {
         if (!res.ok) throw new Error('Не удалось загрузить модель')
         const data = await res.json()
         
+        // Обрабатываем authorId: если null, используем 'UNKNOWN'
+        // Если authorId есть и это текущий пользователь - используем его ID
+        // Если authorId есть, но это не текущий пользователь - используем 'EXTERNAL'
+        let authorIdValue = 'UNKNOWN'
+        if (data.authorId) {
+          if (currentUser && data.authorId === currentUser.id) {
+            authorIdValue = currentUser.id
+          } else {
+            authorIdValue = 'EXTERNAL'
+          }
+        }
+        
         setForm({
           title: data.title || '',
           description: data.description || '',
-          authorId: data.authorId || '',
+          authorId: authorIdValue,
           version: '',
           sphere: data.sphere || '',
         })
@@ -84,6 +102,8 @@ export default function ModelEditForm({ id, userRole }) {
           screenshots: data.images || []
         })
         
+        setExistingModel(data)
+        
       } catch (err) {
         console.error('Ошибка загрузки модели:', err)
         setError(err.message)
@@ -92,8 +112,24 @@ export default function ModelEditForm({ id, userRole }) {
       }
     }
 
-    if (id) loadModel()
-  }, [id])
+    if (id && currentUser !== null) loadModel()
+  }, [id, currentUser])
+
+  // Очистка blob URL при размонтировании
+  useEffect(() => {
+    return () => {
+      currentFiles.screenshots.forEach(file => {
+        if (typeof file === 'object' && file.preview && file.preview.startsWith('blob:')) {
+          URL.revokeObjectURL(file.preview)
+        }
+      })
+      screenshots.forEach(file => {
+        if (file.preview && file.preview.startsWith('blob:')) {
+          URL.revokeObjectURL(file.preview)
+        }
+      })
+    }
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -127,10 +163,13 @@ export default function ModelEditForm({ id, userRole }) {
     setCurrentFiles(prev => {
       const newScreenshots = [...prev.screenshots]
       const deleted = newScreenshots.splice(index, 1)
-      setDeletedScreenshots(prevDeleted => [...prevDeleted, deleted[0]])
+      // Получаем оригинальный URL для удаления
+      const originalUrl = typeof deleted[0] === 'string' ? deleted[0] : deleted[0].originalUrl || deleted[0]
+      setDeletedScreenshots(prevDeleted => [...prevDeleted, originalUrl])
       return { ...prev, screenshots: newScreenshots }
     })
   }
+
 
 
   const handleSubmit = async (e) => {
@@ -157,6 +196,11 @@ export default function ModelEditForm({ id, userRole }) {
     deletedScreenshots.forEach(url => {
       formData.append('deletedScreenshots', url)
     })
+    
+    // Добавляем информацию об удалении ZIP-файла, если он был удален
+    if (!currentFiles.zip && !zipFile && existingModel?.fileUrl) {
+      formData.append('deleteZipFile', 'true')
+    }
     
     // Добавляем новые файлы, если они были выбраны
     if (zipFile) formData.append('zipFile', zipFile)
@@ -335,22 +379,76 @@ export default function ModelEditForm({ id, userRole }) {
           {/* ZIP-архив модели */}
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Обновить ZIP-архив модели
+              ZIP-архив модели
             </label>
-            <div className="mt-1 flex items-center">
-              <label className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Выберите файл
+            {currentFiles.zip && (
+              <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <svg className="h-5 w-5 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        Текущий файл: {currentFiles.zip.split('/').pop()}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {currentFiles.zip}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentFiles(prev => ({ ...prev, zip: null }))
+                      setZipFile(null)
+                    }}
+                    className="ml-4 text-red-600 hover:text-red-800 text-sm"
+                    disabled={canEditDescription}
+                    title="Удалить файл"
+                  >
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="mt-1">
+              <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                {currentFiles.zip ? 'Заменить ZIP-файл' : 'Выберите ZIP-файл'}
                 <input
                   type="file"
                   accept=".zip"
-                  onChange={(e) => setZipFile(e.target.files[0])}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      // Проверка расширения файла
+                      const fileName = file.name.toLowerCase()
+                      if (!fileName.endsWith('.zip')) {
+                        alert('Можно загружать только .zip файлы!')
+                        e.target.value = ''
+                        return
+                      }
+                      setZipFile(file)
+                      // Если был текущий файл, он будет заменен
+                      if (currentFiles.zip) {
+                        setCurrentFiles(prev => ({ ...prev, zip: null }))
+                      }
+                    }
+                  }}
                   className="sr-only"
                   disabled={canEditDescription}
                 />
               </label>
-              {currentFiles.zip && (
-                <div className="ml-4 text-sm text-gray-700">
-                  <p>Текущий файл: {currentFiles.zip.split('/').pop()}</p>
+              {zipFile && (
+                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-700">
+                    Новый файл: {zipFile.name} ({formatFileSize(zipFile.size)})
+                  </p>
                 </div>
               )}
             </div>
@@ -378,17 +476,22 @@ export default function ModelEditForm({ id, userRole }) {
             </label>
             <select
               name="authorId"
-              value={form.authorId}
+              value={form.authorId || (currentUser ? currentUser.id : 'UNKNOWN')}
               onChange={handleChange}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              disabled={canEditDescription}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
+              required
+              disabled
             >
-              <option value="">Выберите автора</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
+              {/* Текущий пользователь (Я) */}
+              {currentUser && (
+                <option value={currentUser.id}>
+                  {currentUser.name} (Я)
                 </option>
-              ))}
+              )}
+              {/* Неизвестно */}
+              <option value="UNKNOWN">Неизвестно</option>
+              {/* Сторонняя модель */}
+              <option value="EXTERNAL">Сторонняя модель</option>
             </select>
           </div>
 
