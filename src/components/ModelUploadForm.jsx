@@ -5,6 +5,8 @@ import { formatFileSize } from '@/lib/utils'
 export default function ModelUploadForm() {
   const zipFileInputRef = useRef(null)
   const [loading, setLoading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadComplete, setUploadComplete] = useState(false)
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
   const [selectedProjects, setSelectedProjects] = useState([])
@@ -187,65 +189,111 @@ export default function ModelUploadForm() {
   }
 
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
-  
+    
     // Проверка обязательных полей
     if (!formState.title || !formState.sphere || !formState.zipFile || formState.screenshots.length < 2) {
       alert('Пожалуйста, заполните все обязательные поля и добавьте минимум 2 скриншота');
-      setLoading(false);
+      return;
+    }
+
+    // Если загрузка уже идет, не отправляем повторно
+    if (loading) {
       return;
     }
   
-    try {
-      const data = new FormData();
-      data.append('title', formState.title);
-      data.append('description', formState.description);
-      data.append('authorId', formState.authorId);
-      data.append('sphere', formState.sphere);
-      data.append('version', formState.version);
+    setLoading(true);
+    setUploadProgress(0);
+    setUploadComplete(false);
 
-      selectedProjects.forEach(id => data.append('projectIds', id));
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    
+    formData.append('title', formState.title);
+    formData.append('description', formState.description);
+    formData.append('authorId', formState.authorId);
+    formData.append('sphere', formState.sphere);
+    formData.append('version', formState.version);
 
-      data.append('zipFile', formState.zipFile);
-      formState.screenshots.forEach(sc => data.append('screenshots', sc.file));
+    selectedProjects.forEach(id => formData.append('projectIds', id));
 
-      const modelResponse = await fetch('/api/models/upload', {
-        method: 'POST',
-        body: data
-      });
-  
-      const result = await modelResponse.json();
-  
-      if (modelResponse.ok && result.success) {
-        alert('Модель загружена успешно!');
-        // Сброс формы
-        setFormState({
-          title: '',
-          description: '',
-          projectId: '',
-          authorId: currentUser ? currentUser.id : 'UNKNOWN', // Устанавливаем текущего пользователя по умолчанию
-          version: '1.0',
-          sphere: '',
-          zipFile: null,
-          screenshots: []
-        });
-        setSelectedProjects([]);
-        // Очищаем input файла
-        if (zipFileInputRef.current) {
-          zipFileInputRef.current.value = ''
+    formData.append('zipFile', formState.zipFile);
+    formState.screenshots.forEach(sc => formData.append('screenshots', sc.file));
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = Math.round((e.loaded / e.total) * 100);
+        setUploadProgress(percentComplete);
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200) {
+        try {
+          const result = JSON.parse(xhr.responseText);
+          if (result.success) {
+            setUploadProgress(100);
+            setUploadComplete(true);
+            // Небольшая задержка перед показом сообщения об успехе
+            setTimeout(() => {
+              alert('Модель загружена успешно!');
+              // Сброс формы
+              setFormState({
+                title: '',
+                description: '',
+                projectId: '',
+                authorId: currentUser ? currentUser.id : 'UNKNOWN',
+                version: '1.0',
+                sphere: '',
+                zipFile: null,
+                screenshots: []
+              });
+              setSelectedProjects([]);
+              setUploadProgress(0);
+              setUploadComplete(false);
+              // Очищаем input файла
+              if (zipFileInputRef.current) {
+                zipFileInputRef.current.value = ''
+              }
+            }, 500);
+          } else {
+            throw new Error(result.error || 'Ошибка при сохранении модели');
+          }
+        } catch (err) {
+          console.error('Ошибка парсинга ответа:', err);
+          alert('Ошибка при сохранении модели');
+          setUploadProgress(0);
+          setUploadComplete(false);
         }
       } else {
-        throw new Error(result.error || 'Ошибка при сохранении модели');
+        setUploadProgress(0);
+        setUploadComplete(false);
+        try {
+          const error = JSON.parse(xhr.responseText);
+          alert(error.error || 'Ошибка загрузки файлов. Попробуйте снова.');
+        } catch {
+          alert('Ошибка загрузки файлов. Попробуйте снова.');
+        }
       }
-    } catch (err) {
-      console.error('Ошибка загрузки:', err);
-      const errorMessage = err.message || 'Ошибка загрузки. Попробуйте позже.';
-      alert(errorMessage);
-    } finally {
       setLoading(false);
-    }
+    });
+
+    xhr.addEventListener('error', () => {
+      setUploadProgress(0);
+      setUploadComplete(false);
+      setLoading(false);
+      alert('Ошибка загрузки файлов. Проверьте подключение к интернету.');
+    });
+
+    xhr.addEventListener('abort', () => {
+      setUploadProgress(0);
+      setUploadComplete(false);
+      setLoading(false);
+    });
+
+    xhr.open('POST', '/api/models/upload');
+    xhr.send(formData);
   };
 
 
@@ -488,6 +536,30 @@ export default function ModelUploadForm() {
         </div>
 
 
+        {/* Индикатор прогресса загрузки */}
+        {(loading || uploadProgress > 0) && (
+          <div className="pt-4">
+            <div className="mb-2">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm font-medium text-gray-700">
+                  {uploadComplete ? 'Готово' : `Загрузка: ${uploadProgress}%`}
+                </span>
+                {uploadComplete && (
+                  <span className="text-sm text-green-600 font-semibold">✓</span>
+                )}
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full transition-all duration-300 ${
+                    uploadComplete ? 'bg-green-600' : 'bg-blue-600'
+                  }`}
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Кнопка отправки */}
         <div className="pt-4">
           <button
@@ -505,10 +577,12 @@ export default function ModelUploadForm() {
                 </svg>
                 Загрузка...
               </>
-            ) : 'Сохранить модель'}
+            ) : 'Загрузить модель'}
           </button>
           <p className="mt-2 text-xs text-gray-500 text-center">
-            Заполните все обязательные поля (отмечены *) для сохранения модели
+            {uploadComplete 
+              ? 'Модель загружена успешно!'
+              : 'Заполните все обязательные поля (отмечены *) и нажмите "Загрузить модель"'}
           </p>
         </div>
       </form>
