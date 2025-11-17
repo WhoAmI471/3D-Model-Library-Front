@@ -24,6 +24,7 @@ export const ModelPreview = ({
   if (!model || !model.images?.length) return null
 
   const handleNextImage = (e) => {
+    e.preventDefault()
     e.stopPropagation()
     const newIndex = localIndex === model.images.length - 1 ? 0 : localIndex + 1
     setLocalIndex(newIndex)
@@ -31,6 +32,7 @@ export const ModelPreview = ({
   }
 
   const handlePrevImage = (e) => {
+    e.preventDefault()
     e.stopPropagation()
     const newIndex = localIndex === 0 ? model.images.length - 1 : localIndex - 1
     setLocalIndex(newIndex)
@@ -51,8 +53,14 @@ export const ModelPreview = ({
         height: '240px'
       }}
       onWheel={onWheel}
-      onMouseEnter={() => {setIsMouseOver(true); setIsHovering(true)}}
-      onMouseLeave={() => {setIsMouseOver(false); setIsHovering(false)}}
+      onMouseEnter={() => {
+        setIsMouseOver(true)
+        if (setIsHovering) setIsHovering(true)
+      }}
+      onMouseLeave={() => {
+        setIsMouseOver(false)
+        if (setIsHovering) setIsHovering(false)
+      }}
     >
       <div className="relative w-full h-full">
         <Image
@@ -68,12 +76,16 @@ export const ModelPreview = ({
           <>
             <button 
               onClick={handlePrevImage}
+              onMouseEnter={(e) => e.stopPropagation()}
+              onMouseLeave={(e) => e.stopPropagation()}
               className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full z-10"
             >
               &lt;
             </button>
             <button 
               onClick={handleNextImage}
+              onMouseEnter={(e) => e.stopPropagation()}
+              onMouseLeave={(e) => e.stopPropagation()}
               className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full z-10"
             >
               &gt;

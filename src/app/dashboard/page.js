@@ -122,9 +122,8 @@ export default function DashboardPage() {
   }
 
   const handleMouseMove = (event) => {
-    if (isHovering) {
-      updatePreviewPosition(event)
-    }
+    // Позиция превью не должна обновляться при движении мыши
+    // Превью должно оставаться на месте, где было показано
   }
 
   const updatePreviewPosition = (event) => {
@@ -150,12 +149,13 @@ export default function DashboardPage() {
   }
 
   const startAutoPlay = () => {
-    if (!previewModel || !previewModel.images?.length) return
+    if (!previewModel || !previewModel.images?.length || isHovering) return
     
     stopAutoPlay()
     
     const interval = setInterval(() => {
-      if (!previewModel || !previewModel.images?.length) {
+      // Проверяем isHovering перед каждым перелистыванием
+      if (!previewModel || !previewModel.images?.length || isHovering) {
         stopAutoPlay()
         return
       }
@@ -203,7 +203,8 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    if (showPreview && previewModel?.images?.length) {
+    // Автоперелистывание работает только если превью показано и курсор НЕ на мини-окне
+    if (showPreview && previewModel?.images?.length && !isHovering) {
       startAutoPlay()
     } else {
       stopAutoPlay()
@@ -211,7 +212,7 @@ export default function DashboardPage() {
     return () => {
       stopAutoPlay()
     }
-  }, [previewModel, showPreview])
+  }, [previewModel, showPreview, isHovering])
   useEffect(() => {
     return () => {
       if (autoPlayInterval) {
@@ -460,7 +461,7 @@ export default function DashboardPage() {
               onPrevImage={prevImage}
               onWheel={handleWheel}
               isHovering={isHovering}
-              setIsHovering={setShowPreview}
+              setIsHovering={setIsHovering}
             />
           )}
         </AnimatePresence>

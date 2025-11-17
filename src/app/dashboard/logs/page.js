@@ -93,9 +93,8 @@ export default function LogsPage() {
   }
   
   const handleMouseMove = (event) => {
-    if (isHovering) {
-      updatePreviewPosition(event)
-    }
+    // Позиция превью не должна обновляться при движении мыши
+    // Превью должно оставаться на месте, где было показано
   }
 
   const updatePreviewPosition = (event) => {
@@ -121,12 +120,13 @@ export default function LogsPage() {
   }
 
   const startAutoPlay = () => {
-    if (!previewModel || !previewModel.images?.length) return
+    if (!previewModel || !previewModel.images?.length || isHovering) return
     
     stopAutoPlay()
     
     const interval = setInterval(() => {
-      if (!previewModel || !previewModel.images?.length) {
+      // Проверяем isHovering перед каждым перелистыванием
+      if (!previewModel || !previewModel.images?.length || isHovering) {
         stopAutoPlay()
         return
       }
@@ -182,7 +182,8 @@ export default function LogsPage() {
   }
 
   useEffect(() => {
-    if (showPreview && previewModel?.images?.length) {
+    // Автоперелистывание работает только если превью показано и курсор НЕ на мини-окне
+    if (showPreview && previewModel?.images?.length && !isHovering) {
       startAutoPlay()
     } else {
       stopAutoPlay()
@@ -190,7 +191,7 @@ export default function LogsPage() {
     return () => {
       stopAutoPlay()
     }
-  }, [previewModel, showPreview])
+  }, [previewModel, showPreview, isHovering])
   useEffect(() => {
     return () => {
       if (autoPlayInterval) {
@@ -357,7 +358,7 @@ export default function LogsPage() {
             onPrevImage={prevImage}
             onWheel={handleWheel}
             isHovering={isHovering}
-            setIsHovering={setShowPreview}
+            setIsHovering={setIsHovering}
           />
         )}
       </AnimatePresence>
