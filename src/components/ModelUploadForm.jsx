@@ -51,9 +51,66 @@ export default function ModelUploadForm() {
     fetchData()
   }, [])
 
+  // Функция для фильтрации символов - разрешает только латиницу, кириллицу, цифры, пробелы и основные знаки препинания
+  const filterAllowedCharacters = (text) => {
+    // Регулярное выражение: латиница, кириллица, цифры, пробелы, точка, запятая, дефис, подчеркивание, скобки, двоеточие, точка с запятой
+    const allowedPattern = /[a-zA-Zа-яА-ЯёЁ0-9\s.,\-_():;]/g
+    const matches = text.match(allowedPattern)
+    return matches ? matches.join('') : ''
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormState(prev => ({ ...prev, [name]: value }))
+    
+    // Применяем фильтрацию только для полей "title" и "description"
+    if (name === 'title' || name === 'description') {
+      const filteredValue = filterAllowedCharacters(value)
+      setFormState(prev => ({ ...prev, [name]: filteredValue }))
+    } else {
+      setFormState(prev => ({ ...prev, [name]: value }))
+    }
+  }
+
+  // Обработчик для предотвращения ввода недопустимых символов с клавиатуры
+  const handleKeyDown = (e) => {
+    const { name } = e.target
+    if (name === 'title' || name === 'description') {
+      // Разрешаем служебные клавиши (Backspace, Delete, стрелки, Tab, Enter и т.д.)
+      const allowedKeys = [
+        'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+        'Home', 'End', 'Tab', 'Enter', 'Escape'
+      ]
+      
+      // Разрешаем комбинации с Ctrl/Cmd (копирование, вставка и т.д.)
+      if (e.ctrlKey || e.metaKey || allowedKeys.includes(e.key)) {
+        return
+      }
+      
+      // Проверяем вводимый символ
+      const char = e.key
+      if (char && char.length === 1 && !/[a-zA-Zа-яА-ЯёЁ0-9\s.,\-_():;]/.test(char)) {
+        e.preventDefault()
+      }
+    }
+  }
+
+  // Обработчик для предотвращения вставки недопустимых символов
+  const handlePaste = (e) => {
+    const { name, selectionStart, selectionEnd, value } = e.target
+    if (name === 'title' || name === 'description') {
+      e.preventDefault()
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+      const filteredText = filterAllowedCharacters(pastedText)
+      // Вставляем отфильтрованный текст в позицию курсора
+      const newValue = value.substring(0, selectionStart) + filteredText + value.substring(selectionEnd)
+      setFormState(prev => ({ ...prev, [name]: newValue }))
+      // Восстанавливаем позицию курсора после обновления состояния
+      setTimeout(() => {
+        const input = e.target
+        const newCursorPos = selectionStart + filteredText.length
+        input.setSelectionRange(newCursorPos, newCursorPos)
+      }, 0)
+    }
   }
 
   const handleZipFileChange = (e) => {
@@ -185,6 +242,8 @@ export default function ModelUploadForm() {
             placeholder="Введите название модели"
             value={formState.title}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             maxLength={50}
             required
@@ -310,6 +369,8 @@ export default function ModelUploadForm() {
               placeholder="Добавьте описание модели"
               value={formState.description}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               rows={4}
               maxLength={1000}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
