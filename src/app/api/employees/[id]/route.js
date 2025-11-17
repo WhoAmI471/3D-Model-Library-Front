@@ -15,7 +15,7 @@ export async function GET(request, { params }) {
       )
     }
     
-    const { id } = params // Убрали await перед params
+    const { id } = await params
     
     if (!id) {
       return NextResponse.json(
@@ -85,7 +85,7 @@ export async function PUT(request, { params }) {
       name,
       email,
       role,
-      permissions
+      permissions: permissions || [] // Убеждаемся, что permissions всегда массив
     }
 
     // Если передан пароль, хешируем его

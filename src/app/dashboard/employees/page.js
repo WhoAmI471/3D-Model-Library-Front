@@ -209,8 +209,22 @@ export default function EmployeesPage() {
                       <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-3">
                           <button
-                            onClick={() => {
-                              setCurrentEmployee(employee)
+                            onClick={async () => {
+                              // Загружаем полные данные сотрудника для редактирования
+                              try {
+                                const response = await fetch(`/api/employees/${employee.id}`)
+                                if (response.ok) {
+                                  const fullEmployeeData = await response.json()
+                                  setCurrentEmployee(fullEmployeeData)
+                                } else {
+                                  // Если не удалось загрузить, используем данные из списка
+                                  setCurrentEmployee(employee)
+                                }
+                              } catch (error) {
+                                console.error('Ошибка загрузки данных сотрудника:', error)
+                                // В случае ошибки используем данные из списка
+                                setCurrentEmployee(employee)
+                              }
                               setShowAddForm(true)
                             }}
                             className="text-blue-600 hover:text-blue-900"
