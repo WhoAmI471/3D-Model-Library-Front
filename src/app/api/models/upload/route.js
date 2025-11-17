@@ -16,7 +16,11 @@ export async function POST(request) {
     const zipFile = formData.get('zipFile')
     const title = formData.get('title') || ''
     const description = formData.get('description') || ''
-    const authorId = formData.get('authorId') || null
+    let authorId = formData.get('authorId') || null
+    // Обрабатываем специальные значения: "UNKNOWN" и "EXTERNAL" как null
+    if (authorId === 'UNKNOWN' || authorId === 'EXTERNAL' || authorId === '') {
+      authorId = null
+    }
     const projectId = formData.get('projectId') || null
     const sphere = formData.get('sphere') || ''
     const version = formData.get('version') || '1.0'

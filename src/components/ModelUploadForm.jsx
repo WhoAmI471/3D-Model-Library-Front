@@ -8,6 +8,7 @@ export default function ModelUploadForm() {
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
   const [selectedProjects, setSelectedProjects] = useState([])
+  const [currentUser, setCurrentUser] = useState(null)
   const [formState, setFormState] = useState({
     title: '',
     description: '',
@@ -31,20 +32,41 @@ export default function ModelUploadForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, projectsRes] = await Promise.all([
+        const [usersRes, projectsRes, currentUserRes] = await Promise.all([
           fetch('/api/users'),
-          fetch('/api/projects')
+          fetch('/api/projects'),
+          fetch('/api/auth/me')
         ])
         
         const usersData = await usersRes.json()
         const projectsData = await projectsRes.json()
+        const currentUserData = await currentUserRes.json()
         
-        setUsers(Array.isArray(usersData) ? usersData : [])
+        const usersList = Array.isArray(usersData) ? usersData : []
+        const user = currentUserData?.user || null
+        
+        setUsers(usersList)
         setProjects(Array.isArray(projectsData) ? projectsData : [])
+        setCurrentUser(user)
+        
+        // Устанавливаем текущего пользователя по умолчанию, если автор еще не выбран
+        if (user) {
+          setFormState(prev => {
+            // Устанавливаем только если автор еще не выбран
+            if (!prev.authorId) {
+              return {
+                ...prev,
+                authorId: user.id
+              }
+            }
+            return prev
+          })
+        }
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
         setUsers([])
         setProjects([])
+        setCurrentUser(null)
       }
     }
     
@@ -203,13 +225,17 @@ export default function ModelUploadForm() {
           title: '',
           description: '',
           projectId: '',
-          authorId: '',
+          authorId: currentUser ? currentUser.id : 'UNKNOWN', // Устанавливаем текущего пользователя по умолчанию
           version: '1.0',
           sphere: '',
           zipFile: null,
           screenshots: []
         });
         setSelectedProjects([]);
+        // Очищаем input файла
+        if (zipFileInputRef.current) {
+          zipFileInputRef.current.value = ''
+        }
       } else {
         throw new Error(result.error || 'Ошибка при сохранении модели');
       }
@@ -384,16 +410,21 @@ export default function ModelUploadForm() {
             </label>
             <select
               name="authorId"
-              value={formState.authorId}
+              value={formState.authorId || (currentUser ? currentUser.id : 'UNKNOWN')}
               onChange={handleChange}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              required
             >
-              <option value="">Выберите автора</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
+              {/* Текущий пользователь (Я) - по умолчанию */}
+              {currentUser && (
+                <option value={currentUser.id}>
+                  {currentUser.name} (Я)
                 </option>
-              ))}
+              )}
+              {/* Неизвестно */}
+              <option value="UNKNOWN">Неизвестно</option>
+              {/* Сторонняя модель */}
+              <option value="EXTERNAL">Сторонняя модель</option>
             </select>
           </div>
 
