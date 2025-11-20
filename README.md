@@ -1,52 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 3D Model Library Front
 
-## Getting Started
-
-First, run the development server:
+## Быстрый старт
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install                              # Установка зависимостей проекта
+docker-compose up -d                     # Запуск Docker контейнеров (PostgreSQL, Nextcloud, MariaDB)
+docker-compose ps                        # Проверка статуса контейнеров
+npx prisma migrate deploy                # Применение миграций базы данных
+node Prisma/scripts/seed-admin.js       # Создание администратора с всеми правами
+npm run dev                              # Запуск Next.js приложения в режиме разработки
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Docker
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## Configuration
-
-Before running the project, copy `.env.example` to `.env` and fill in your own
-values. The following variables are required:
-
-```text
-DATABASE_URL=postgres connection string
-NEXTCLOUD_URL=https://your-nextcloud-instance
-NEXTCLOUD_ADMIN_USER=your-admin
-NEXTCLOUD_ADMIN_PASSWORD=your-password
-JWT_SECRET=random-secret
+```bash
+docker-compose up -d                     # Запустить контейнеры в фоновом режиме
+docker-compose down                      # Остановить и удалить контейнеры
+docker-compose logs -f                   # Просмотр логов всех контейнеров
+docker-compose logs -f nextcloud         # Просмотр логов Nextcloud
+docker-compose logs -f postgres          # Просмотр логов PostgreSQL
+docker-compose restart                   # Перезапустить все контейнеры
+docker-compose down -v                   # Остановить контейнеры и удалить volumes (удалит данные!)
 ```
 
-The Nextcloud variables are mandatory because all file operations are performed
-via your Nextcloud server.
+## Prisma
+
+```bash
+npx prisma migrate deploy                # Применить миграции (для продакшена)
+npx prisma migrate dev                   # Создать и применить новую миграцию (для разработки)
+npx prisma studio                        # Открыть Prisma Studio (GUI для просмотра БД)
+node Prisma/scripts/seed-admin.js       # Создать администратора с всеми permissions
+```
+
+## Next.js
+
+```bash
+npm run dev                              # Запуск в режиме разработки (http://localhost:3000)
+npm run build                            # Сборка проекта для продакшена
+npm run start                            # Запуск продакшен версии
+npm run lint                             # Проверка кода линтером
+```
+
+## Проверка портов
+
+```bash
+netstat -ano | findstr ":8080 :5432"    # Проверить, заняты ли порты 8080 и 5432
+```
