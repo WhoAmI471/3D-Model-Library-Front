@@ -1,10 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-// db/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -15,38 +8,38 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role
-  permissions String[] // Добавляем массив строк для кастомных прав
-  createdAt DateTime @default(now())
-  models    Model[]  @relation("UserModels")
-  logs      Log[]
-  markedModels  Model[] @relation("MarkedForDeletion")
-  deletedLogs   DeletedModelLog[] @relation("UserDeletedLogs")
+  id           String            @id @default(uuid())
+  name         String
+  email        String            @unique
+  password     String
+  role         Role
+  createdAt    DateTime          @default(now())
+  permissions  String[]
+  deletedLogs  DeletedModelLog[] @relation("UserDeletedLogs")
+  logs         Log[]
+  models       Model[]           @relation("UserModels")
+  markedModels Model[]           @relation("MarkedForDeletion")
 }
 
 model Model {
-  id          String    @id @default(uuid())
-  title       String
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  fileUrl     String
-  images      String[]  @default([])
-  authorId    String?
-  author      User?     @relation("UserModels", fields: [authorId], references: [id])
-  sphere      Sphere?
-  logs        Log[]
-  versions    ModelVersion[]
-  markedForDeletion Boolean @default(false)
-  markedById  String?
-  markedBy    User?     @relation("MarkedForDeletion", fields: [markedById], references: [id])
-  markedAt    DateTime?
-  deletionComment String?
-  projects    Project[] @relation("ModelProjects") // Многие-ко-многим
+  id                String         @id @default(uuid())
+  title             String
+  description       String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  fileUrl           String
+  images            String[]       @default([])
+  authorId          String?
+  sphere            Sphere?
+  markedForDeletion Boolean        @default(false)
+  markedById        String?
+  markedAt          DateTime?
+  deletionComment   String?
+  logs              Log[]
+  author            User?          @relation("UserModels", fields: [authorId], references: [id])
+  markedBy          User?          @relation("MarkedForDeletion", fields: [markedById], references: [id])
+  versions          ModelVersion[]
+  projects          Project[]      @relation("ModelProjects")
 }
 
 model ModelVersion {
@@ -62,18 +55,18 @@ model ModelVersion {
 model Project {
   id        String   @id @default(uuid())
   name      String
-  models    Model[]  @relation("ModelProjects") // Многие-ко-многим
   createdAt DateTime @default(now())
+  models    Model[]  @relation("ModelProjects")
 }
 
 model Log {
   id        String   @id @default(uuid())
   action    String
   modelId   String?
-  model     Model?   @relation(fields: [modelId], references: [id])
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+  model     Model?   @relation(fields: [modelId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
 }
 
 model DeletedModelLog {
@@ -81,14 +74,13 @@ model DeletedModelLog {
   action    String
   modelId   String?
   userId    String?
-  user      User?    @relation("UserDeletedLogs", fields: [userId], references: [id])
   createdAt DateTime @default(now())
   deletedAt DateTime @default(now())
+  user      User?    @relation("UserDeletedLogs", fields: [userId], references: [id])
 }
 
 enum Role {
   ADMIN
-  // LEAD
   ARTIST
   PROGRAMMER
   MANAGER
