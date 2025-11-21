@@ -58,10 +58,16 @@ export async function POST(request) {
     }
 
     // Подготовка данных для обновления
+    let authorId = formData.get('authorId') || existingModel.authorId
+    // Обрабатываем специальные значения: "UNKNOWN" и "EXTERNAL" как null
+    if (authorId === 'UNKNOWN' || authorId === 'EXTERNAL' || authorId === '') {
+      authorId = null
+    }
+    
     const updateData = {
       title: formData.get('title') || existingModel.title,
       description: formData.get('description') || existingModel.description,
-      authorId: formData.get('authorId') || existingModel.authorId,
+      authorId: authorId,
       sphere: formData.get('sphere') || existingModel.sphere
     }
 
@@ -130,9 +136,27 @@ export async function POST(request) {
 
     // Обработка ZIP-файла
     const zipFile = formData.get('zipFile')
-    if (zipFile && zipFile.size > 0) {
+    const deleteZipFile = formData.get('deleteZipFile')
+    
+    if (deleteZipFile === 'true') {
+      // Удаляем существующий ZIP-файл
       if (existingModel.fileUrl) {
         await deleteFile(existingModel.fileUrl)
+        updateData.fileUrl = null
+        changes.push('Удалён файл модели')
+      }
+    } else if (zipFile && zipFile.size > 0) {
+      // Заменяем или добавляем новый ZIP-файл
+      if (existingModel.fileUrl) {
+        await deleteFile(existingModel.fileUrl)
+      }
+      // Проверка расширения файла - только .zip
+      const fileName = zipFile.name || ''
+      if (!fileName.toLowerCase().endsWith('.zip')) {
+        return NextResponse.json(
+          { error: 'Можно загружать только .zip файлы!' },
+          { status: 400 }
+        )
       }
       updateData.fileUrl = await saveModelFile(zipFile, updateData.title, version || 'current')
       changes.push('Обновлён файл модели')

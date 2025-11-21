@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: 3dmodel_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: qwerty
+      POSTGRES_DB: 3d_library
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nextcloud_db:
+    image: mariadb:10.6
+    container_name: nextcloud_db
+    environment:
+      MYSQL_ROOT_PASSWORD: dbrootpass
+      MYSQL_PASSWORD: dbpass
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+    volumes:
+      - nextcloud_db_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud-1
+    ports:
+      - "8080:80"
+    environment:
+      - NEXTCLOUD_ADMIN_USER=admin
+      - NEXTCLOUD_ADMIN_PASSWORD=yourpassword
+      - MYSQL_HOST=nextcloud_db
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=dbpass
+    volumes:
+      - nextcloud_data:/var/www/html
+    restart: unless-stopped
+    depends_on:
+      nextcloud_db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  nextcloud_data:
+  nextcloud_db_data:
+
