@@ -5,8 +5,6 @@ import axios from 'axios'
 import { getUserFromSession } from '@/lib/auth'
 import { logModelAction } from '@/lib/logger'
 
-export const dynamic = 'force-dynamic'
-
 export const handleDeleteRequest = async (modelId, immediate) => {
   'use server'
   try {
