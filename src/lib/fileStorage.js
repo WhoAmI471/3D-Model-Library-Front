@@ -30,7 +30,7 @@ export async function saveFile(file, subfolder = 'models') {
     const fileName = `${uuidv4()}${fileExt}`;
 
     if (!nextcloud) {
-      throw new Error('Nextcloud configuration is missing');
+      throw new Error('Конфигурация Nextcloud не найдена. Проверьте переменные окружения NEXTCLOUD_URL, NEXTCLOUD_ADMIN_USER, NEXTCLOUD_ADMIN_PASSWORD');
     }
 
     const { url, username, password } = nextcloud;
@@ -39,17 +39,35 @@ export async function saveFile(file, subfolder = 'models') {
 
     const uploadUrl = `${folderUrl}/${fileName}`;
     const buffer = Buffer.from(await file.arrayBuffer());
-    await axios.put(uploadUrl, buffer, {
-      auth: { username, password },
-      headers: {
-        'OCS-APIRequest': 'true',
-        'Content-Type': file.type || 'application/octet-stream'
+    try {
+      await axios.put(uploadUrl, buffer, {
+        auth: { username, password },
+        headers: {
+          'OCS-APIRequest': 'true',
+          'Content-Type': file.type || 'application/octet-stream'
+        },
+        timeout: 60000 // 60 секунд для загрузки файла
+      });
+    } catch (uploadErr) {
+      // Ошибка подключения при загрузке файла
+      if (uploadErr.code === 'ECONNREFUSED' || uploadErr.code === 'ETIMEDOUT' || uploadErr.code === 'ENOTFOUND') {
+        throw new Error(`Не удается подключиться к Nextcloud по адресу ${url}. Убедитесь, что Nextcloud запущен и доступен.`);
       }
-    });
+      // Ошибка аутентификации
+      if (uploadErr.response?.status === 401 || uploadErr.response?.status === 403) {
+        throw new Error('Ошибка аутентификации в Nextcloud. Проверьте учетные данные.');
+      }
+      throw uploadErr;
+    }
     return uploadUrl;
   } catch (err) {
     console.error('File save error:', err);
-    throw err;
+    // Если ошибка уже содержит понятное сообщение, пробрасываем как есть
+    if (err.message && (err.message.includes('Nextcloud') || err.message.includes('конфигурация'))) {
+      throw err;
+    }
+    // Иначе создаем понятное сообщение
+    throw new Error(`Ошибка при сохранении файла: ${err.message || 'Неизвестная ошибка'}`);
   }
 }
 

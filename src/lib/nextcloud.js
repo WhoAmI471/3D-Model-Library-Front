@@ -16,7 +16,9 @@ export function sanitizeName(name) {
 
 export async function createFolderRecursive(folder) {
   const cfg = getConfig()
-  if (!cfg) return
+  if (!cfg) {
+    throw new Error('Конфигурация Nextcloud не найдена. Проверьте переменные окружения NEXTCLOUD_URL, NEXTCLOUD_ADMIN_USER, NEXTCLOUD_ADMIN_PASSWORD')
+  }
   const { url, username, password } = cfg
   const parts = folder.split('/')
   let current = ''
@@ -28,10 +30,20 @@ export async function createFolderRecursive(folder) {
         method: 'MKCOL',
         url: folderUrl,
         auth: { username, password },
-        headers: { 'OCS-APIRequest': 'true' }
+        headers: { 'OCS-APIRequest': 'true' },
+        timeout: 10000 // 10 секунд таймаут
       })
     } catch (err) {
-      if (err.response?.status !== 405 && err.response?.status !== 409) throw err
+      // 405 - Method Not Allowed (папка уже существует)
+      // 409 - Conflict (папка уже существует)
+      if (err.response?.status === 405 || err.response?.status === 409) {
+        continue
+      }
+      // Ошибка подключения
+      if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND') {
+        throw new Error(`Не удается подключиться к Nextcloud по адресу ${url}. Убедитесь, что Nextcloud запущен и доступен.`)
+      }
+      throw err
     }
   }
 }
@@ -53,16 +65,27 @@ export async function deleteFolderRecursive(folder) {
 
 async function renameFolder(oldPath, newPath) {
   const cfg = getConfig()
-  if (!cfg) return
+  if (!cfg) {
+    throw new Error('Конфигурация Nextcloud не найдена. Проверьте переменные окружения NEXTCLOUD_URL, NEXTCLOUD_ADMIN_USER, NEXTCLOUD_ADMIN_PASSWORD')
+  }
   const { url, username, password } = cfg
   const source = `${url}/remote.php/dav/files/${username}/${oldPath}`
   const destination = `${url}/remote.php/dav/files/${username}/${newPath}`
-  await axios.request({
-    method: 'MOVE',
-    url: source,
-    auth: { username, password },
-    headers: { Destination: destination, Overwrite: 'T', 'OCS-APIRequest': 'true' }
-  })
+  try {
+    await axios.request({
+      method: 'MOVE',
+      url: source,
+      auth: { username, password },
+      headers: { Destination: destination, Overwrite: 'T', 'OCS-APIRequest': 'true' },
+      timeout: 10000 // 10 секунд таймаут
+    })
+  } catch (err) {
+    // Ошибка подключения
+    if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND') {
+      throw new Error(`Не удается подключиться к Nextcloud по адресу ${url}. Убедитесь, что Nextcloud запущен и доступен.`)
+    }
+    throw err
+  }
 }
 
 async function getFileId(path) {
@@ -163,15 +186,30 @@ export async function syncModelFolder(model, oldTitle = null) {
   const prevFolder = oldTitle && sanitizeName(oldTitle) !== sanitizeName(model.title)
     ? `models/${sanitizeName(oldTitle)}`
     : null
-  if (prevFolder) {
-    await renameFolder(prevFolder, folder)
-  } else {
-    await createFolderRecursive(folder)
+  try {
+    if (prevFolder) {
+      await renameFolder(prevFolder, folder)
+    } else {
+      await createFolderRecursive(folder)
+    }
+  } catch (err) {
+    // Если ошибка подключения к Nextcloud, пробрасываем ее дальше
+    if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND' || err.message?.includes('Nextcloud')) {
+      throw err
+    }
+    // Для других ошибок просто логируем, но не прерываем выполнение
+    console.error('Failed to sync folder', folder, err)
   }
+  
   const tags = model.projects ? model.projects.map(p => p.name) : []
   try {
     await setTagsForPath(folder, tags)
   } catch (err) {
+    // Missing system tag app or incorrect path should not break upload
+    // Но ошибки подключения должны пробрасываться
+    if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND' || err.message?.includes('Nextcloud')) {
+      throw err
+    }
     console.error('Failed to set tags for folder', folder, err)
   }
   return folder

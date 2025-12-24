@@ -165,6 +165,32 @@ export async function POST(request) {
     // Обработка новых скриншотов
     const screenshots = formData.getAll('screenshots')
     if (screenshots.length > 0) {
+      // Проверка типа файлов для скриншотов
+      const isValidImageFile = (file) => {
+        if (!file || typeof file.arrayBuffer !== 'function') return false
+        
+        // Проверка MIME типа
+        const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
+        if (!validMimeTypes.includes(file.type?.toLowerCase())) {
+          return false
+        }
+        
+        // Проверка расширения файла
+        const fileName = (file.name || '').toLowerCase()
+        const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+        return validExtensions.some(ext => fileName.endsWith(ext))
+      }
+
+      // Проверяем все файлы перед обработкой
+      for (const file of screenshots) {
+        if (!isValidImageFile(file)) {
+          return NextResponse.json(
+            { error: `Файл "${file.name || 'неизвестный'}" не является изображением. Разрешены только: JPG, PNG, GIF, WEBP, BMP` },
+            { status: 400 }
+          )
+        }
+      }
+
       const newScreenshots = await Promise.all(
         screenshots.map(file => saveModelFile(file, updateData.title, version || 'current', true))
       )
@@ -221,8 +247,24 @@ export async function POST(request) {
 
   } catch (err) {
     console.error('[Ошибка обновления модели]', err)
+    
+    // Определяем понятное сообщение об ошибке
+    let errorMessage = 'Ошибка при обновлении модели'
+    
+    if (err.message) {
+      if (err.message.includes('Nextcloud') || err.message.includes('конфигурация')) {
+        errorMessage = err.message
+      } else if (err.message.includes('подключиться')) {
+        errorMessage = err.message
+      } else if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND') {
+        errorMessage = 'Не удается подключиться к серверу хранения файлов (Nextcloud). Убедитесь, что сервис запущен.'
+      } else {
+        errorMessage = err.message || 'Ошибка сервера'
+      }
+    }
+    
     return NextResponse.json(
-      { error: err.message || 'Ошибка сервера' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

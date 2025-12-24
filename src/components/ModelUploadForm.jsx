@@ -158,16 +158,51 @@ export default function ModelUploadForm() {
     }
   }
 
+  const isValidImageFile = (file) => {
+    // Проверка MIME типа
+    const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
+    if (!validMimeTypes.includes(file.type.toLowerCase())) {
+      return false
+    }
+    
+    // Проверка расширения файла
+    const fileName = file.name.toLowerCase()
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+    const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext))
+    
+    return hasValidExtension
+  }
+
   const handleScreenshotAdd = (e) => {
     const files = Array.from(e.target.files)
     if (files.length > 0) {
-      setFormState(prev => ({
-        ...prev,
-        screenshots: [...prev.screenshots, ...files.map(file => ({
-          file,
-          preview: URL.createObjectURL(file)
-        }))]
-      }))
+      const validFiles = []
+      const invalidFiles = []
+      
+      files.forEach(file => {
+        if (isValidImageFile(file)) {
+          validFiles.push(file)
+        } else {
+          invalidFiles.push(file.name)
+        }
+      })
+      
+      if (invalidFiles.length > 0) {
+        alert(`Следующие файлы не являются изображениями и не будут добавлены:\n${invalidFiles.join('\n')}\n\nРазрешены только изображения: JPG, PNG, GIF, WEBP, BMP`)
+      }
+      
+      if (validFiles.length > 0) {
+        setFormState(prev => ({
+          ...prev,
+          screenshots: [...prev.screenshots, ...validFiles.map(file => ({
+            file,
+            preview: URL.createObjectURL(file)
+          }))]
+        }))
+      }
+      
+      // Очищаем input, чтобы можно было выбрать тот же файл снова
+      e.target.value = ''
     }
   }
 

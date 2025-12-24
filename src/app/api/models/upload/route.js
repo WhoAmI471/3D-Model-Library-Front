@@ -54,9 +54,32 @@ export async function POST(request) {
 
     const fileUrl = await saveModelFile(zipFile, title, version)
 
+    // Проверка типа файлов для скриншотов
+    const isValidImageFile = (file) => {
+      if (!file || typeof file.arrayBuffer !== 'function') return false
+      
+      // Проверка MIME типа
+      const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
+      if (!validMimeTypes.includes(file.type?.toLowerCase())) {
+        return false
+      }
+      
+      // Проверка расширения файла
+      const fileName = (file.name || '').toLowerCase()
+      const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+      return validExtensions.some(ext => fileName.endsWith(ext))
+    }
+
     const imageUrls = []
     for (const file of screenshots) {
-      if (!file || typeof file.arrayBuffer !== 'function') continue
+      if (!isValidImageFile(file)) {
+        return new Response(JSON.stringify({ 
+          error: `Файл "${file.name || 'неизвестный'}" не является изображением. Разрешены только: JPG, PNG, GIF, WEBP, BMP` 
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
       const url = await saveModelFile(file, title, version, true)
       imageUrls.push(url)
     }
@@ -106,7 +129,23 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Ошибка загрузки модели:', error)
-    return new Response(JSON.stringify({ error: 'Ошибка сервера' }), {
+    
+    // Определяем понятное сообщение об ошибке
+    let errorMessage = 'Ошибка при загрузке модели'
+    
+    if (error.message) {
+      if (error.message.includes('Nextcloud') || error.message.includes('конфигурация')) {
+        errorMessage = error.message
+      } else if (error.message.includes('подключиться')) {
+        errorMessage = error.message
+      } else if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
+        errorMessage = 'Не удается подключиться к серверу хранения файлов (Nextcloud). Убедитесь, что сервис запущен.'
+      } else {
+        errorMessage = `Ошибка при загрузке модели: ${error.message}`
+      }
+    }
+    
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })
