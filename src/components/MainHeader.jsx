@@ -1,12 +1,24 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
 
 export default function MainHeader() {
   const router = useRouter()
+  const pathname = usePathname()
   const [user, setUser] = useState(null)
+
+  const getSectionName = () => {
+    if (pathname === '/dashboard') return 'Модели'
+    if (pathname === '/dashboard/projects') return 'Проекты'
+    if (pathname === '/dashboard/employees') return 'Сотрудники'
+    if (pathname === '/dashboard/logs') return 'Логи'
+    if (pathname === '/dashboard/deletion-requests') return 'Удаление моделей'
+    if (pathname?.startsWith('/dashboard/models')) return 'Модели'
+    if (pathname?.startsWith('/dashboard/projects')) return 'Проекты'
+    return ''
+  }
 
   const loadUser = async () => {
     try {
@@ -30,9 +42,15 @@ export default function MainHeader() {
   return (
     <header className="h-16 bg-white border-b border-gray-200">
       <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Логотип */}
-        <div className="flex items-center">
+        {/* Логотип и активный раздел */}
+        <div className="flex items-center gap-3">
           <span className="text-lg font-semibold text-gray-900">3D-Library</span>
+          {getSectionName() && (
+            <>
+              <span className="text-gray-300">|</span>
+              <span className="text-sm font-medium text-gray-600">{getSectionName()}</span>
+            </>
+          )}
         </div>
 
         {/* Пользователь и выход */}
