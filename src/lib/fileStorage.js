@@ -76,6 +76,12 @@ export async function saveModelFile(file, modelTitle, version, isScreenshot = fa
   return saveFile(file, folder)
 }
 
+export async function saveProjectImage(file, projectName) {
+  const folderName = sanitizeName(projectName)
+  const folder = `projects/${folderName}`
+  return saveFile(file, folder)
+}
+
 export async function deleteFile(filePath) {
   const nextcloud = getNextcloudConfig()
   if (!nextcloud) {

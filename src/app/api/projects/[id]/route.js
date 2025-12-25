@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { syncModelFolder } from '@/lib/nextcloud'
 import { getUserFromSession } from '@/lib/auth'
 import { logProjectAction } from '@/lib/logger'
+import { saveProjectImage, deleteFile } from '@/lib/fileStorage'
 
 
 export async function GET(request, { params }) {
@@ -40,8 +41,26 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const { id } = await params // Получаем id из параметров маршрута
-    const { name, city, modelIds } = await request.json()
     const user = await getUserFromSession()
+    const contentType = request.headers.get('content-type') || ''
+    
+    let name, city, modelIds = [], imageFile = null, deleteImage = false
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Обработка FormData
+      const formData = await request.formData()
+      name = formData.get('name')
+      city = formData.get('city')
+      modelIds = formData.getAll('modelIds') || []
+      imageFile = formData.get('image')
+      deleteImage = formData.get('deleteImage') === 'true'
+    } else {
+      // Обработка JSON
+      const data = await request.json()
+      name = data.name
+      city = data.city
+      modelIds = data.modelIds || []
+    }
 
     if (!id) {
       return NextResponse.json(
@@ -112,12 +131,38 @@ export async function PUT(request, { params }) {
       changes.push(`Модели: "${currentNames}" → "${newNames}"`)
     }
 
+    // Обработка изображения
+    let imageUrl = existingProject.imageUrl
+    if (deleteImage) {
+      if (existingProject.imageUrl) {
+        await deleteFile(existingProject.imageUrl)
+      }
+      imageUrl = null
+      changes.push('Удалено изображение проекта')
+    } else if (imageFile && typeof imageFile.arrayBuffer === 'function') {
+      // Проверка типа файла
+      const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
+      if (!validMimeTypes.includes(imageFile.type?.toLowerCase())) {
+        return NextResponse.json(
+          { error: 'Разрешены только изображения: JPG, PNG, GIF, WEBP, BMP' },
+          { status: 400 }
+        )
+      }
+      // Удаляем старое изображение, если оно есть
+      if (existingProject.imageUrl) {
+        await deleteFile(existingProject.imageUrl)
+      }
+      imageUrl = await saveProjectImage(imageFile, name)
+      changes.push('Обновлено изображение проекта')
+    }
+
     // Обновляем проект и его связи с моделями
   const updatedProject = await prisma.project.update({
     where: { id },
     data: {
       name,
       city: cityValue,
+      imageUrl,
       models: {
         set: modelIds.map(modelId => ({ id: modelId }))
       }

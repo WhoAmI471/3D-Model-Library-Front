@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { syncModelFolder } from '@/lib/nextcloud'
 import { getUserFromSession } from '@/lib/auth'
 import { logProjectAction } from '@/lib/logger'
+import { saveProjectImage, deleteFile } from '@/lib/fileStorage'
 
 export async function GET() {
   try {
@@ -30,8 +31,25 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { name, city, modelIds = [] } = await request.json()
     const user = await getUserFromSession()
+    const contentType = request.headers.get('content-type') || ''
+    
+    let name, city, modelIds = [], imageFile = null
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Обработка FormData
+      const formData = await request.formData()
+      name = formData.get('name')
+      city = formData.get('city')
+      modelIds = formData.getAll('modelIds') || []
+      imageFile = formData.get('image')
+    } else {
+      // Обработка JSON
+      const data = await request.json()
+      name = data.name
+      city = data.city
+      modelIds = data.modelIds || []
+    }
     
     // Валидация
     if (!name || name.trim() === '') {
@@ -58,11 +76,26 @@ export async function POST(request) {
       )
     }
 
+    // Обработка изображения
+    let imageUrl = null
+    if (imageFile && typeof imageFile.arrayBuffer === 'function') {
+      // Проверка типа файла
+      const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
+      if (!validMimeTypes.includes(imageFile.type?.toLowerCase())) {
+        return NextResponse.json(
+          { error: 'Разрешены только изображения: JPG, PNG, GIF, WEBP, BMP' },
+          { status: 400 }
+        )
+      }
+      imageUrl = await saveProjectImage(imageFile, name)
+    }
+
     // Создание проекта с привязкой моделей
     const newProject = await prisma.project.create({
       data: {
         name,
         city: city?.trim() || null,
+        imageUrl,
         models: {
           connect: modelIds.map(id => ({ id }))
         }

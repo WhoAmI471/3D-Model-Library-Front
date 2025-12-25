@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
+import { proxyUrl } from '@/lib/utils'
 
 
 export default function ProjectForm({ project, onSubmit, onCancel }) {
@@ -15,6 +16,8 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [models, setModels] = useState([])
   const [isLoadingModels, setIsLoadingModels] = useState(false)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   
   const [previewModel, setPreviewModel] = useState(null)
   const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
@@ -48,6 +51,20 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
         city: project.city || '',
         modelIds: project.models?.map(model => model.id) || []
       })
+      if (project.imageUrl) {
+        setImagePreview(project.imageUrl)
+      } else {
+        setImagePreview(null)
+      }
+      setImageFile(null)
+    } else {
+      setFormData({
+        name: '',
+        city: '',
+        modelIds: []
+      })
+      setImagePreview(null)
+      setImageFile(null)
     }
   }, [project])
 
@@ -184,13 +201,39 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     }
   }, [autoPlayInterval])
 
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Проверка типа файла
+      const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
+      if (!validMimeTypes.includes(file.type?.toLowerCase())) {
+        setErrors(prev => ({ ...prev, image: 'Разрешены только изображения: JPG, PNG, GIF, WEBP, BMP' }))
+        return
+      }
+      
+      setImageFile(file)
+      setImagePreview(URL.createObjectURL(file))
+      if (errors.image) {
+        setErrors(prev => ({ ...prev, image: '' }))
+      }
+    }
+  }
+
+  const handleRemoveImage = () => {
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview)
+    }
+    setImageFile(null)
+    setImagePreview(null)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) return
     
     setIsSubmitting(true)
     try {
-      await onSubmit(formData)
+      await onSubmit({ ...formData, imageFile, deleteImage: !imageFile && !imagePreview })
     } catch (error) {
       setErrors({
         form: error.message || 'Произошла ошибка при сохранении'
@@ -248,6 +291,53 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             />
             {errors.city && (
               <p className="mt-1 text-sm text-red-600">{errors.city}</p>
+            )}
+          </div>
+          <div onMouseLeave={handleMouseLeave}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Изображение проекта
+            </label>
+            {imagePreview ? (
+              <div className="relative">
+                <img 
+                  src={imagePreview.startsWith('blob:') ? imagePreview : proxyUrl(imagePreview)} 
+                  alt="Превью изображения проекта" 
+                  className="w-full h-48 object-cover rounded-md border border-gray-300"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  disabled={isSubmitting}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  id="project-image-upload"
+                  disabled={isSubmitting}
+                />
+                <label
+                  htmlFor="project-image-upload"
+                  className="cursor-pointer text-sm text-gray-600 hover:text-blue-600"
+                >
+                  <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>Нажмите для загрузки изображения</span>
+                </label>
+              </div>
+            )}
+            {errors.image && (
+              <p className="mt-1 text-sm text-red-600">{errors.image}</p>
             )}
           </div>
           <input
