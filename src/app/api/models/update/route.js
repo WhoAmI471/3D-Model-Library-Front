@@ -29,7 +29,8 @@ export async function POST(request) {
       where: { id: String(id) },
       include: {
         projects: true,
-        author: true
+        author: true,
+        sphere: true
       }
     })
 
@@ -67,8 +68,7 @@ export async function POST(request) {
     const updateData = {
       title: formData.get('title') || existingModel.title,
       description: formData.get('description') || existingModel.description,
-      authorId: authorId,
-      sphere: formData.get('sphere') || existingModel.sphere
+      authorId: authorId
     }
 
     // Собираем информацию об изменениях для лога
@@ -130,8 +130,27 @@ export async function POST(request) {
       )
     }
     
-    if (updateData.sphere !== existingModel.sphere) {
-      changes.push(`Сфера: "${existingModel.sphere}" → "${updateData.sphere}"`)
+    // Обработка изменения сферы
+    const newSphereId = formData.get('sphereId') || null
+    if (newSphereId !== existingModel.sphereId) {
+      let oldSphereName = 'Не указана'
+      let newSphereName = 'Не указана'
+      
+      if (existingModel.sphere) {
+        oldSphereName = existingModel.sphere.name
+      }
+      
+      if (newSphereId) {
+        const newSphere = await prisma.sphere.findUnique({
+          where: { id: newSphereId }
+        })
+        if (newSphere) {
+          newSphereName = newSphere.name
+        }
+      }
+      
+      changes.push(`Сфера: "${oldSphereName}" → "${newSphereName}"`)
+      updateData.sphereId = newSphereId
     }
 
     // Обработка ZIP-файла
@@ -213,7 +232,8 @@ export async function POST(request) {
     data: updateData,
     include: {
       projects: true,
-      author: true
+      author: true,
+      sphere: true
     }
   })
 

@@ -9,6 +9,7 @@ export default function ModelUploadForm() {
   const [uploadComplete, setUploadComplete] = useState(false)
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
+  const [spheres, setSpheres] = useState([])
   const [selectedProjects, setSelectedProjects] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
   const [formState, setFormState] = useState({
@@ -17,7 +18,7 @@ export default function ModelUploadForm() {
     projectId: '',
     authorId: '',
     version: '1.0',
-    sphere: '',
+    sphereId: '',
     zipFile: null,
     screenshots: []
   })
@@ -34,14 +35,16 @@ export default function ModelUploadForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, projectsRes, currentUserRes] = await Promise.all([
+        const [usersRes, projectsRes, spheresRes, currentUserRes] = await Promise.all([
           fetch('/api/users'),
           fetch('/api/projects'),
+          fetch('/api/spheres'),
           fetch('/api/auth/me')
         ])
         
         const usersData = await usersRes.json()
         const projectsData = await projectsRes.json()
+        const spheresData = await spheresRes.json()
         const currentUserData = await currentUserRes.json()
         
         const usersList = Array.isArray(usersData) ? usersData : []
@@ -49,6 +52,7 @@ export default function ModelUploadForm() {
         
         setUsers(usersList)
         setProjects(Array.isArray(projectsData) ? projectsData : [])
+        setSpheres(Array.isArray(spheresData) ? spheresData : [])
         setCurrentUser(user)
         
         // Устанавливаем текущего пользователя по умолчанию, если автор еще не выбран
@@ -68,6 +72,7 @@ export default function ModelUploadForm() {
         console.error('Ошибка загрузки данных:', error)
         setUsers([])
         setProjects([])
+        setSpheres([])
         setCurrentUser(null)
       }
     }
@@ -228,7 +233,7 @@ export default function ModelUploadForm() {
     e.preventDefault();
     
     // Проверка обязательных полей
-    if (!formState.title || !formState.sphere || !formState.zipFile || formState.screenshots.length < 2) {
+    if (!formState.title || !formState.sphereId || !formState.zipFile || formState.screenshots.length < 2) {
       alert('Пожалуйста, заполните все обязательные поля и добавьте минимум 2 скриншота');
       return;
     }
@@ -248,7 +253,7 @@ export default function ModelUploadForm() {
     formData.append('title', formState.title);
     formData.append('description', formState.description);
     formData.append('authorId', formState.authorId);
-    formData.append('sphere', formState.sphere);
+    formData.append('sphereId', formState.sphereId);
     formData.append('version', formState.version);
 
     selectedProjects.forEach(id => formData.append('projectIds', id));
@@ -280,7 +285,7 @@ export default function ModelUploadForm() {
                 projectId: '',
                 authorId: currentUser ? currentUser.id : 'UNKNOWN',
                 version: '1.0',
-                sphere: '',
+                sphereId: '',
                 zipFile: null,
                 screenshots: []
               });
@@ -517,18 +522,18 @@ export default function ModelUploadForm() {
               Сфера <span className="text-red-500">*</span>
             </label>
             <select
-              name="sphere"
-              value={formState.sphere}
+              name="sphereId"
+              value={formState.sphereId}
               onChange={handleChange}
               required
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Выберите сферу</option>
-              <option value="CONSTRUCTION">Строительство</option>
-              <option value="CHEMISTRY">Химия</option>
-              <option value="INDUSTRIAL">Промышленность</option>
-              <option value="MEDICAL">Медицина</option>
-              <option value="OTHER">Другое</option>
+              {spheres.map((sphere) => (
+                <option key={sphere.id} value={sphere.id}>
+                  {sphere.name}
+                </option>
+              ))}
             </select>
           </div>
 

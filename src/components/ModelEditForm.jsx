@@ -11,13 +11,14 @@ export default function ModelEditForm({ id, userRole }) {
     description: '',
     authorId: '',
     version: '',
-    sphere: '',
+    sphereId: '',
   })
   const [selectedProjects, setSelectedProjects] = useState([])
   const [zipFile, setZipFile] = useState(null)
   const [screenshots, setScreenshots] = useState([])
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
+  const [spheres, setSpheres] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -34,28 +35,34 @@ export default function ModelEditForm({ id, userRole }) {
   const [canEditDescription, setCanEditDescription] = useState(null);
 
   useEffect(() => {
-    
-    setCanEditModel(checkPermission(userRole, 'edit_models'))
-    setCanEditDescription(checkPermission(userRole, 'edit_model_description'))
-    console.log(userRole);
-  }, [userRole])
-
-  useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, projectsRes, currentUserRes] = await Promise.all([
+        const [usersRes, projectsRes, spheresRes, currentUserRes] = await Promise.all([
           fetch('/api/users'),
           fetch('/api/projects'),
+          fetch('/api/spheres'),
           fetch('/api/auth/me')
         ])
 
         const usersData = await usersRes.json()
         const projectsData = await projectsRes.json()
+        const spheresData = await spheresRes.json()
         const currentUserData = await currentUserRes.json()
         
         setUsers(Array.isArray(usersData) ? usersData : [])
         setProjects(Array.isArray(projectsData) ? projectsData : [])
-        setCurrentUser(currentUserData?.user || null)
+        setSpheres(Array.isArray(spheresData) ? spheresData : [])
+        const user = currentUserData?.user || null
+        setCurrentUser(user)
+        
+        // Устанавливаем права доступа на основе объекта пользователя
+        if (user) {
+          setCanEditModel(checkPermission(user, 'edit_models'))
+          setCanEditDescription(checkPermission(user, 'edit_model_description'))
+        } else {
+          setCanEditModel(false)
+          setCanEditDescription(false)
+        }
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
         setUsers([])
@@ -92,7 +99,7 @@ export default function ModelEditForm({ id, userRole }) {
           description: data.description || '',
           authorId: authorIdValue,
           version: '',
-          sphere: data.sphere || '',
+          sphereId: data.sphere?.id || '',
         })
         
         setSelectedProjects(data.projects?.map(p => p.id) || [])
@@ -213,49 +220,58 @@ export default function ModelEditForm({ id, userRole }) {
   setError(null)
 
   try {
-    // Проверка количества скриншотов: должно быть минимум 2
-    // Текущие скриншоты (которые останутся после удаления)
-    const remainingCurrentScreenshots = currentFiles.screenshots.filter(
-      screenshot => !deletedScreenshots.includes(screenshot)
-    )
-    // Новые скриншоты, которые будут добавлены
-    const newScreenshotsCount = screenshots.length
-    // Итоговое количество = оставшиеся текущие + новые
-    const totalScreenshots = remainingCurrentScreenshots.length + newScreenshotsCount
-    
-    if (totalScreenshots < 2) {
-      alert('Должно быть минимум 2 скриншота. Добавьте скриншоты или не удаляйте существующие.')
-      setIsLoading(false)
-      return
+    // Если можно редактировать только описание, проверяем только его
+    if (!canEditModel && canEditDescription) {
+      // Пропускаем проверки для других полей, так как их нет в форме
+    } else {
+      // Проверка количества скриншотов: должно быть минимум 2
+      // Текущие скриншоты (которые останутся после удаления)
+      const remainingCurrentScreenshots = currentFiles.screenshots.filter(
+        screenshot => !deletedScreenshots.includes(screenshot)
+      )
+      // Новые скриншоты, которые будут добавлены
+      const newScreenshotsCount = screenshots.length
+      // Итоговое количество = оставшиеся текущие + новые
+      const totalScreenshots = remainingCurrentScreenshots.length + newScreenshotsCount
+      
+      if (totalScreenshots < 2) {
+        alert('Должно быть минимум 2 скриншота. Добавьте скриншоты или не удаляйте существующие.')
+        setIsLoading(false)
+        return
+      }
     }
 
     const formData = new FormData()
-    
-    // Добавляем все поля формы
-    for (const key in form) {
-      formData.append(key, form[key])
-    }
-    
-    // Добавляем выбранные проекты
-    selectedProjects.forEach(projectId => {
-      formData.append('projectIds', projectId)
-    })
-    
     formData.append('id', id)
     
-    // Добавляем информацию об удаленных скриншотах
-    deletedScreenshots.forEach(url => {
-      formData.append('deletedScreenshots', url)
-    })
-    
-    // Добавляем информацию об удалении ZIP-файла, если он был удален
-    if (!currentFiles.zip && !zipFile && existingModel?.fileUrl) {
-      formData.append('deleteZipFile', 'true')
+    // Если можно редактировать только описание, отправляем только его
+    if (!canEditModel && canEditDescription) {
+      formData.append('description', form.description)
+    } else {
+      // Добавляем все поля формы
+      for (const key in form) {
+        formData.append(key, form[key])
+      }
+      
+      // Добавляем выбранные проекты
+      selectedProjects.forEach(projectId => {
+        formData.append('projectIds', projectId)
+      })
+      
+      // Добавляем информацию об удаленных скриншотах
+      deletedScreenshots.forEach(url => {
+        formData.append('deletedScreenshots', url)
+      })
+      
+      // Добавляем информацию об удалении ZIP-файла, если он был удален
+      if (!currentFiles.zip && !zipFile && existingModel?.fileUrl) {
+        formData.append('deleteZipFile', 'true')
+      }
+      
+      // Добавляем новые файлы, если они были выбраны
+      if (zipFile) formData.append('zipFile', zipFile)
+      screenshots.forEach(screenshot => formData.append('screenshots', screenshot))
     }
-    
-    // Добавляем новые файлы, если они были выбраны
-    if (zipFile) formData.append('zipFile', zipFile)
-    screenshots.forEach(screenshot => formData.append('screenshots', screenshot))
 
     const response = await fetch('/api/models/update', {
       method: 'POST',
@@ -307,38 +323,38 @@ export default function ModelEditForm({ id, userRole }) {
       <h1 className="text-2xl font-bold mb-6">Редактирование модели</h1>
       
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Название модели */}
-          <div className="col-span-2">
+        {canEditModel === true ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Название модели */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Название модели <span className="text-red-500">*</span>
+              </label>
+            <input
+              name="title"
+              value={form.title}
+              onChange={handleChange}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              required
+              maxLength={50}
+            />
+          </div>
+
+          {/* Версия */}
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Название модели <span className="text-red-500">*</span>
+              Версия
             </label>
-          <input
-            name="title"
-            value={form.title}
-            onChange={handleChange}
-            className={`block w-full px-3 py-2 border ${canEditModel ? 'border-gray-300' : 'border-gray-100 bg-gray-50'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-            required
-            maxLength={50}
-            disabled={canEditDescription}
-          />
-        </div>
+            <input
+              name="version"
+              value={form.version}
+              onChange={handleChange}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              maxLength={20}
+            />
+          </div>
 
-        {/* Версия */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Версия
-          </label>
-          <input
-            name="version"
-            value={form.version}
-            onChange={handleChange}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            maxLength={20}
-          />
-        </div>
-
-          {/* Текущие скриншоты */}
+            {/* Текущие скриншоты */}
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Текущие скриншоты
@@ -552,19 +568,19 @@ export default function ModelEditForm({ id, userRole }) {
               Сфера <span className="text-red-500">*</span>
             </label>
             <select
-              name="sphere"
-              value={form.sphere}
+              name="sphereId"
+              value={form.sphereId}
               onChange={handleChange}
               required
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               disabled={canEditDescription}
             >
               <option value="">Выберите сферу</option>
-              <option value="CONSTRUCTION">Строительство</option>
-              <option value="CHEMISTRY">Химия</option>
-              <option value="INDUSTRIAL">Промышленность</option>
-              <option value="MEDICAL">Медицина</option>
-              <option value="OTHER">Другое</option>
+              {spheres.map((sphere) => (
+                <option key={sphere.id} value={sphere.id}>
+                  {sphere.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -606,6 +622,29 @@ export default function ModelEditForm({ id, userRole }) {
             </div>
           </div>
         </div>
+        ) : canEditDescription === true ? (
+          /* Если можно редактировать только описание, показываем только его */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Описание */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Описание
+              </label>
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                rows={4}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                maxLength={1000}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 bg-yellow-100 border border-yellow-400 rounded-md">
+            <p className="text-yellow-800">Загрузка прав доступа...</p>
+          </div>
+        )}
 
         {error && (
           <div className="p-3 bg-red-100 text-red-700 rounded-md">

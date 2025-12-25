@@ -2,6 +2,9 @@ import Navigation from '@/components/Navigation'
 import MainHeader from '@/components/MainHeader'
 import { getUserFromSession } from '@/lib/auth'
 
+// Принудительно делаем layout динамическим, так как он использует cookies
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardLayout({ children }) {
   const user = await getUserFromSession()
   const role = user?.role || null

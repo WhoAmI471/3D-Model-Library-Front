@@ -27,6 +27,7 @@ export async function GET(request, { params }) {
       include: {
         author: true,
         projects: true,
+        sphere: true,
         versions: true,
         logs: {
           include: {

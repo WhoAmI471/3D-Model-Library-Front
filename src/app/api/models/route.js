@@ -59,6 +59,14 @@ export async function GET(request) {
         }
       }
     }
+    
+    // Всегда включаем sphere для удобства использования на фронтенде
+    include.sphere = {
+      select: {
+        id: true,
+        name: true
+      }
+    }
 
     const orderBy = markedForDeletion 
       ? { markedAt: 'desc' } 

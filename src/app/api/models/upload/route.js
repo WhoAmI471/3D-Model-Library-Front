@@ -22,11 +22,15 @@ export async function POST(request) {
       authorId = null
     }
     const projectId = formData.get('projectId') || null
-    const sphere = formData.get('sphere') || ''
+    let sphereId = formData.get('sphereId')
+    // Преобразуем пустую строку в null
+    if (sphereId === '' || sphereId === null || sphereId === undefined) {
+      sphereId = null
+    }
     const version = formData.get('version') || '1.0'
     const screenshots = formData.getAll('screenshots') || []
 
-    if (!zipFile || !title || !sphere || typeof zipFile.arrayBuffer !== 'function') {
+    if (!zipFile || !title || !sphereId || typeof zipFile.arrayBuffer !== 'function') {
       return new Response(JSON.stringify({ error: 'Обязательные поля отсутствуют или файл некорректен' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -42,9 +46,13 @@ export async function POST(request) {
       })
     }
 
-    const validSpheres = ['CONSTRUCTION', 'CHEMISTRY', 'INDUSTRIAL', 'MEDICAL', 'OTHER']
-    if (!validSpheres.includes(sphere.toUpperCase())) {
-      return new Response(JSON.stringify({ error: 'Неверная сфера применения' }), {
+    // Проверяем, что сфера существует в базе данных
+    const sphere = await prisma.sphere.findUnique({
+      where: { id: sphereId }
+    })
+    
+    if (!sphere) {
+      return new Response(JSON.stringify({ error: `Неверная сфера применения (ID: ${sphereId})` }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })
@@ -92,12 +100,15 @@ export async function POST(request) {
         fileUrl,
         images: imageUrls,
         authorId: authorId || null,
-        sphere: sphere.toUpperCase(),
+        sphereId: sphereId,
         projects: {
           connect: projectIds.map(id => ({ id }))
         },
       },
-      include: { projects: true }
+      include: { 
+        projects: true,
+        sphere: true
+      }
     })
 
     await prisma.modelVersion.create({
@@ -119,7 +130,11 @@ export async function POST(request) {
 
     const allModels = await prisma.model.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { author: true, projects: true },
+      include: { 
+        author: true, 
+        projects: true,
+        sphere: true
+      },
     })
 
     return new Response(JSON.stringify({ success: true, model: newModel, allModels }), {

@@ -30,7 +30,7 @@ model Model {
   fileUrl           String
   images            String[]       @default([])
   authorId          String?
-  sphere            Sphere?
+  sphereId          String?
   markedForDeletion Boolean        @default(false)
   markedById        String?
   markedAt          DateTime?
@@ -38,6 +38,7 @@ model Model {
   logs              Log[]
   author            User?          @relation("UserModels", fields: [authorId], references: [id])
   markedBy          User?          @relation("MarkedForDeletion", fields: [markedById], references: [id])
+  sphere            Sphere?        @relation(fields: [sphereId], references: [id])
   versions          ModelVersion[]
   projects          Project[]      @relation("ModelProjects")
 }
@@ -57,6 +58,13 @@ model Project {
   name      String
   createdAt DateTime @default(now())
   models    Model[]  @relation("ModelProjects")
+}
+
+model Sphere {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  models    Model[]
 }
 
 model Log {
@@ -85,12 +93,4 @@ enum Role {
   PROGRAMMER
   MANAGER
   ANALYST
-}
-
-enum Sphere {
-  CONSTRUCTION
-  CHEMISTRY
-  INDUSTRIAL
-  MEDICAL
-  OTHER
 }

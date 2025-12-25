@@ -4,26 +4,62 @@ import { prisma } from '@/lib/prisma'
 import axios from 'axios'
 import { getUserFromSession } from '@/lib/auth'
 import { logModelAction } from '@/lib/logger'
+import { deleteFile } from '@/lib/fileStorage'
+import { deleteFolderRecursive, sanitizeName } from '@/lib/nextcloud'
+
+// Принудительно делаем страницу динамической, так как она использует базу данных
+export const dynamic = 'force-dynamic'
 
 export const handleDeleteRequest = async (modelId, immediate) => {
   'use server'
   try {
-    if (immediate || role === 'ADMIN') {
-      await prisma.model.delete({
-        where: { id: modelId }
+    const user = await getUserFromSession()
+    if (!user) {
+      return { success: false, error: 'Не авторизован' }
+    }
+
+    if (immediate && user.role === 'ADMIN') {
+      // Получаем модель со всеми данными
+      const model = await prisma.model.findUnique({
+        where: { id: modelId },
+        include: {
+          logs: true
+        }
       })
-      return { success: true, redirect: '/dashboard' }
-    } else {
+
+      if (!model) {
+        return { success: false, error: 'Модель не найдена' }
+      }
+
+      // Удаляем файлы и связанные записи из БД
+      await deleteFile(model.fileUrl)
+      await Promise.all(model.images.map(img => deleteFile(img)))
+      
+      // Удаляем версии модели
+      await prisma.modelVersion.deleteMany({ where: { modelId } })
+      
+      // Обнуляем ссылки на модель в логах, чтобы сохранить историю
+      await prisma.log.updateMany({ where: { modelId }, data: { modelId: null } })
+      
+      // Удаляем модель
+      await prisma.model.delete({ where: { id: modelId } })
+      
+      // Удаляем папку модели в Nextcloud
+      await deleteFolderRecursive(`models/${sanitizeName(model.title)}`)
+
       await logModelAction(
-        `Запрос на удаление модели ${modelId}`,
+        `Модель удалена (${model.title})`,
         modelId,
         user.id
       )
-      return { success: true, message: 'Запрос на удаление отправлен администратору' }
+
+      return { success: true, redirect: '/dashboard' }
+    } else {
+      return { success: false, error: 'Доступ запрещен' }
     }
   } catch (error) {
     console.error('Ошибка при удалении:', error)
-    return { success: false, error: 'Ошибка при удалении' }
+    return { success: false, error: error.message || 'Ошибка при удалении' }
   }
 }
 
@@ -39,6 +75,8 @@ export default async function ModelPage({ params, searchParams }) {
       include: {
         author: true,
         projects: true,
+        sphere: true,
+        versions: true,
         logs: {
           include: {
             user: true,

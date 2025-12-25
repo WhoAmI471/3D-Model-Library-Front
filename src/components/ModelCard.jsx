@@ -12,15 +12,6 @@ import Download from "../../public/Download.svg"
 import Delete from "../../public/Delete.svg"
 import Edit from "../../public/Edit.svg"
 
-const SPHERE_TRANSLATIONS = {
-  CONSTRUCTION: 'Строительство',
-  CHEMISTRY: 'Химия',
-  INDUSTRIAL: 'Промышленность',
-  MEDICAL: 'Медицина',
-  OTHER: 'Другое',
-  // Добавьте другие значения по необходимости
-};
-
 export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const router = useRouter()
   const [isDownloading, setIsDownloading] = useState(false);
@@ -223,6 +214,13 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
             <span className="font-medium">{model.author?.name || 'Не указан'}</span>
           </div>
           
+          {model.versions?.length > 0 && (
+            <div className="flex items-start">
+              <span className="w-34 text-gray-600">Версия:</span>
+              <span>{selectedVersion.version}</span>
+            </div>
+          )}
+          
           <div className="flex items-start">
             <span className="w-34 text-gray-600">Описание:</span>
             <p className="whitespace-pre-line">{model.description}</p>
@@ -254,31 +252,13 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
           
           <div className="flex items-start">
             <span className="w-34 text-gray-600">Сфера:</span>
-            <span>{model.sphere ? SPHERE_TRANSLATIONS[model.sphere] || model.sphere : 'Другое'}</span>
+            <span>{model.sphere?.name || 'Не указана'}</span>
           </div>
         </div>
 
         {/* кнопки */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex space-x-2">
-
-            {model.versions?.length > 0 && (
-              <select
-                value={selectedVersion.version}
-                onChange={(e) => {
-                  const ver = model.versions.find(v => v.version === e.target.value);
-                  if (ver) {
-                    setSelectedVersion(ver);
-                    setCurrentImageIndex(0);
-                  }
-                }}
-                className="px-2 py-1 border rounded text-sm"
-              >
-                {model.versions.map(v => (
-                  <option key={v.id} value={v.version}>{v.version}</option>
-                ))}
-              </select>
-            )}
             
             {checkPermission(user, 'download_models') && (
               <button
