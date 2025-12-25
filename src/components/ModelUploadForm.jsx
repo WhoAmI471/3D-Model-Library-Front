@@ -1,9 +1,12 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatFileSize } from '@/lib/utils'
 import { ROLES } from '@/lib/roles'
+import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 export default function ModelUploadForm({ initialProjectId = null }) {
+  const router = useRouter()
   const zipFileInputRef = useRef(null)
   const [loading, setLoading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -11,6 +14,7 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
   const [spheres, setSpheres] = useState([])
+  const [allModels, setAllModels] = useState([])
   const [selectedProjects, setSelectedProjects] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
   const [formState, setFormState] = useState({
@@ -36,16 +40,18 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, projectsRes, spheresRes, currentUserRes] = await Promise.all([
+        const [usersRes, projectsRes, spheresRes, modelsRes, currentUserRes] = await Promise.all([
           fetch('/api/users'),
           fetch('/api/projects'),
           fetch('/api/spheres'),
+          fetch('/api/models'),
           fetch('/api/auth/me')
         ])
         
         const usersData = await usersRes.json()
         const projectsData = await projectsRes.json()
         const spheresData = await spheresRes.json()
+        const modelsData = await modelsRes.json()
         const currentUserData = await currentUserRes.json()
         
         const usersList = Array.isArray(usersData) ? usersData : []
@@ -54,6 +60,7 @@ export default function ModelUploadForm({ initialProjectId = null }) {
         setUsers(usersList)
         setProjects(Array.isArray(projectsData) ? projectsData : [])
         setSpheres(Array.isArray(spheresData) ? spheresData : [])
+        setAllModels(Array.isArray(modelsData) ? modelsData : [])
         setCurrentUser(user)
         
         // Устанавливаем текущего пользователя по умолчанию, если автор еще не выбран
@@ -283,27 +290,9 @@ export default function ModelUploadForm({ initialProjectId = null }) {
           if (result.success) {
             setUploadProgress(100);
             setUploadComplete(true);
-            // Небольшая задержка перед показом сообщения об успехе
+            // Небольшая задержка перед редиректом
             setTimeout(() => {
-              alert('Модель загружена успешно!');
-              // Сброс формы
-              setFormState({
-                title: '',
-                description: '',
-                projectId: '',
-                authorId: currentUser ? currentUser.id : 'UNKNOWN',
-                version: '1.0',
-                sphereId: '',
-                zipFile: null,
-                screenshots: []
-              });
-              setSelectedProjects([]);
-              setUploadProgress(0);
-              setUploadComplete(false);
-              // Очищаем input файла
-              if (zipFileInputRef.current) {
-                zipFileInputRef.current.value = ''
-              }
+              router.push('/dashboard');
             }, 500);
           } else {
             throw new Error(result.error || 'Ошибка при сохранении модели');
@@ -345,191 +334,132 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   };
 
 
+  // Сортировка сфер: по количеству моделей, "Другое" в конце
+  const sortedSpheres = [...spheres].sort((a, b) => {
+    const aCount = allModels.filter(model => model.sphere?.id === a.id).length
+    const bCount = allModels.filter(model => model.sphere?.id === b.id).length
+    
+    // Если одна из сфер называется "Другое", она идет в конец
+    if (a.name === 'Другое') return 1
+    if (b.name === 'Другое') return -1
+    
+    // Остальные сортируем по количеству моделей (от большего к меньшему)
+    return bCount - aCount
+  })
+
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(projectSearchTerm.toLowerCase()))
 
   return (
-    <div className="w-full mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Добавление новой модели</h1>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Название модели */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Название модели <span className="text-red-500">*</span>
-            </label>
+    <div className="min-h-full bg-white">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Заголовок с редактируемым названием */}
+        <div className="mb-6 pb-8 border-b border-gray-200 relative flex items-end gap-4">
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard')}
+            className="absolute -left-12 bottom-8 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Назад"
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+          </button>
           <input
             name="title"
-            placeholder="Введите название модели"
             value={formState.title}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0"
+            placeholder="Название модели"
+            required
             maxLength={50}
-            required
           />
         </div>
-
-        {/* Версия */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Версия <span className="text-red-500">*</span>
-          </label>
-          <input
-            name="version"
-            value={formState.version}
-            onChange={handleChange}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            required
-            maxLength={20}
-          />
-        </div>
-
-          {/* Скриншоты */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Скриншоты <span className="text-red-500">*</span>
-              <span className="text-xs text-gray-500 ml-2">(минимум 2)</span>
+      
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Галерея скриншотов */}
+        <div className="mb-8">
+          <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Скриншоты <span className="text-red-500">*</span> <span className="text-gray-400 normal-case">(минимум 2)</span></div>
+          
+          {/* Кнопка добавления скриншотов */}
+          <div className="mb-4">
+            <label className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+              <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+              Добавить скриншоты
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleScreenshotAdd}
+                className="sr-only"
+              />
             </label>
-            
-            {/* Добавление новых скриншотов */}
-            <div className="mt-2">
-              <label className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
-                <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Добавить скриншоты
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleScreenshotAdd}
-                  className="sr-only"
-                />
-              </label>
-            </div>
+          </div>
 
-            {/* Галерея добавленных скриншотов */}
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {/* Галерея добавленных скриншотов */}
+          {formState.screenshots.length > 0 && (
+            <div className="flex gap-4 overflow-x-auto pb-2">
               {formState.screenshots.map((screenshot, index) => (
-                <div key={index} className="relative group">
-                  <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-md overflow-hidden">
-                    <img
-                      src={screenshot.preview}
-                      alt={`Скриншот ${index + 1}`}
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
-                  <div className="mt-1 text-xs text-gray-500 truncate">
-                    {screenshot.file.name}
-                  </div>
-                  <div className="mt-1 text-xs text-gray-400">
-                    {formatFileSize(screenshot.file.size)}
-                  </div>
+                <div key={index} className="relative flex-shrink-0 w-64 h-48 cursor-pointer bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-opacity group">
+                  <img
+                    src={screenshot.preview}
+                    alt={`Скриншот ${index + 1}`}
+                    className="object-cover w-full h-full"
+                  />
                   <button
                     type="button"
                     onClick={() => removeScreenshot(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
                   >
-                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </button>
                 </div>
               ))}
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* ZIP-архив модели */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              ZIP-архив модели <span className="text-red-500">*</span>
-            </label>
-            <div className="mt-1 flex items-center gap-4">
-              <label className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                {formState.zipFile ? 'Выбрать другой файл' : 'Выберите файл'}
-                <input
-                  ref={zipFileInputRef}
-                  name="zipFile"
-                  type="file"
-                  onChange={handleZipFileChange}
-                  accept=".zip"
-                  className="sr-only"
-                  required
-                />
-              </label>
-              {formState.zipFile && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md group">
-                  <div className="text-sm text-gray-700">
-                    <p className="font-medium">{formState.zipFile.name}</p>
-                    <p className="text-gray-500">{formatFileSize(formState.zipFile.size)}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={removeZipFile}
-                    className="ml-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                    title="Удалить файл"
-                  >
-                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-            {formState.zipFile && (
-              <p className="mt-2 text-xs text-gray-500">
-                Загрузка начнется после заполнения всех обязательных полей и нажатия кнопки "Загрузить модель"
-              </p>
-            )}
-          </div>
-          
-          {/* Описание */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Описание
-            </label>
-            <textarea
-              name="description"
-              placeholder="Добавьте описание модели"
-              value={formState.description}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              rows={4}
-              maxLength={1000}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+        {/* Описание */}
+        <div className="mb-8 bg-gray-50 rounded-lg p-6 border border-gray-200">
+          <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Описание</div>
+          <textarea
+            name="description"
+            placeholder="Введите описание модели..."
+            value={formState.description}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            rows={6}
+            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+            maxLength={1000}
+          />
+        </div>
 
+        {/* Информация о модели */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Автор */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Автор
-            </label>
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Автор</div>
             <select
               name="authorId"
               value={formState.authorId || (currentUser ? currentUser.id : 'UNKNOWN')}
               onChange={handleChange}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
               required
             >
-              {/* Для админа показываем список художников, но по умолчанию он сам */}
               {currentUser?.role === 'ADMIN' ? (
                 <>
-                  {/* Текущий пользователь (Я) - по умолчанию */}
                   {currentUser && (
                     <option value={currentUser.id}>
                       {currentUser.name} (Я)
                     </option>
                   )}
-                  {/* Неизвестно */}
                   <option value="UNKNOWN">Неизвестно</option>
-                  {/* Сторонняя модель */}
                   <option value="EXTERNAL">Сторонняя модель</option>
-                  {/* Художники */}
                   {users
                     .filter(user => user.role === ROLES.ARTIST && user.id !== currentUser?.id)
                     .map(user => (
@@ -540,131 +470,166 @@ export default function ModelUploadForm({ initialProjectId = null }) {
                 </>
               ) : (
                 <>
-                  {/* Текущий пользователь (Я) - по умолчанию */}
                   {currentUser && (
                     <option value={currentUser.id}>
                       {currentUser.name} (Я)
                     </option>
                   )}
-                  {/* Неизвестно */}
                   <option value="UNKNOWN">Неизвестно</option>
-                  {/* Сторонняя модель */}
                   <option value="EXTERNAL">Сторонняя модель</option>
                 </>
               )}
             </select>
           </div>
-
+          
+          {/* Версия */}
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Версия</div>
+            <input
+              name="version"
+              value={formState.version}
+              onChange={handleChange}
+              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+              required
+              maxLength={20}
+            />
+          </div>
+          
           {/* Сфера */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Сфера <span className="text-red-500">*</span>
-            </label>
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Сфера <span className="text-red-500">*</span></div>
             <select
               name="sphereId"
-              value={formState.sphereId}
+              value={formState.sphereId || ''}
               onChange={handleChange}
               required
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm cursor-pointer text-gray-900"
+              style={!formState.sphereId ? { color: 'rgba(156, 163, 175, 0.7)' } : {}}
             >
-              <option value="">Выберите сферу</option>
-              {spheres.map((sphere) => (
-                <option key={sphere.id} value={sphere.id}>
+              <option value="" disabled hidden className="text-gray-400">
+                Выберите сферу
+              </option>
+              {sortedSpheres.map((sphere) => (
+                <option key={sphere.id} value={sphere.id} className="text-gray-900">
                   {sphere.name}
                 </option>
               ))}
             </select>
           </div>
+        </div>
 
-          <div className='w-full'>
-            <h3 className="block text-sm font-medium text-gray-700 mb-1">Поиск проектов</h3>
-            <div className="mt-2 relative">
-              <input
-                type="text"
-                placeholder="Поиск проектов..."
-                className=" w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                value={projectSearchTerm}
-                onChange={(e) => setProjectSearchTerm(e.target.value)}
-                maxLength={50}
-              />
-            </div>
+        {/* Проекты */}
+        <div className="mb-8">
+          <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Проекты</div>
+          
+          {/* Поиск проектов */}
+          <div className="mb-3">
+            <input
+              type="text"
+              placeholder="Поиск проектов..."
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+              value={projectSearchTerm}
+              onChange={(e) => setProjectSearchTerm(e.target.value)}
+              maxLength={50}
+            />
           </div>
-
-          {/* Проекты */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Проекты
-            </label>
-            <div className="space-y-2 max-h-40 overflow-y-auto p-3 border border-gray-300 rounded-md">
-              {filteredProjects.map(project => (
-                <div key={project.id} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`project-${project.id}`}
-                    checked={selectedProjects.includes(project.id)}
-                    onChange={() => toggleProject(project.id)}
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                  />
-                  <label htmlFor={`project-${project.id}`} className="ml-2 text-sm text-gray-700">
-                    {project.name}{project.city ? ` • ${project.city}` : ''}
-                  </label>
-                </div>
-              ))}
-            </div>
+          
+          {/* Список проектов */}
+          <div className="space-y-2 max-h-40 overflow-y-auto p-3 border border-gray-300 rounded-md bg-white">
+            {filteredProjects.map(project => (
+              <div key={project.id} className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={`project-${project.id}`}
+                  checked={selectedProjects.includes(project.id)}
+                  onChange={() => toggleProject(project.id)}
+                  className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <label htmlFor={`project-${project.id}`} className="ml-2 text-sm text-gray-700 cursor-pointer">
+                  {project.name}{project.city ? ` • ${project.city}` : ''}
+                </label>
+              </div>
+            ))}
           </div>
         </div>
 
-
-        {/* Индикатор прогресса загрузки */}
-        {(loading || uploadProgress > 0) && (
-          <div className="pt-4">
-            <div className="mb-2">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium text-gray-700">
-                  {uploadComplete ? 'Готово' : `Загрузка: ${uploadProgress}%`}
-                </span>
-                {uploadComplete && (
-                  <span className="text-sm text-green-600 font-semibold">✓</span>
-                )}
+        {/* ZIP-архив модели */}
+        <div className="mb-8">
+          <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">ZIP-архив модели <span className="text-red-500">*</span></div>
+          <div>
+            <label className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+              <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              {formState.zipFile ? 'Заменить ZIP-файл' : 'Выберите ZIP-файл'}
+              <input
+                ref={zipFileInputRef}
+                name="zipFile"
+                type="file"
+                onChange={handleZipFileChange}
+                accept=".zip"
+                className="sr-only"
+                required
+              />
+            </label>
+            {formState.zipFile && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  Новый файл: {formState.zipFile.name} ({formatFileSize(formState.zipFile.size)})
+                </p>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div
-                  className={`h-2.5 rounded-full transition-all duration-300 ${
-                    uploadComplete ? 'bg-green-600' : 'bg-blue-600'
-                  }`}
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
+            )}
+          </div>
+        </div>
+
+        {/* Кнопки действий */}
+        <div className="sticky bottom-6 mt-8 flex flex-col items-end gap-4 z-10">
+          {/* Индикатор прогресса загрузки */}
+          {(loading || uploadProgress > 0) && (
+            <div className="w-full max-w-md mt-2">
+              <div className="mb-2">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium text-gray-700">
+                    {uploadComplete ? 'Готово' : `Загрузка: ${uploadProgress}%`}
+                  </span>
+                  {uploadComplete && (
+                    <span className="text-sm text-green-600 font-semibold">✓</span>
+                  )}
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className={`h-2.5 rounded-full transition-all duration-300 ${
+                      uploadComplete ? 'bg-green-600' : 'bg-blue-600'
+                    }`}
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
+          )}
+          
+          <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+            <button
+              type="submit"
+              disabled={loading}
+              className={`inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                loading ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Загрузка...
+                </>
+              ) : 'Загрузить модель'}
+            </button>
           </div>
-        )}
-
-        {/* Кнопка отправки */}
-        <div className="pt-4">
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              loading ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Загрузка...
-              </>
-            ) : 'Загрузить модель'}
-          </button>
-          <p className="mt-2 text-xs text-gray-500 text-center">
-            {uploadComplete 
-              ? 'Модель загружена успешно!'
-              : 'Заполните все обязательные поля (отмечены *) и нажмите "Загрузить модель"'}
-          </p>
         </div>
       </form>
+      </div>
     </div>
   )
 }

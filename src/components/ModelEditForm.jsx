@@ -603,15 +603,15 @@ export default function ModelEditForm({ id, userRole }) {
                   value={form.sphereId || ''}
                   onChange={handleChange}
                   required
-                  className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm cursor-pointer"
+                  className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm cursor-pointer text-gray-900"
                   disabled={canEditModel ? false : !canEditSphere}
-                  style={!form.sphereId ? { color: 'rgba(156, 163, 175, 0.7)' } : { color: 'rgba(17, 24, 39, 1)' }}
+                  style={!form.sphereId ? { color: 'rgba(156, 163, 175, 0.7)' } : {}}
                 >
-                  <option value="" disabled hidden>
+                  <option value="" disabled hidden className="text-gray-400">
                     Выберите сферу
                   </option>
                   {sortedSpheres.map((sphere) => (
-                    <option key={sphere.id} value={sphere.id}>
+                    <option key={sphere.id} value={sphere.id} className="text-gray-900">
                       {sphere.name}
                     </option>
                   ))}
