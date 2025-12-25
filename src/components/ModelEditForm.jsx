@@ -362,8 +362,8 @@ export default function ModelEditForm({ id, userRole }) {
     const result = await response.json()
 
     if (response.ok && result.success) {
-      // Используем полную перезагрузку страницы с timestamp для гарантированного обновления данных
-      window.location.href = `/dashboard/models/${id}?t=${Date.now()}`
+      // Перенаправляем на страницу моделей после успешного сохранения
+      router.push('/dashboard')
     } else {
       throw new Error(result.error || 'Не удалось обновить модель')
     }
