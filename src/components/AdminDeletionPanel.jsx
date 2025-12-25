@@ -196,15 +196,8 @@ export default function AdminDeletionPanel({ userRole }) {
 
   return (
     <div className="rounded-lg p-2 w-full max-w-8xl mx-auto" onMouseLeave={handleMouseLeave}>
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Запросы на удаление моделей</h2>
-        <button 
-          onClick={fetchPendingDeletions}
-          className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100"
-          onMouseLeave={handleMouseLeave}
-        >
-          Обновить
-        </button>
       </div>
 
       {error && (
