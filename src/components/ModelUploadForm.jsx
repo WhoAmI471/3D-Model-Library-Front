@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { formatFileSize } from '@/lib/utils'
+import { ROLES } from '@/lib/roles'
 
 export default function ModelUploadForm() {
   const zipFileInputRef = useRef(null)
@@ -508,16 +509,42 @@ export default function ModelUploadForm() {
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               required
             >
-              {/* Текущий пользователь (Я) - по умолчанию */}
-              {currentUser && (
-                <option value={currentUser.id}>
-                  {currentUser.name} (Я)
-                </option>
+              {/* Для админа показываем список художников, но по умолчанию он сам */}
+              {currentUser?.role === 'ADMIN' ? (
+                <>
+                  {/* Текущий пользователь (Я) - по умолчанию */}
+                  {currentUser && (
+                    <option value={currentUser.id}>
+                      {currentUser.name} (Я)
+                    </option>
+                  )}
+                  {/* Неизвестно */}
+                  <option value="UNKNOWN">Неизвестно</option>
+                  {/* Сторонняя модель */}
+                  <option value="EXTERNAL">Сторонняя модель</option>
+                  {/* Художники */}
+                  {users
+                    .filter(user => user.role === ROLES.ARTIST && user.id !== currentUser?.id)
+                    .map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </>
+              ) : (
+                <>
+                  {/* Текущий пользователь (Я) - по умолчанию */}
+                  {currentUser && (
+                    <option value={currentUser.id}>
+                      {currentUser.name} (Я)
+                    </option>
+                  )}
+                  {/* Неизвестно */}
+                  <option value="UNKNOWN">Неизвестно</option>
+                  {/* Сторонняя модель */}
+                  <option value="EXTERNAL">Сторонняя модель</option>
+                </>
               )}
-              {/* Неизвестно */}
-              <option value="UNKNOWN">Неизвестно</option>
-              {/* Сторонняя модель */}
-              <option value="EXTERNAL">Сторонняя модель</option>
             </select>
           </div>
 

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatFileSize, proxyUrl } from '@/lib/utils'
 import { checkPermission } from '@/lib/permission'
-import { ALL_PERMISSIONS } from '@/lib/roles'
+import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
 
 export default function ModelEditForm({ id, userRole }) {
   const router = useRouter()
@@ -82,6 +82,8 @@ export default function ModelEditForm({ id, userRole }) {
   }, [])
 
   useEffect(() => {
+    if (!currentUser) return // Ждем загрузки текущего пользователя
+    
     const loadModel = async () => {
       try {
         setIsLoading(true)
@@ -89,12 +91,15 @@ export default function ModelEditForm({ id, userRole }) {
         if (!res.ok) throw new Error('Не удалось загрузить модель')
         const data = await res.json()
         
-        // Обрабатываем authorId: если null, используем 'UNKNOWN'
-        // Если authorId есть и это текущий пользователь - используем его ID
-        // Если authorId есть, но это не текущий пользователь - используем 'EXTERNAL'
-        let authorIdValue = 'UNKNOWN'
+        // Обрабатываем authorId: если null, используем текущего пользователя для админа, иначе 'UNKNOWN'
+        // Для админа сохраняем реальный ID автора (если есть), иначе устанавливаем текущего пользователя
+        // Для других пользователей: если authorId есть и это текущий пользователь - используем его ID, иначе 'EXTERNAL'
+        let authorIdValue = currentUser?.role === 'ADMIN' ? (currentUser.id || 'UNKNOWN') : 'UNKNOWN'
         if (data.authorId) {
-          if (currentUser && data.authorId === currentUser.id) {
+          if (currentUser?.role === 'ADMIN') {
+            // Для админа сохраняем реальный ID автора
+            authorIdValue = data.authorId
+          } else if (currentUser && data.authorId === currentUser.id) {
             authorIdValue = currentUser.id
           } else {
             authorIdValue = 'EXTERNAL'
@@ -629,20 +634,48 @@ export default function ModelEditForm({ id, userRole }) {
               name="authorId"
               value={form.authorId || (currentUser ? currentUser.id : 'UNKNOWN')}
               onChange={handleChange}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
+              className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                currentUser?.role === 'ADMIN' ? 'bg-white' : 'bg-gray-50'
+              }`}
               required
-              disabled
+              disabled={currentUser?.role !== 'ADMIN'}
             >
-              {/* Текущий пользователь (Я) */}
-              {currentUser && (
-                <option value={currentUser.id}>
-                  {currentUser.name} (Я)
-                </option>
+              {/* Для админа показываем список художников, но по умолчанию он сам */}
+              {currentUser?.role === 'ADMIN' ? (
+                <>
+                  {/* Текущий пользователь (Я) - по умолчанию */}
+                  {currentUser && (
+                    <option value={currentUser.id}>
+                      {currentUser.name} (Я)
+                    </option>
+                  )}
+                  {/* Неизвестно */}
+                  <option value="UNKNOWN">Неизвестно</option>
+                  {/* Сторонняя модель */}
+                  <option value="EXTERNAL">Сторонняя модель</option>
+                  {/* Художники */}
+                  {users
+                    .filter(user => user.role === ROLES.ARTIST && user.id !== currentUser?.id)
+                    .map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </>
+              ) : (
+                <>
+                  {/* Текущий пользователь (Я) */}
+                  {currentUser && (
+                    <option value={currentUser.id}>
+                      {currentUser.name} (Я)
+                    </option>
+                  )}
+                  {/* Неизвестно */}
+                  <option value="UNKNOWN">Неизвестно</option>
+                  {/* Сторонняя модель */}
+                  <option value="EXTERNAL">Сторонняя модель</option>
+                </>
               )}
-              {/* Неизвестно */}
-              <option value="UNKNOWN">Неизвестно</option>
-              {/* Сторонняя модель */}
-              <option value="EXTERNAL">Сторонняя модель</option>
             </select>
           </div>
 
