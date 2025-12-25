@@ -33,6 +33,10 @@ export default function MainHeader() {
   }, [pathname])
 
   const getSectionParts = () => {
+    if (pathname === '/dashboard/models/upload') {
+      return ['Модели', 'Добавление новой модели']
+    }
+    
     const isUpdatePage = pathname?.includes('/models/update/')
     
     // Если есть название модели и мы на странице редактирования

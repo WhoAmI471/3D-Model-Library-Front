@@ -358,7 +358,7 @@ export default function ModelUploadForm({ initialProjectId = null }) {
           <button
             type="button"
             onClick={() => router.push('/dashboard')}
-            className="absolute -left-12 bottom-8 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="absolute -left-12 bottom-8 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
             title="Назад"
           >
             <ArrowLeftIcon className="h-5 w-5" />

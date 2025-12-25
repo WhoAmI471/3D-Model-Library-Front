@@ -405,14 +405,14 @@ export default function ModelEditForm({ id, userRole }) {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Заголовок с редактируемым названием */}
         <div className="mb-6 pb-8 border-b border-gray-200 relative flex items-end gap-4">
-          <button
-            type="button"
-            onClick={() => router.push(`/dashboard/models/${id}`)}
-            className="absolute -left-12 bottom-8 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Назад"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/dashboard/models/${id}`)}
+                  className="absolute -left-12 bottom-8 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                  title="Назад"
+                >
+                  <ArrowLeftIcon className="h-5 w-5" />
+                </button>
           {canEditModel ? (
             <input
               name="title"
