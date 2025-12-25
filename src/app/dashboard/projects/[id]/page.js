@@ -2,20 +2,21 @@
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission, checkAnyPermission } from '@/lib/permission';
 import axios from 'axios'
-import { proxyUrl } from '@/lib/utils'
-import { AnimatePresence } from 'framer-motion'
-import { ModelPreview } from "@/components/ModelPreview"
+import { proxyUrl, formatDateTime } from '@/lib/utils'
 import AddModelsToProjectModal from "@/components/AddModelsToProjectModal"
 import DeleteReasonModal from "@/components/DeleteReasonModal"
-
-import Download from "../../../../../public/Download.svg"
-import Delete from "../../../../../public/Delete.svg"
-import Edit from "../../../../../public/Edit.svg"
+import { 
+  ArrowLeftIcon,
+  PlusIcon,
+  MagnifyingGlassIcon,
+  PencilIcon,
+  TrashIcon,
+  ArrowDownTrayIcon
+} from '@heroicons/react/24/outline'
 
 export default function ProjectPage({ params }) {
   const { id } = use(params)
@@ -24,20 +25,12 @@ export default function ProjectPage({ params }) {
   const [models, setModels] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   const [userRole, setUserRole] = useState(null)
-  const [isDownloading, setIsDownloading] = useState(false)
-  
-  const [previewModel, setPreviewModel] = useState(null)
-  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
-  const [showPreview, setShowPreview] = useState(false)
-  const [isHovering, setIsHovering] = useState(false)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [autoPlayInterval, setAutoPlayInterval] = useState(null)
   const [user, setUser] = useState();
   const [showAddModelsModal, setShowAddModelsModal] = useState(false)
   const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false)
   const [selectedModelForDeletion, setSelectedModelForDeletion] = useState(null)
+  const [isDownloading, setIsDownloading] = useState({})
   
   useEffect(() => {
     const load = async () => {
@@ -81,8 +74,12 @@ export default function ProjectPage({ params }) {
   }, [id, router])
 
   // Скачивание модели
-  const handleDownload = async (model) => {
-    setIsDownloading(true)
+  const handleDownload = async (model, e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    setIsDownloading(prev => ({ ...prev, [model.id]: true }))
     try {
       const response = await fetch(proxyUrl(model.fileUrl))
       const blob = await response.blob()
@@ -97,11 +94,41 @@ export default function ProjectPage({ params }) {
     } catch (error) {
       console.error('Ошибка при скачивании:', error)
     } finally {
-      setIsDownloading(false)
+      setIsDownloading(prev => ({ ...prev, [model.id]: false }))
     }
   }
 
-  const handleDeleteRequest = (model) => {
+
+  const handleDeleteConfirm = async (reason) => {
+    if (!selectedModelForDeletion) return;
+
+    try {
+      const response = await axios.put(`/api/models/${selectedModelForDeletion.id}`, {
+        comment: reason
+      });
+      
+      if (response.status === 200) {
+        alert(response.data.message);
+        setShowDeleteReasonModal(false);
+        setSelectedModelForDeletion(null);
+        // Обновляем список моделей
+        const modelsRes = await fetch(`/api/models?projectId=${id}`)
+        const modelsData = await modelsRes.json()
+        setModels(modelsData)
+      } else {
+        throw new Error(response.data.error || 'Ошибка при отправке запроса');
+      }
+    } catch (error) {
+      console.error('Ошибка:', error);
+      alert(error.response?.data?.error || error.message);
+    }
+  }
+
+  const handleDeleteRequest = (model, e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     if (userRole === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
         fetch(`/api/models/${model.id}`, {
@@ -132,180 +159,18 @@ export default function ProjectPage({ params }) {
     }
   }
 
-  const handleDeleteConfirm = async (reason) => {
-    if (!selectedModelForDeletion) return;
-
-    try {
-      const response = await axios.put(`/api/models/${selectedModelForDeletion.id}`, {
-        comment: reason
-      });
-      
-      if (response.status === 200) {
-        alert(response.data.message);
-        setShowDeleteReasonModal(false);
-        setSelectedModelForDeletion(null);
-        // Обновляем список моделей
-        const modelsRes = await fetch(`/api/models?projectId=${id}`)
-        const modelsData = await modelsRes.json()
-        setModels(modelsData)
-      } else {
-        throw new Error(response.data.error || 'Ошибка при отправке запроса');
-      }
-    } catch (error) {
-      console.error('Ошибка:', error);
-      alert(error.response?.data?.error || error.message);
-    }
-  }
-
-  const handleMouseMove = (event) => {
-    // Позиция превью не должна обновляться при движении мыши
-    // Превью должно оставаться на месте, где было показано
-  }
-
-  const updatePreviewPosition = (event) => {
-    const x = Math.min(event.clientX + 20, window.innerWidth - 340)
-    const y = Math.min(event.clientY + 20, window.innerHeight - 260)
-    setPreviewPosition({ x, y })
-  }
-
-  const nextImage = () => {
-    if (!previewModel || !previewModel.images?.length) return
-    
-    setCurrentImageIndex(prev => 
-      prev === previewModel.images.length - 1 ? 0 : prev + 1
+  // Фильтрация и сортировка моделей
+  const filteredModels = models
+    .filter(model => 
+      model.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      model.author?.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
-  }
-
-  const prevImage = () => {
-    if (!previewModel || !previewModel.images?.length) return
-    
-    setCurrentImageIndex(prev => 
-      prev === 0 ? previewModel.images.length - 1 : prev - 1
-    )
-  }
-
-  const startAutoPlay = () => {
-    if (!previewModel || !previewModel.images?.length || isHovering) return
-    
-    stopAutoPlay()
-    
-    const interval = setInterval(() => {
-      // Проверяем isHovering перед каждым перелистыванием
-      if (!previewModel || !previewModel.images?.length || isHovering) {
-        stopAutoPlay()
-        return
-      }
-      nextImage()
-    }, 2000)
-    
-    setAutoPlayInterval(interval)
-  }
-
-  const stopAutoPlay = () => {
-    if (autoPlayInterval) {
-      clearInterval(autoPlayInterval)
-      setAutoPlayInterval(null)
-    }
-  }
-
-  const handleWheel = (e) => {
-    if (!previewModel || !previewModel.images?.length) return
-    
-    e.preventDefault()
-    if (e.deltaY > 0) {
-      nextImage()
-    } else {
-      prevImage()
-    }
-  }
-
-  const handleMouseEnter = (model, event) => {
-    if (model?.images?.length > 0) {
-      const rect = event.currentTarget.getBoundingClientRect()
-      const previewWidth = 320
-      setPreviewPosition({
-        x: rect.left - previewWidth - 20, // Позиция слева от строки
-        y: rect.top - 80
-      })
-      setPreviewModel(model)
-      setCurrentImageIndex(0)
-      setShowPreview(true)
-    }
-  }
-  
-  const handleMouseLeave = () => {
-    setShowPreview(false)
-    setPreviewModel(null)
-    stopAutoPlay()
-  }
-
-  useEffect(() => {
-    // Автоперелистывание работает только если превью показано и курсор НЕ на мини-окне
-    if (showPreview && previewModel?.images?.length && !isHovering) {
-      startAutoPlay()
-    } else {
-      stopAutoPlay()
-    }
-    return () => {
-      stopAutoPlay()
-    }
-  }, [previewModel, showPreview, isHovering])
-  useEffect(() => {
-    return () => {
-      if (autoPlayInterval) {
-        clearInterval(autoPlayInterval)
-      }
-    }
-  }, [autoPlayInterval])
-
-  // Сортировка таблицы
-  const requestSort = (key) => {
-    let direction = 'asc'
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc'
-    }
-    setSortConfig({ key, direction })
-  }
-
-  // Иконка сортировки
-  const getSortIcon = (key) => {
-    if (sortConfig.key !== key) return null
-    return sortConfig.direction === 'asc' ? '↑' : '↓'
-  }
-
-  // Сортировка моделей
-  const sortedModels = [...models].sort((a, b) => {
-    if (sortConfig.key) {
-      // Для вложенных свойств (например, author.name)
-      const keys = sortConfig.key.split('.')
-      let valueA = a
-      let valueB = b
-      
-      for (const key of keys) {
-        valueA = valueA?.[key]
-        valueB = valueB?.[key]
-      }
-
-      if (valueA < valueB) {
-        return sortConfig.direction === 'asc' ? -1 : 1
-      }
-      if (valueA > valueB) {
-        return sortConfig.direction === 'asc' ? 1 : -1
-      }
-    }
-    return 0
-  })
-
-  // Фильтрация по поиску
-  const filteredModels = sortedModels.filter(model => 
-    model.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    model.author?.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto flex justify-center items-center h-64">
+      <div className="min-h-full bg-white">
+        <div className="max-w-7xl mx-auto px-6 py-8 flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       </div>
@@ -314,12 +179,12 @@ export default function ProjectPage({ params }) {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto text-center py-8">
+      <div className="min-h-full bg-white">
+        <div className="max-w-7xl mx-auto px-6 py-8 text-center py-8">
           <div className="text-red-500 mb-4">Проект не найден</div>
           <button 
             onClick={() => router.push('/dashboard/projects')}
-            className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors cursor-pointer"
           >
             Вернуться к списку проектов
           </button>
@@ -329,198 +194,172 @@ export default function ProjectPage({ params }) {
   }
 
   return (
-    <div className="h-full bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto" onMouseLeave={handleMouseLeave}>
+    <div className="min-h-full bg-white">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Заголовок и кнопки */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6 pb-6 border-b border-gray-200 flex justify-between items-end gap-4 relative">
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard/projects')}
+            className="absolute -left-12 top-0 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+            title="Назад"
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+          </button>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-800">{project.name}</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 leading-none pb-0">
+              {project.name}
               {project.city && (
-                <span className="text-lg text-gray-600">• {project.city}</span>
+                <span className="text-lg font-normal text-gray-600 ml-3">• {project.city}</span>
               )}
-            </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Создан: {format(new Date(project.createdAt), 'dd.MM.yyyy', { locale: ru })}
-            </p>
+            </h1>
           </div>
-          
           {(userRole === 'ADMIN' || checkPermission(user, 'upload_models')) && (
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowAddModelsModal(true)}
-                className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 shadow-sm transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
+            <button
+              onClick={() => setShowAddModelsModal(true)}
+              className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer flex-shrink-0"
+              style={{ 
+                width: '2.5rem', 
+                paddingLeft: '0.625rem', 
+                paddingRight: '0.625rem',
+                transition: 'width 0.2s, padding-right 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.setProperty('width', '195px', 'important')
+                e.currentTarget.style.setProperty('padding-right', '2rem', 'important')
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.setProperty('width', '2.5rem', 'important')
+                e.currentTarget.style.setProperty('padding-right', '0.625rem', 'important')
+              }}
+              title="Добавить модель"
+            >
+              <PlusIcon className="h-5 w-5 flex-shrink-0" style={{ color: '#ffffff', strokeWidth: 2 }} />
+              <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                 Добавить модель
-              </button>
-            </div>
+              </span>
+            </button>
           )}
         </div>
 
         {/* Поиск */}
         <div className="mb-6">
-          <div className="relative w-full">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-              </svg>
-            </div>
+          <div className="relative flex-1">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Найти модель по названию или автору"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              placeholder="Поиск по названию или автору..."
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
-        {/* Таблица моделей */}
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th 
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => requestSort('title')}
-                  onMouseLeave={handleMouseLeave}
+        {/* Сетка моделей */}
+        {filteredModels.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-500 text-lg">
+              {searchTerm ? 'Модели не найдены' : 'Нет моделей'}
+            </p>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Очистить фильтры
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredModels.map((model) => (
+              <div
+                key={model.id}
+                className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 hover:border-gray-300"
+              >
+                {/* Превью изображения */}
+                <Link
+                  href={`/dashboard/models/${model.id}?projectid=${id}`}
+                  className="block relative aspect-square bg-gray-100 overflow-hidden group"
                 >
-                  <div className="flex items-center">
-                    Название модели
-                    {getSortIcon('title')}
-                  </div>
-                </th>
-                <th 
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => requestSort('author.name')}
-                  onMouseLeave={handleMouseLeave}
-                >
-                  <div className="flex items-center">
-                    Автор
-                    {getSortIcon('author.name')}
-                  </div>
-                </th>
-                <th 
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => requestSort('createdAt')}
-                  onMouseLeave={handleMouseLeave}
-                >
-                  <div className="flex items-center">
-                    Дата создания
-                    {getSortIcon('createdAt')}
-                  </div>
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" 
-                  onMouseLeave={handleMouseLeave}
-                >
-                  Действия
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredModels.length > 0 ? (
-                filteredModels.map((model) => (
-                  <tr 
-                    key={model.id} 
-                    className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white" 
-                    onMouseEnter={(e) => handleMouseEnter(model, e)}>
-                    <td 
-                      className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" 
-                      onClick={() => router.push(`/dashboard/models/${model.id}?projectid=${id}`)}>
+                  {model.images && model.images.length > 0 ? (
+                    <img
+                      src={proxyUrl(model.images[0])}
+                      alt={model.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 cursor-pointer"
+                      onError={(e) => {
+                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23e5e7eb" width="400" height="400"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="24"%3EНет изображения%3C/text%3E%3C/svg%3E'
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 cursor-pointer">
+                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                    </div>
+                  )}
+                </Link>
+
+                {/* Контент карточки */}
+                <div className="p-4">
+                  <Link href={`/dashboard/models/${model.id}?projectid=${id}`}>
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors">
                       {model.title}
-                    </td>
-                    <td 
-                      className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
-                      onClick={() => router.push(`/dashboard/models/${model.id}?projectid=${id}`)}>
-                      {model.author?.name || '—'}
-                    </td>
-                    <td 
-                      className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
-                      onClick={() => router.push(`/dashboard/models/${model.id}?projectid=${id}`)}>
-                      {format(new Date(model.createdAt), 'dd.MM.yyyy', { locale: ru })}
-                    </td>
-                    <td className="px-6 py-2 whitespace-nowrap al-i-center text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-3">
-                        
-                        {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
-                          <Link href={`/dashboard/models/update/${model.id}`}>
-                            <button className="text-yellow-600 hover:text-yellow-900">
-                              <Image 
-                                src={Edit} 
-                                alt="Редактировать" 
-                                width={20} 
-                                height={20}
-                                className='mt-1'
-                              />
-                            </button>
-                          </Link>)
-                        }
-                        
-                        {checkPermission(user, 'delete_models') && (
-                          <button 
-                            onClick={() => handleDeleteRequest(model)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <Image 
-                              src={Delete} 
-                              alt="Удалить" 
-                              width={19} 
-                              height={19}
-                            />
-                          </button>)
-                        }
-                        
-                        {checkPermission(user, 'download_models') && (
-                          <button 
-                            className="text-blue-600 hover:text-blue-900" 
-                            onClick={() => handleDownload(model)}
-                            disabled={isDownloading}
-                          >
-                            <Image 
-                              src={Download} 
-                              alt="Скачать" 
-                              width={19} 
-                              height={20}
-                            />
-                          </button>)
-                        }
+                    </h3>
+                  </Link>
+                  
+                  <div className="space-y-2 mb-4">
+                    {model.author && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="truncate">{model.author.name}</span>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
-                    Модели не найдены
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        <AnimatePresence>
-          {showPreview && previewModel && (
-            <ModelPreview
-              model={previewModel}
-              position={previewPosition}
-              currentImageIndex={currentImageIndex}
-              onNextImage={nextImage}
-              onPrevImage={prevImage}
-              onWheel={handleWheel}
-              isHovering={isHovering}
-              setIsHovering={setIsHovering}
-            />
-          )}
-        </AnimatePresence>
+                    )}
+                  </div>
+
+                  {/* Действия */}
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <span className="text-xs text-gray-500">
+                      {formatDateTime(model.updatedAt)}
+                    </span>
+                    <div className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
+                      {checkPermission(user, 'download_models') && (
+                        <button
+                          onClick={(e) => handleDownload(model, e)}
+                          disabled={isDownloading[model.id]}
+                          className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Скачать"
+                        >
+                          <ArrowDownTrayIcon className="h-5 w-5" />
+                        </button>
+                      )}
+                      {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
+                        <Link
+                          href={`/dashboard/models/update/${model.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                          title="Редактировать"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </Link>
+                      )}
+                      {checkPermission(user, 'delete_models') && (
+                        <button
+                          onClick={(e) => handleDeleteRequest(model, e)}
+                          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                          title="Удалить"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
 
         {showAddModelsModal && (
           <AddModelsToProjectModal
