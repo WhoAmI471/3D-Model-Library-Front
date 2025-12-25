@@ -84,9 +84,28 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
 
   const handlePermissionChange = (permission) => {
     setFormData(prev => {
-      const newPermissions = prev.permissions.includes(permission)
-        ? prev.permissions.filter(p => p !== permission)
-        : [...prev.permissions, permission]
+      const isAdding = !prev.permissions.includes(permission)
+      let newPermissions = isAdding
+        ? [...prev.permissions, permission]
+        : prev.permissions.filter(p => p !== permission)
+      
+      // Если включаем "Редактирование описания", автоматически включаем права на редактирование сферы и скриншотов
+      if (permission === ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION && isAdding) {
+        if (!newPermissions.includes(ALL_PERMISSIONS.EDIT_MODEL_SPHERE)) {
+          newPermissions.push(ALL_PERMISSIONS.EDIT_MODEL_SPHERE)
+        }
+        if (!newPermissions.includes(ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS)) {
+          newPermissions.push(ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS)
+        }
+      }
+      
+      // Если выключаем "Редактирование описания", также выключаем права на сферу и скриншоты
+      if (permission === ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION && !isAdding) {
+        newPermissions = newPermissions.filter(p => 
+          p !== ALL_PERMISSIONS.EDIT_MODEL_SPHERE && 
+          p !== ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS
+        )
+      }
       
       return { ...prev, permissions: newPermissions }
     })

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatFileSize, proxyUrl } from '@/lib/utils'
 import { checkPermission } from '@/lib/permission'
+import { ALL_PERMISSIONS } from '@/lib/roles'
 
 export default function ModelEditForm({ id, userRole }) {
   const router = useRouter()
@@ -33,6 +34,8 @@ export default function ModelEditForm({ id, userRole }) {
   
   const [canEditModel, setCanEditModel] = useState(null);
   const [canEditDescription, setCanEditDescription] = useState(null);
+  const [canEditSphere, setCanEditSphere] = useState(null);
+  const [canEditScreenshots, setCanEditScreenshots] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -57,11 +60,15 @@ export default function ModelEditForm({ id, userRole }) {
         
         // Устанавливаем права доступа на основе объекта пользователя
         if (user) {
-          setCanEditModel(checkPermission(user, 'edit_models'))
-          setCanEditDescription(checkPermission(user, 'edit_model_description'))
+          setCanEditModel(checkPermission(user, ALL_PERMISSIONS.EDIT_MODELS))
+          setCanEditDescription(checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION))
+          setCanEditSphere(checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_SPHERE))
+          setCanEditScreenshots(checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS))
         } else {
           setCanEditModel(false)
           setCanEditDescription(false)
+          setCanEditSphere(false)
+          setCanEditScreenshots(false)
         }
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
@@ -220,9 +227,9 @@ export default function ModelEditForm({ id, userRole }) {
   setError(null)
 
   try {
-    // Если можно редактировать только описание, проверяем только его
-    if (!canEditModel && canEditDescription) {
-      // Пропускаем проверки для других полей, так как их нет в форме
+    // Если можно редактировать только описание, сферу или скриншоты (но не полную модель), проверяем соответствующие поля
+    if (!canEditModel && (canEditDescription || canEditSphere || canEditScreenshots)) {
+      // Пропускаем проверки для полей полной модели, так как их нет в форме
     } else {
       // Проверка количества скриншотов: должно быть минимум 2
       // Текущие скриншоты (которые останутся после удаления)
@@ -244,9 +251,22 @@ export default function ModelEditForm({ id, userRole }) {
     const formData = new FormData()
     formData.append('id', id)
     
-    // Если можно редактировать только описание, отправляем только его
-    if (!canEditModel && canEditDescription) {
-      formData.append('description', form.description)
+    // Если можно редактировать только описание, сферу или скриншоты (но не полную модель), отправляем соответствующие поля
+    if (!canEditModel && (canEditDescription || canEditSphere || canEditScreenshots)) {
+      if (canEditDescription) {
+        formData.append('description', form.description)
+      }
+      if (canEditSphere) {
+        formData.append('sphereId', form.sphereId || '')
+      }
+      if (canEditScreenshots) {
+        // Добавляем информацию об удаленных скриншотах
+        deletedScreenshots.forEach(url => {
+          formData.append('deletedScreenshots', url)
+        })
+        // Добавляем новые скриншоты
+        screenshots.forEach(screenshot => formData.append('screenshots', screenshot))
+      }
     } else {
       // Добавляем все поля формы
       for (const key in form) {
@@ -375,8 +395,8 @@ export default function ModelEditForm({ id, userRole }) {
                   <button
                     type="button"
                     onClick={() => removeCurrentScreenshot(index)}
-                    className={`absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 ${canEditDescription ? 'group-hover:opacity-0' : 'group-hover:opacity-100'} transition-opacity`}
-                    disabled={canEditDescription}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    disabled={!canEditScreenshots}
                   >
                     <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -405,7 +425,7 @@ export default function ModelEditForm({ id, userRole }) {
                   accept="image/*"
                   onChange={handleScreenshotAdd}
                   className="sr-only"
-                  disabled={canEditDescription}
+                  disabled={!canEditScreenshots}
                 />
               </label>
             </div>
@@ -471,7 +491,7 @@ export default function ModelEditForm({ id, userRole }) {
                       setZipFile(null)
                     }}
                     className="ml-4 text-red-600 hover:text-red-800 text-sm"
-                    disabled={canEditDescription}
+                    disabled={true}
                     title="Удалить файл"
                   >
                     <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -508,7 +528,7 @@ export default function ModelEditForm({ id, userRole }) {
                     }
                   }}
                   className="sr-only"
-                  disabled={canEditDescription}
+                  disabled={true}
                 />
               </label>
               {zipFile && (
@@ -573,7 +593,7 @@ export default function ModelEditForm({ id, userRole }) {
               onChange={handleChange}
               required
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              disabled={canEditDescription}
+              disabled={!canEditSphere}
             >
               <option value="">Выберите сферу</option>
               {spheres.map((sphere) => (
@@ -622,23 +642,140 @@ export default function ModelEditForm({ id, userRole }) {
             </div>
           </div>
         </div>
-        ) : canEditDescription === true ? (
-          /* Если можно редактировать только описание, показываем только его */
+        ) : (canEditDescription === true || canEditSphere === true || canEditScreenshots === true) ? (
+          /* Если можно редактировать описание, сферу или скриншоты, показываем соответствующие поля */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Описание */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Описание
-              </label>
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                rows={4}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                maxLength={1000}
-              />
-            </div>
+            {canEditDescription && (
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Описание
+                </label>
+                <textarea
+                  name="description"
+                  value={form.description}
+                  onChange={handleChange}
+                  rows={4}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  maxLength={1000}
+                />
+              </div>
+            )}
+            
+            {/* Сфера */}
+            {canEditSphere && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Сфера <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="sphereId"
+                  value={form.sphereId}
+                  onChange={handleChange}
+                  required
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Выберите сферу</option>
+                  {spheres.map((sphere) => (
+                    <option key={sphere.id} value={sphere.id}>
+                      {sphere.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            {/* Скриншоты */}
+            {canEditScreenshots && (
+              <>
+                {/* Текущие скриншоты */}
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Текущие скриншоты
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {currentFiles.screenshots.map((file, index) => (
+                      <div key={index} className="relative group">
+                        <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-md overflow-hidden">
+                          <img
+                            src={proxyUrl(file)}
+                            alt={`Скриншот ${index + 1}`}
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500 truncate">
+                          {file.split('/').pop()}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeCurrentScreenshot(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Новые скриншоты */}
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Добавить новые скриншоты
+                  </label>
+                  
+                  <div className="mt-2">
+                    <label className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
+                      <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                      </svg>
+                      Добавить скриншоты
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleScreenshotAdd}
+                        className="sr-only"
+                      />
+                    </label>
+                  </div>
+                  
+                  {/* Галерея добавленных скриншотов */}
+                  {screenshots.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {screenshots.map((file, index) => (
+                        <div key={index} className="relative group">
+                          <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-md overflow-hidden">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Новый скриншот ${index + 1}`}
+                              className="object-cover w-full h-full"
+                            />
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500 truncate">
+                            {file.name}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-400">
+                            {formatFileSize(file.size)}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeScreenshot(index)}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="p-4 bg-yellow-100 border border-yellow-400 rounded-md">
@@ -653,6 +790,7 @@ export default function ModelEditForm({ id, userRole }) {
         )}
 
         {/* Кнопки действий */}
+        {(canEditModel === true || canEditDescription === true || canEditSphere === true || canEditScreenshots === true) && (
         <div className="flex justify-between pt-4">
           <button
             type="button"
@@ -679,6 +817,7 @@ export default function ModelEditForm({ id, userRole }) {
             ) : 'Сохранить изменения'}
           </button>
         </div>
+        )}
       </form>
     </div>
   )
