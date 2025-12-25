@@ -123,6 +123,19 @@ export default function DashboardPage() {
     router.push('/dashboard/models/upload')
   }
 
+  // Сортировка сфер: по количеству моделей, "Другое" в конце
+  const sortedSpheres = [...spheres].sort((a, b) => {
+    const aCount = models.filter(model => model.sphere?.id === a.id).length
+    const bCount = models.filter(model => model.sphere?.id === b.id).length
+    
+    // Если одна из сфер называется "Другое", она идет в конец
+    if (a.name === 'Другое') return 1
+    if (b.name === 'Другое') return -1
+    
+    // Остальные сортируем по количеству моделей (от большего к меньшему)
+    return bCount - aCount
+  })
+
   const filteredModels = models
     .filter(model => {
       // Фильтрация по вкладке сферы
@@ -204,7 +217,7 @@ export default function DashboardPage() {
                 </span>
               </button>
               <div className="h-6 w-px bg-gray-300"></div>
-              {spheres.map((sphere) => {
+              {sortedSpheres.map((sphere) => {
                 const sphereModelsCount = models.filter(model =>
                   model.sphere?.id === sphere.id
                 ).length
