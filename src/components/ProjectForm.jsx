@@ -152,9 +152,14 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
   const handleMouseEnter = (model, event) => {
     if (model?.images?.length > 0) {
       const rect = event.currentTarget.getBoundingClientRect()
+      // Позиционируем превью справа от элемента, но не выходим за границы экрана
+      const previewWidth = 320
+      const previewHeight = 240
+      const x = Math.min(rect.right + 20, window.innerWidth - previewWidth - 20)
+      const y = Math.min(rect.top, window.innerHeight - previewHeight - 20)
       setPreviewPosition({
-        x: rect.right + 1000, // Позиция справа от строки
-        y: rect.top - 100
+        x: Math.max(20, x), // Минимум 20px от левого края
+        y: Math.max(20, y)  // Минимум 20px от верхнего края
       })
       setPreviewModel(model)
       setCurrentImageIndex(0)
@@ -195,7 +200,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     model.title.toLowerCase().includes(searchTerm.toLowerCase()))
 
   return (
-    <div className="mb-6 p-6 rounded-lg bg-white shadow-sm" onMouseLeave={handleMouseLeave}>
+    <div className="mb-6 p-6 rounded-lg bg-white shadow-sm w-full max-w-2xl" onMouseLeave={handleMouseLeave}>
       <h2 className="text-xl font-semibold mb-6 text-gray-800">
         {project ? 'Редактировать проект' : 'Создать новый проект'}
       </h2>
@@ -241,7 +246,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
               </div>
             ) : (
-              <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
+              <div className="border border-gray-300 rounded-md p-3 bg-gray-50 min-h-[240px]">
                 {models.length === 0 ? (
                   <p className="text-gray-500 text-sm">Нет доступных моделей</p>
                 ) : (
@@ -252,7 +257,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                         className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
                           formData.modelIds.includes(model.id) 
                             ? 'bg-blue-50 border border-blue-200' 
-                            : 'hover:bg-gray-100'
+                            : 'border border-transparent hover:bg-gray-100'
                         }`}
                         onClick={() => handleModelSelect(model.id)}
                         onMouseEnter={(e) => handleMouseEnter(model, e)}
@@ -322,22 +327,22 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             ) : project ? 'Сохранить изменения' : 'Создать проект'}
           </button>
         </div>
-        
-        <AnimatePresence>
-          {showPreview && previewModel && (
-            <ModelPreview
-              model={previewModel}
-              position={previewPosition}
-              currentImageIndex={currentImageIndex}
-              onNextImage={nextImage}
-              onPrevImage={prevImage}
-              onWheel={handleWheel}
-              isHovering={isHovering}
-              setIsHovering={setShowPreview}
-            />
-          )}
-        </AnimatePresence>
       </form>
+      
+      <AnimatePresence>
+        {showPreview && previewModel && (
+          <ModelPreview
+            model={previewModel}
+            position={previewPosition}
+            currentImageIndex={currentImageIndex}
+            onNextImage={nextImage}
+            onPrevImage={prevImage}
+            onWheel={handleWheel}
+            isHovering={isHovering}
+            setIsHovering={setShowPreview}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

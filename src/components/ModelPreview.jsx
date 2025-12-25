@@ -47,7 +47,7 @@ export const ModelPreview = ({
       transition={{ duration: 0.2 }}
       className="fixed z-[9999] bg-white shadow-xl rounded-md overflow-hidden border border-gray-300 pointer-events-auto"
       style={{
-        left: `${position.x / 2}px`,
+        left: `${position.x}px`,
         top: `${position.y}px`,
         width: '320px',
         height: '240px'
