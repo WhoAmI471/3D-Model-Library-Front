@@ -40,7 +40,7 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const { id } = await params // Получаем id из параметров маршрута
-    const { name, modelIds } = await request.json()
+    const { name, city, modelIds } = await request.json()
     const user = await getUserFromSession()
 
     if (!id) {
@@ -95,6 +95,11 @@ export async function PUT(request, { params }) {
       changes.push(`Название: "${existingProject.name}" → "${name}"`)
     }
 
+    const cityValue = city?.trim() || null
+    if (cityValue !== (existingProject.city || null)) {
+      changes.push(`Город: "${existingProject.city || 'не указан'}" → "${cityValue || 'не указан'}"`)
+    }
+
     const currentModelIds = existingProject.models.map(m => m.id).sort()
     const newModelIds = [...modelIds].sort()
     if (JSON.stringify(currentModelIds) !== JSON.stringify(newModelIds)) {
@@ -112,6 +117,7 @@ export async function PUT(request, { params }) {
     where: { id },
     data: {
       name,
+      city: cityValue,
       models: {
         set: modelIds.map(modelId => ({ id: modelId }))
       }

@@ -30,7 +30,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { name, modelIds = [] } = await request.json()
+    const { name, city, modelIds = [] } = await request.json()
     const user = await getUserFromSession()
     
     // Валидация
@@ -62,6 +62,7 @@ export async function POST(request) {
     const newProject = await prisma.project.create({
       data: {
         name,
+        city: city?.trim() || null,
         models: {
           connect: modelIds.map(id => ({ id }))
         }

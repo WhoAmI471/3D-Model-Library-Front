@@ -7,6 +7,7 @@ import { ModelPreview } from "@/components/ModelPreview"
 export default function ProjectForm({ project, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
     name: '',
+    city: '',
     modelIds: []
   })
   const [errors, setErrors] = useState({})
@@ -43,6 +44,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     if (project) {
       setFormData({
         name: project.name,
+        city: project.city || '',
         modelIds: project.models?.map(model => model.id) || []
       })
     }
@@ -50,14 +52,14 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    value
+    const filteredValue = value
       .replace(/[^а-яА-ЯёЁa-zA-Z0-9\s]/g, '') // Удаляем недопустимые символы
       .replace(/\s+/g, ' ') // Заменяем множественные пробелы на один
       .trim()
       
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: filteredValue
     }))
   
     if (errors[name]) {
@@ -225,6 +227,26 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             />
             {errors.name && (
               <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+            )}
+          </div>
+          <div onMouseLeave={handleMouseLeave}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Город
+            </label>
+            <input
+              type="text"
+              name="city"
+              value={formData.city}
+              onChange={handleChange}
+              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                errors.city ? 'border-red-500' : 'border-gray-300'
+              }`}
+              disabled={isSubmitting}
+              placeholder="Введите город"
+              maxLength={50}
+            />
+            {errors.city && (
+              <p className="mt-1 text-sm text-red-600">{errors.city}</p>
             )}
           </div>
           <input

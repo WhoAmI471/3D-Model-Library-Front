@@ -599,7 +599,7 @@ export default function ModelUploadForm() {
                     className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                   />
                   <label htmlFor={`project-${project.id}`} className="ml-2 text-sm text-gray-700">
-                    {project.name}
+                    {project.name}{project.city ? ` • ${project.city}` : ''}
                   </label>
                 </div>
               ))}

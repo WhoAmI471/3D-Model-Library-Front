@@ -174,6 +174,9 @@ export default function ProjectsPage() {
                   Название
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Город
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Дата создания
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -194,6 +197,11 @@ export default function ProjectsPage() {
                       className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" 
                       onClick={() => router.push(`/dashboard/projects/${project.id}`)}>
                       {project.name}
+                    </td>
+                    <td 
+                      className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
+                      onClick={() => router.push(`/dashboard/projects/${project.id}`)}>
+                      {project.city || '—'}
                     </td>
                     <td 
                       className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
@@ -241,7 +249,7 @@ export default function ProjectsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={user?.role === 'ADMIN' || checkAnyPermission(user, 'create_projects', 'edit_projects') ? "5" : "4"} className="px-6 py-4 text-center text-sm text-gray-500">
                     Проекты не найдены
                   </td>
                 </tr>

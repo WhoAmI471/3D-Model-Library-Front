@@ -26,8 +26,14 @@ export default function LogsPage() {
   const [isHovering, setIsHovering] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [autoPlayInterval, setAutoPlayInterval] = useState(null)
+  const [expandedLogId, setExpandedLogId] = useState(null)
   
   const router = useRouter()
+  
+  const toggleLogExpand = (logId, e) => {
+    e.stopPropagation() // Предотвращаем переход на страницу модели
+    setExpandedLogId(expandedLogId === logId ? null : logId)
+  }
 
   const loadLogs = async () => {
     setIsLoading(true)
@@ -61,6 +67,7 @@ export default function LogsPage() {
 
   useEffect(() => {
     loadLogs()
+    setExpandedLogId(null) // Сбрасываем развернутый лог при изменении данных
   }, [page, filters, sortConfig]) // Добавляем sortConfig в зависимости
 
   const handleFilterChange = (e) => {
@@ -280,7 +287,7 @@ export default function LogsPage() {
               </th>
               <th 
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 max-w-md"
                 onClick={() => requestSort('move')} 
                 onMouseLeave={handleMouseLeave}
               >
@@ -330,7 +337,15 @@ export default function LogsPage() {
                   <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" onClick={() => router.push(`/dashboard/models/${log.model?.id}`)}>
                     {format(new Date(log.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}
                   </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" onClick={() => router.push(`/dashboard/models/${log.model?.id}`)}>{log.action}</td>
+                  <td 
+                    className="px-6 py-2 text-sm text-gray-500 max-w-md cursor-pointer" 
+                    onClick={(e) => toggleLogExpand(log.id, e)}
+                    title={expandedLogId === log.id ? undefined : log.action}
+                  >
+                    <div className={expandedLogId === log.id ? '' : 'truncate'}>
+                      {log.action}
+                    </div>
+                  </td>
                   <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" onClick={() => router.push(`/dashboard/models/${log.model?.id}`)}>
                     {log.user ? `${log.user.name} (${log.user.email})` : 'Система'}
                   </td>

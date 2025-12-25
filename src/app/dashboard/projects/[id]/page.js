@@ -322,7 +322,12 @@ export default function ProjectPage({ params }) {
         {/* Заголовок и кнопки */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">{project.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-800">{project.name}</h1>
+              {project.city && (
+                <span className="text-lg text-gray-600">• {project.city}</span>
+              )}
+            </div>
             <p className="text-sm text-gray-500 mt-1">
               Создан: {format(new Date(project.createdAt), 'dd.MM.yyyy', { locale: ru })}
             </p>
