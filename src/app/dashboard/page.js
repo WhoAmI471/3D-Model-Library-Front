@@ -8,24 +8,19 @@ import Link from 'next/link'
 import DeleteReasonModal from "@/components/DeleteReasonModal"
 import { 
   MagnifyingGlassIcon, 
-  FunnelIcon, 
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  ArrowDownTrayIcon,
-  XMarkIcon
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline'
-import { ProjectFilter } from "@/components/ProjectFilter"
 
 export default function DashboardPage() {
   const [user, setUser] = useState(null)
   const [models, setModels] = useState([])
   const [projects, setProjects] = useState([])
-  const [selectedProjects, setSelectedProjects] = useState([])
-  const [showProjectFilter, setShowProjectFilter] = useState(false)
+  const [activeTab, setActiveTab] = useState('all')
   const [isDownloading, setIsDownloading] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
-  const [projectSearchTerm, setProjectSearchTerm] = useState('')
   const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false)
   const [selectedModelForDeletion, setSelectedModelForDeletion] = useState(null)
 
@@ -128,23 +123,14 @@ export default function DashboardPage() {
     router.push('/dashboard/models/upload')
   }
 
-  const toggleProjectFilter = (projectId) => {
-    setSelectedProjects(prev => 
-      prev.includes(projectId)
-        ? prev.filter(id => id !== projectId)
-        : [...prev, projectId]
-    )
-  }
-
-  const clearProjectFilters = () => {
-    setSelectedProjects([])
-  }
-
   const filteredModels = models
-    .filter(model => 
-      selectedProjects.length === 0 || 
-      model.projects?.some(project => selectedProjects.includes(project.id)))
     .filter(model => {
+      // Фильтрация по вкладке проекта
+      if (activeTab === 'all') return true
+      return model.projects?.some(project => project.id === activeTab)
+    })
+    .filter(model => {
+      // Фильтрация по поиску
       if (!searchTerm) return true
       
       const searchLower = searchTerm.toLowerCase()
@@ -159,23 +145,9 @@ export default function DashboardPage() {
   return (
     <div className="min-h-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Заголовок и действия */}
         <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <h1 className="text-3xl font-semibold text-gray-900">Модели</h1>
-            {checkPermission(user, 'upload_models') && (
-              <button 
-                onClick={handleUpload}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                <PlusIcon className="h-5 w-5" />
-                Добавить модель
-              </button>
-            )}
-          </div>
-
-          {/* Поиск и фильтры */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          {/* Поиск и кнопка добавления */}
+          <div className="mb-6 flex gap-3">
             <div className="flex-1 relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
@@ -186,80 +158,89 @@ export default function DashboardPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button 
-              onClick={() => setShowProjectFilter(!showProjectFilter)}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 border rounded-lg transition-colors font-medium text-sm ${
-                selectedProjects.length > 0
-                  ? 'bg-blue-50 border-blue-300 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <FunnelIcon className="h-5 w-5" />
-              Проекты
-              {selectedProjects.length > 0 && (
-                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
-                  {selectedProjects.length}
+            {checkPermission(user, 'upload_models') && (
+              <button 
+                onClick={handleUpload}
+                className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer"
+                style={{ 
+                  width: '2.5rem', 
+                  paddingLeft: '0.625rem', 
+                  paddingRight: '0.625rem',
+                  transition: 'width 0.2s, padding-right 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.setProperty('width', '195px', 'important')
+                  e.currentTarget.style.setProperty('padding-right', '2rem', 'important')
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.setProperty('width', '2.5rem', 'important')
+                  e.currentTarget.style.setProperty('padding-right', '0.625rem', 'important')
+                }}
+                title="Добавить модель"
+              >
+                <PlusIcon className="h-5 w-5 flex-shrink-0" style={{ color: '#ffffff', strokeWidth: 2 }} />
+                <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                  Добавить модель
                 </span>
-              )}
-            </button>
+              </button>
+            )}
           </div>
 
-          {/* Активные фильтры */}
-          {selectedProjects.length > 0 && (
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-600">Активные фильтры:</span>
-              {selectedProjects.map(projectId => {
-                const project = projects.find(p => p.id === projectId)
-                return project ? (
-                  <span
-                    key={projectId}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
+          {/* Вкладки проектов */}
+          <div className="mb-6">
+            <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Все модели
+                <span className={`ml-1.5 text-xs ${activeTab === 'all' ? 'text-blue-100' : 'text-gray-500'}`}>
+                  {models.length}
+                </span>
+              </button>
+              {projects.map((project) => {
+                const projectModelsCount = models.filter(model =>
+                  model.projects?.some(p => p.id === project.id)
+                ).length
+                
+                return (
+                  <button
+                    key={project.id}
+                    onClick={() => setActiveTab(project.id)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                      activeTab === project.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
                     {project.name}
-                    <button
-                      onClick={() => toggleProjectFilter(projectId)}
-                      className="hover:bg-blue-100 rounded-full p-0.5"
-                    >
-                      <XMarkIcon className="h-4 w-4" />
-                    </button>
-                  </span>
-                ) : null
+                    <span className={`ml-1.5 text-xs ${activeTab === project.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {projectModelsCount}
+                    </span>
+                  </button>
+                )
               })}
-              <button
-                onClick={clearProjectFilters}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Очистить все
-              </button>
             </div>
-          )}
+          </div>
         </div>
-
-        {/* Модальное окно фильтра проектов */}
-        {showProjectFilter && (
-          <ProjectFilter
-            projects={projects}
-            selectedProjects={selectedProjects}
-            onToggleProject={toggleProjectFilter}
-            onClose={() => setShowProjectFilter(false)}
-            searchTerm={projectSearchTerm}
-            onSearchChange={setProjectSearchTerm}
-          />
-        )}
 
         {/* Сетка моделей */}
         {filteredModels.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-500 text-lg">
-              {searchTerm || selectedProjects.length > 0
+              {searchTerm || activeTab !== 'all'
                 ? 'Модели не найдены'
                 : 'Нет моделей'}
             </p>
-            {(searchTerm || selectedProjects.length > 0) && (
+            {(searchTerm || activeTab !== 'all') && (
               <button
                 onClick={() => {
                   setSearchTerm('')
-                  setSelectedProjects([])
+                  setActiveTab('all')
                 }}
                 className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
               >
