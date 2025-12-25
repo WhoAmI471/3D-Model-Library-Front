@@ -70,13 +70,18 @@ export default async function ModelPage({ params, searchParams }) {
     const { id } = await params
     const { projectid } = await searchParams
 
+    // Принудительно обновляем данные из БД без кэширования
     const model = await prisma.model.findUnique({
       where: { id },
       include: {
         author: true,
         projects: true,
         sphere: true,
-        versions: true,
+        versions: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
         logs: {
           include: {
             user: true,

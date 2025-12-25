@@ -18,11 +18,33 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [user, setUser] = useState();
-  const [selectedVersion, setSelectedVersion] = useState(
-    model.versions && model.versions.length > 0
-      ? model.versions[model.versions.length - 1]
-      : { fileUrl: model.fileUrl, images: model.images, version: 'Последняя' }
-  );
+  // Всегда используем актуальные скриншоты из model.images как начальное значение
+  const [selectedVersion, setSelectedVersion] = useState({
+    fileUrl: model.fileUrl,
+    images: model.images || [],
+    version: 'Последняя'
+  });
+  
+  // Обновляем selectedVersion при изменении model
+  useEffect(() => {
+    // Всегда используем актуальные скриншоты из model.images, если они есть
+    // Версии используются только для исторических данных
+    if (model.images && model.images.length > 0) {
+      setSelectedVersion({ 
+        fileUrl: model.fileUrl, 
+        images: model.images, 
+        version: 'Последняя' 
+      })
+    } else if (model.versions && model.versions.length > 0) {
+      // Если актуальных скриншотов нет, используем последнюю версию
+      const latestVersion = model.versions[model.versions.length - 1]
+      setSelectedVersion(latestVersion)
+    } else {
+      setSelectedVersion({ fileUrl: model.fileUrl, images: [], version: 'Последняя' })
+    }
+    // Сбрасываем индекс изображения при изменении модели
+    setCurrentImageIndex(0)
+  }, [model.images, model.fileUrl, model.versions])
   
   useEffect(() => {
     const load = async () =>
@@ -136,7 +158,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
             <div className="flex space-x-4 overflow-x-auto pb-2">
               {selectedVersion.images.map((image, index) => (
                 <div
-                  key={index}
+                  key={`${image}-${index}`}
                   className="relative flex-shrink-0 w-64 h-48 cursor-pointer"
                   onClick={() => openModal(index)}
                 >
@@ -145,6 +167,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
                     alt={`${model.title} - изображение ${index + 1}`}
                     fill
                     className="object-cover rounded-lg"
+                    unoptimized
                   />
                 </div>
               ))}

@@ -1,5 +1,6 @@
 // app/api/models/update/route.js
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { saveModelFile, deleteFile } from '@/lib/fileStorage'
 import { syncModelFolder, sanitizeName } from '@/lib/nextcloud'
@@ -368,6 +369,10 @@ export async function POST(request) {
         user.id
       )
     }
+
+    // Обновляем кэш страницы модели, чтобы отображались актуальные данные
+    revalidatePath(`/dashboard/models/${id}`, 'page')
+    revalidatePath('/dashboard', 'page') // Также обновляем главную страницу дашборда
 
     return NextResponse.json({ 
       success: true, 

@@ -211,15 +211,58 @@ export default function ModelEditForm({ id, userRole }) {
   const removeCurrentScreenshot = (index) => {
     setCurrentFiles(prev => {
       const newScreenshots = [...prev.screenshots]
-      const deleted = newScreenshots.splice(index, 1)
+      if (index < 0 || index >= newScreenshots.length) {
+        return prev // Защита от неверного индекса
+      }
+      const deletedScreenshot = newScreenshots[index]
       // Получаем оригинальный URL для удаления
-      const originalUrl = typeof deleted[0] === 'string' ? deleted[0] : deleted[0].originalUrl || deleted[0]
-      setDeletedScreenshots(prevDeleted => [...prevDeleted, originalUrl])
+      const originalUrl = typeof deletedScreenshot === 'string' ? deletedScreenshot : (deletedScreenshot?.originalUrl || deletedScreenshot)
+      
+      if (!originalUrl) {
+        return prev // Если URL не найден, не удаляем
+      }
+      
+      // Удаляем скриншот из массива
+      newScreenshots.splice(index, 1)
+      
+      // Добавляем в список удаленных только если его там еще нет
+      setDeletedScreenshots(prevDeleted => {
+        if (!prevDeleted.includes(originalUrl)) {
+          return [...prevDeleted, originalUrl]
+        }
+        return prevDeleted
+      })
+      
       return { ...prev, screenshots: newScreenshots }
     })
   }
 
+  const restoreDeletedScreenshot = (deletedUrl) => {
+    // Удаляем из списка удаленных
+    setDeletedScreenshots(prevDeleted => prevDeleted.filter(url => url !== deletedUrl))
+    // Возвращаем в список текущих скриншотов
+    setCurrentFiles(prev => ({
+      ...prev,
+      screenshots: [...prev.screenshots, deletedUrl]
+    }))
+  }
 
+  // Функция для проверки валидности количества скриншотов
+  const isValidScreenshotsCount = () => {
+    // Если не редактируем скриншоты (ни через canEditModel, ни через canEditScreenshots), валидация не нужна
+    if (!canEditModel && !canEditScreenshots) {
+      return true
+    }
+    
+    // Проверяем количество скриншотов
+    const remainingCurrentScreenshots = currentFiles.screenshots.filter(
+      screenshot => !deletedScreenshots.includes(screenshot)
+    )
+    const newScreenshotsCount = screenshots.length
+    const totalScreenshots = remainingCurrentScreenshots.length + newScreenshotsCount
+    
+    return totalScreenshots >= 2
+  }
 
   const handleSubmit = async (e) => {
   e.preventDefault()
@@ -227,25 +270,10 @@ export default function ModelEditForm({ id, userRole }) {
   setError(null)
 
   try {
-    // Если можно редактировать только описание, сферу или скриншоты (но не полную модель), проверяем соответствующие поля
-    if (!canEditModel && (canEditDescription || canEditSphere || canEditScreenshots)) {
-      // Пропускаем проверки для полей полной модели, так как их нет в форме
-    } else {
-      // Проверка количества скриншотов: должно быть минимум 2
-      // Текущие скриншоты (которые останутся после удаления)
-      const remainingCurrentScreenshots = currentFiles.screenshots.filter(
-        screenshot => !deletedScreenshots.includes(screenshot)
-      )
-      // Новые скриншоты, которые будут добавлены
-      const newScreenshotsCount = screenshots.length
-      // Итоговое количество = оставшиеся текущие + новые
-      const totalScreenshots = remainingCurrentScreenshots.length + newScreenshotsCount
-      
-      if (totalScreenshots < 2) {
-        alert('Должно быть минимум 2 скриншота. Добавьте скриншоты или не удаляйте существующие.')
-        setIsLoading(false)
-        return
-      }
+    // Проверка количества скриншотов перед сохранением (только если редактируются скриншоты)
+    if ((canEditModel || canEditScreenshots) && !isValidScreenshotsCount()) {
+      setIsLoading(false)
+      return
     }
 
     const formData = new FormData()
@@ -301,7 +329,8 @@ export default function ModelEditForm({ id, userRole }) {
     const result = await response.json()
 
     if (response.ok && result.success) {
-      router.push(`/dashboard/models/${id}`)
+      // Используем полную перезагрузку страницы с timestamp для гарантированного обновления данных
+      window.location.href = `/dashboard/models/${id}?t=${Date.now()}`
     } else {
       throw new Error(result.error || 'Не удалось обновить модель')
     }
@@ -396,7 +425,7 @@ export default function ModelEditForm({ id, userRole }) {
                     type="button"
                     onClick={() => removeCurrentScreenshot(index)}
                     className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    disabled={!canEditScreenshots}
+                    disabled={!canEditModel && !canEditScreenshots}
                   >
                     <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -405,6 +434,41 @@ export default function ModelEditForm({ id, userRole }) {
                 </div>
               ))}
             </div>
+            
+            {/* Удаленные скриншоты (можно восстановить) */}
+            {deletedScreenshots.length > 0 && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Удаленные скриншоты (можно восстановить)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {deletedScreenshots.map((deletedUrl, index) => (
+                    <div key={`deleted-${deletedUrl}`} className="relative group">
+                      <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-md overflow-hidden opacity-60 border-2 border-red-300">
+                        <img
+                          src={proxyUrl(deletedUrl)}
+                          alt={`Удаленный скриншот ${index + 1}`}
+                          className="object-cover w-full h-full"
+                        />
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500 truncate">
+                        {deletedUrl.split('/').pop()}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => restoreDeletedScreenshot(deletedUrl)}
+                        className="absolute top-1 right-1 bg-green-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Восстановить скриншот"
+                      >
+                        <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Новые скриншоты */}
@@ -425,7 +489,7 @@ export default function ModelEditForm({ id, userRole }) {
                   accept="image/*"
                   onChange={handleScreenshotAdd}
                   className="sr-only"
-                  disabled={!canEditScreenshots}
+                  disabled={!canEditModel && !canEditScreenshots}
                 />
               </label>
             </div>
@@ -718,6 +782,41 @@ export default function ModelEditForm({ id, userRole }) {
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Удаленные скриншоты (можно восстановить) */}
+                  {deletedScreenshots.length > 0 && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Удаленные скриншоты (можно восстановить)
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {deletedScreenshots.map((deletedUrl, index) => (
+                          <div key={`deleted-${deletedUrl}`} className="relative group">
+                            <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-md overflow-hidden opacity-60 border-2 border-red-300">
+                              <img
+                                src={proxyUrl(deletedUrl)}
+                                alt={`Удаленный скриншот ${index + 1}`}
+                                className="object-cover w-full h-full"
+                              />
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500 truncate">
+                              {deletedUrl.split('/').pop()}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => restoreDeletedScreenshot(deletedUrl)}
+                              className="absolute top-1 right-1 bg-green-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Восстановить скриншот"
+                            >
+                              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Новые скриншоты */}
@@ -791,31 +890,40 @@ export default function ModelEditForm({ id, userRole }) {
 
         {/* Кнопки действий */}
         {(canEditModel === true || canEditDescription === true || canEditSphere === true || canEditScreenshots === true) && (
-        <div className="flex justify-between pt-4">
-          <button
-            type="button"
-            onClick={() => router.push('/dashboard')}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Отмена
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              isLoading ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
-          >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Сохранение...
-              </>
-            ) : 'Сохранить изменения'}
-          </button>
+        <div className="pt-4">
+          <div className="flex justify-between">
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Отмена
+            </button>
+            <div className="flex flex-col items-end">
+              <button
+                type="submit"
+                disabled={isLoading || !isValidScreenshotsCount()}
+                className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                  (isLoading || !isValidScreenshotsCount()) ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Сохранение...
+                  </>
+                ) : 'Сохранить изменения'}
+              </button>
+              {!isValidScreenshotsCount() && (canEditModel || canEditScreenshots) && (
+                <p className="mt-1 text-xs text-red-600 text-right">
+                  Скриншотов должно быть минимум 2. Загрузите еще или восстановите удаленные.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
         )}
       </form>
