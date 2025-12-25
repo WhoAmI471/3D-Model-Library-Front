@@ -3,15 +3,17 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation'
 import { formatDateTime, proxyUrl } from '@/lib/utils'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
-// import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios'
-import Image from 'next/image';
-
-import Download from "../../public/Download.svg"
-import Delete from "../../public/Delete.svg"
-import Edit from "../../public/Edit.svg"
 import DeleteReasonModal from './DeleteReasonModal'
+import { 
+  ArrowDownTrayIcon,
+  PencilIcon,
+  TrashIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline'
 
 export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const router = useRouter()
@@ -25,26 +27,22 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   // Функция для получения текущей версии модели
   const getCurrentVersion = () => {
     if (model.versions && model.versions.length > 0) {
-      // Берем последнюю версию (по времени создания)
       const sortedVersions = [...model.versions].sort((a, b) => 
         new Date(b.createdAt) - new Date(a.createdAt)
       )
       return sortedVersions[0].version
     }
-    return '1.0' // По умолчанию версия 1.0
+    return '1.0'
   }
 
-  // Всегда используем актуальные скриншоты из model.images как начальное значение
   const [selectedVersion, setSelectedVersion] = useState({
     fileUrl: model.fileUrl,
     images: model.images || [],
     version: getCurrentVersion()
   });
 
-  // Обновляем selectedVersion при изменении model
   useEffect(() => {
     const currentVersion = getCurrentVersion()
-    // Всегда используем актуальные скриншоты из model.images, если они есть
     if (model.images && model.images.length > 0) {
       setSelectedVersion({ 
         fileUrl: model.fileUrl, 
@@ -53,7 +51,6 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
       })
       setValidImages(model.images)
     } else if (model.versions && model.versions.length > 0) {
-      // Если актуальных скриншотов нет, используем последнюю версию
       const sortedVersions = [...model.versions].sort((a, b) => 
         new Date(b.createdAt) - new Date(a.createdAt)
       )
@@ -64,25 +61,19 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
       setSelectedVersion({ fileUrl: model.fileUrl, images: [], version: currentVersion })
       setValidImages([])
     }
-    // Сбрасываем индекс изображения при изменении модели
     setCurrentImageIndex(0)
   }, [model.images, model.fileUrl, model.versions])
   
-  // Обработчик ошибки загрузки изображения
   const handleImageError = (e, imageUrl) => {
-    // Скрываем изображение только после ошибки
     if (e.target) {
       e.target.style.display = 'none'
     }
     setValidImages(prev => {
-      // Удаляем только конкретное изображение, которое не загрузилось
       const filtered = prev.filter(img => img !== imageUrl)
-      // Если все изображения были удалены, закрываем модальное окно
       if (filtered.length === 0) {
         setIsModalOpen(false)
         setCurrentImageIndex(0)
       } else if (currentImageIndex >= filtered.length) {
-        // Если текущий индекс больше количества доступных изображений, сбрасываем его
         setCurrentImageIndex(Math.max(0, filtered.length - 1))
       }
       return filtered
@@ -90,11 +81,8 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   }
   
   useEffect(() => {
-    const load = async () =>
-    {
+    const load = async () => {
       const userRes = await axios.get('/api/auth/me')
-      setUser(userRes.data.user)
-      console.log(userRes.data.user)
       setUser(userRes.data.user)
     }
     load()
@@ -151,7 +139,6 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
         });
       }
     } else {
-      // Для не-админов показываем модальное окно с формой
       setShowDeleteReasonModal(true);
     }
   };
@@ -180,38 +167,54 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
     }
   };
 
-
   return (
-    <div className="w-full mx-auto rounded-lg overflow-hidden">
-      {/* Умные хлебные крошки */}
-      <div className="px-6 bg-gray-50 border-b border-gray-200 text-sm text-gray-600">
-        {projectId ? (
-          <>
-            <Link href="/dashboard/projects" className="hover:text-blue-600">Проекты</Link> / 
-            <Link href={`/dashboard/projects/${projectId}`} className="hover:text-blue-600"> 
-              {model.projects?.find(p => p.id === projectId)?.name || 'Проект'}
-            </Link> / 
-            <span className="font-medium"> {model.title}</span>
-          </>
-        ) : (
-          <>
-            <Link href="/dashboard" className="hover:text-blue-600">Модели</Link> / 
-            <span className="font-medium"> {model.title}</span>
-          </>
-        )}
-      </div>
+    <div className="min-h-full bg-white">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Заголовок и кнопки */}
+        <div className="mb-6 pb-6 border-b border-gray-200 flex justify-between items-end gap-4">
+          <h1 className="text-2xl font-semibold text-gray-900 leading-none pb-0">{model.title}</h1>
+          <div className="flex gap-3 flex-shrink-0">
+            {checkPermission(user, 'download_models') && (
+              <button
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                {isDownloading ? 'Скачивание...' : 'Скачать'}
+              </button>
+            )}
+            
+            {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
+              <Link 
+                href={`/dashboard/models/update/${model.id}`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+              >
+                <PencilIcon className="h-5 w-5" />
+                Изменить
+              </Link>
+            )}
+            
+            {checkPermission(user, 'delete_models') && (
+              <button 
+                onClick={handleDeleteRequest}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+              >
+                <TrashIcon className="h-5 w-5" />
+                Удалить
+              </button>
+            )}
+          </div>
+        </div>
 
-      {/* Основное содержимое */}
-      <div className="p-6 text-gray-800">
-        <h1 className="text-2xl pb-4 font-bold text-gray-800">{model.title}</h1>
         {/* Галерея изображений */}
         {validImages && validImages.length > 0 && (
-          <div className="mb-6">
-            <div className="flex space-x-4 overflow-x-auto pb-2">
+          <div className="mb-8">
+            <div className="flex gap-4 overflow-x-auto pb-2">
               {validImages.map((image, index) => (
                 <div
                   key={`${image}-${index}`}
-                  className="relative flex-shrink-0 w-64 h-48 cursor-pointer bg-gray-100 rounded-lg overflow-hidden"
+                  className="relative flex-shrink-0 w-64 h-48 cursor-pointer bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
                   onClick={() => openModal(index)}
                 >
                   <img
@@ -225,177 +228,134 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
             </div>
           </div>
         )}
+
+        {/* Описание */}
+        {model.description && (
+          <div className="mb-8 bg-gray-50 rounded-lg p-6 border border-gray-200">
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Описание</div>
+            <p className="text-sm text-gray-900 whitespace-pre-line leading-relaxed">{model.description}</p>
+          </div>
+        )}
         
+        {/* Модальное окно для просмотра изображений */}
         {isModalOpen && validImages.length > 0 && (
-          <div className="fixed inset-0 bg-opacity-90 z-50 flex items-center justify-center p-4">
-            <div className="relative max-w-4xl w-full bg-white rounded-lg shadow-md">
+          <div 
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={closeModal}
+          >
+            <div 
+              className="relative max-w-5xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button 
                 onClick={closeModal}
-                className="absolute top-4 right-4 text-blue-600 z-10"
+                className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <XMarkIcon className="h-8 w-8" />
               </button>
               
-              <div className="relative h-[70vh] w-full flex items-center justify-center">
+              <div className="relative h-[70vh] w-full flex items-center justify-center bg-gray-900 rounded-lg overflow-hidden">
                 <img
                   src={proxyUrl(validImages[currentImageIndex])}
                   alt={`${model.title} - изображение ${currentImageIndex + 1}`}
                   className="max-w-full max-h-full object-contain"
                   onError={(e) => handleImageError(e, validImages[currentImageIndex])}
                 />
+                
+                {validImages.length > 1 && (
+                  <>
+                    <button 
+                      onClick={prevImage}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+                    >
+                      <ChevronLeftIcon className="h-6 w-6" />
+                    </button>
+                    
+                    <button 
+                      onClick={nextImage}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+                    >
+                      <ChevronRightIcon className="h-6 w-6" />
+                    </button>
+                  </>
+                )}
               </div>
               
-              <div className="flex justify-between items-center pb-6 ml-10 mr-10">
-                <div className="flex space-x-2">
+              {validImages.length > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
                   {validImages.map((_, index) => (
-                    <div 
+                    <button
                       key={index}
-                      className={`h-2 w-2 rounded-full ${index === currentImageIndex ? 'bg-blue-600' : 'bg-blue-300'}`}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`h-2 rounded-full transition-all ${
+                        index === currentImageIndex ? 'bg-white w-8' : 'bg-white/50 w-2'
+                      }`}
                     />
                   ))}
                 </div>
-
-                <div>
-                  <button 
-                    onClick={prevImage}
-                    className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full pr-5"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path fill-rule="evenodd" clip-rule="evenodd" d="M10.9393 23.5607C11.5251 24.1464 12.4749 24.1464 13.0607 23.5607C13.6464 22.9749 13.6464 22.0251 13.0607 21.4393L5.1213 13.5L22.5 13.5C23.3284 13.5 24 12.8284 24 12C24 11.1716 23.3284 10.5 22.5 10.5L5.1213 10.5L13.0607 2.56065C13.6464 1.9749 13.6464 1.0251 13.0607 0.439347C12.4749 -0.146403 11.5251 -0.146403 10.9393 0.439347L0.4404 10.9383C0.436801 10.9419 0.4332 10.9455 0.429601 10.9492C0.164851 11.2188 0.00120081 11.5881 1.04947e-06 11.9955C1.04934e-06 11.997 1.0492e-06 11.9985 1.04907e-06 12C1.04894e-06 12.0015 1.04881e-06 12.003 1.04868e-06 12.0045C0.000601846 12.2062 0.0409518 12.3986 0.113851 12.5742C0.185401 12.7471 0.290551 12.9093 0.429601 13.0508C0.4332 13.0544 0.43665 13.058 0.440251 13.0616" fill="#2763FE"/>
-                    </svg>
-                  </button>
-                  
-                  <button 
-                    onClick={nextImage}
-                    className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full pl-5"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" clip-rule="evenodd" d="M13.0607 0.43934C12.4749 -0.146447 11.5251 -0.146447 10.9393 0.43934C10.3536 1.02513 10.3536 1.97487 10.9393 2.56067L18.8787 10.5H1.5C0.671572 10.5 0 11.1716 0 12C0 12.8284 0.671572 13.5 1.5 13.5H18.8787L10.9393 21.4393C10.3536 22.0251 10.3536 22.9749 10.9393 23.5606C11.5251 24.1464 12.4749 24.1464 13.0607 23.5606L23.5596 13.0617C23.5632 13.0581 23.5668 13.0545 23.5704 13.0508C23.8351 12.7812 23.9988 12.4119 24 12.0045C24 12.003 24 12.0015 24 12C24 11.9985 24 11.997 24 11.9955C23.9994 11.7937 23.959 11.6014 23.8862 11.4258C23.8146 11.2529 23.7094 11.0907 23.5704 10.9492C23.5668 10.9456 23.5634 10.942 23.5597 10.9384" fill="#2763FE"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Информация о модели */}
-        <div className="space-y-4 mb-6">
-          <div className="flex items-start">
-            <span className="w-34 text-gray-600">Автор:</span>
-            <span className="font-medium">{model.author?.name || 'Не указан'}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Автор</div>
+            <div className="text-sm font-medium text-gray-900 truncate">{model.author?.name || 'Не указан'}</div>
           </div>
           
-          <div className="flex items-start">
-            <span className="w-34 text-gray-600">Версия:</span>
-            <span>{getCurrentVersion()}</span>
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Версия</div>
+            <div className="text-sm font-medium text-gray-900">{getCurrentVersion()}</div>
           </div>
           
-          <div className="flex items-start">
-            <span className="w-34 text-gray-600">Описание:</span>
-            <p className="whitespace-pre-line">{model.description}</p>
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Сфера</div>
+            <div className="text-sm font-medium text-gray-900 truncate">{model.sphere?.name || 'Не указана'}</div>
           </div>
           
-          <div className="flex items-start">
-            <span className="w-34 text-gray-600">Дата изменения:</span>
-            <span>{formatDateTime(model.updatedAt)}</span>
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Дата изменения</div>
+            <div className="text-sm font-medium text-gray-900">{formatDateTime(model.updatedAt)}</div>
           </div>
-          
-          <div className="flex items-start">
-            <span className="w-34 text-gray-600">Проекты:</span>
-            <div className="flex flex-wrap gap-1">
-              {model.projects?.length > 0 ? (
-                model.projects.map(project => (
-                  <Link 
-                    key={project.id}
-                    href={`/dashboard/projects/${project.id}`}
-                    className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm"
-                  >
-                    {project.name}
-                  </Link>
-                ))
-              ) : (
-                <span>—</span>
-              )}
+        </div>
+
+        {/* Проекты */}
+        {model.projects && model.projects.length > 0 && (
+          <div className="mb-8">
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Проекты</div>
+            <div className="flex flex-wrap gap-2">
+              {model.projects.map(project => (
+                <Link 
+                  key={project.id}
+                  href={`/dashboard/projects/${project.id}`}
+                  className="inline-flex items-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors cursor-pointer border border-blue-200"
+                >
+                  {project.name}
+                </Link>
+              ))}
             </div>
           </div>
-          
-          <div className="flex items-start">
-            <span className="w-34 text-gray-600">Сфера:</span>
-            <span>{model.sphere?.name || 'Не указана'}</span>
-          </div>
-        </div>
+        )}
 
-        {/* кнопки */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex space-x-2">
-            
-            {checkPermission(user, 'download_models') && (
-              <button
-                onClick={handleDownload}
-                disabled={isDownloading}
-                className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
-              >
-                <Image
-                  src={Download} 
-                  alt="Edit" 
-                  width={18} 
-                  height={18}
-                  className='mr-2'
-                />
-                {isDownloading ? 'Скачивание...' : 'Скачать'}
-              </button>)
-            }
-            
-            {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
-              <Link 
-                href={`/dashboard/models/update/${model.id}`}
-                className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
-              >
-                <Image
-                  src={Edit} 
-                  alt="Edit" 
-                  width={18} 
-                  height={18}
-                  className='mr-2'
-                />
-                Изменить
-              </Link>)
-            }
-            
-            {checkPermission(user, 'delete_models') && (
-              <button 
-                onClick={handleDeleteRequest}
-                className="px-3 py-1 bg-blue-100 flex hover:bg-blue-200 text-blue-600 text-sm rounded"
-              >
-                <Image
-                  src={Delete} 
-                  alt="Edit" 
-                  width={18} 
-                  height={18}
-                  className='mr-2'
-                />
-                Удалить
-              </button>)
-            }
-          </div>
-        </div>
 
         {/* История изменений */}
-        <div className="border-t border-gray-200 pt-4">
-          {/* <h3 className="text-lg font-semibold mb-3">История изменений</h3> */}
-          <div className="space-y-2">
-            {model.logs?.map((log, index) => (
-              <div key={index} className="text-sm">
-                <span className="text-gray-500">{formatDateTime(log.createdAt)} </span>
-                <span className="font-medium">{log.user?.name || 'Система'} </span>
-                <span>{log.action}</span>
-              </div>
-            ))}
+        {model.logs && model.logs.length > 0 && (
+          <div className="pt-6 border-t border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">История изменений</h3>
+            <div className="space-y-3">
+              {model.logs.map((log, index) => (
+                <div key={index} className="text-sm">
+                  <span className="text-gray-500">{formatDateTime(log.createdAt)}</span>
+                  <span className="mx-2 text-gray-300">•</span>
+                  <span className="font-medium text-gray-900">{log.user?.name || 'Система'}</span>
+                  <span className="text-gray-600 ml-2">{log.action}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <DeleteReasonModal

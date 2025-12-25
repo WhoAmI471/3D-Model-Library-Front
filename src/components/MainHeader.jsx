@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
@@ -8,16 +8,37 @@ export default function MainHeader() {
   const router = useRouter()
   const pathname = usePathname()
   const [user, setUser] = useState(null)
+  const [modelTitle, setModelTitle] = useState(null)
 
-  const getSectionName = () => {
-    if (pathname === '/dashboard') return 'Модели'
-    if (pathname === '/dashboard/projects') return 'Проекты'
-    if (pathname === '/dashboard/employees') return 'Сотрудники'
-    if (pathname === '/dashboard/logs') return 'Логи'
-    if (pathname === '/dashboard/deletion-requests') return 'Удаление моделей'
-    if (pathname?.startsWith('/dashboard/models')) return 'Модели'
-    if (pathname?.startsWith('/dashboard/projects')) return 'Проекты'
-    return ''
+  // Получаем название модели, если мы на странице конкретной модели
+  useEffect(() => {
+    const modelIdMatch = pathname?.match(/^\/dashboard\/models\/([^\/]+)$/)
+    if (modelIdMatch) {
+      const modelId = modelIdMatch[1]
+      axios.get(`/api/models/${modelId}`)
+        .then(res => {
+          setModelTitle(res.data.title)
+        })
+        .catch(() => {
+          setModelTitle(null)
+        })
+    } else {
+      setModelTitle(null)
+    }
+  }, [pathname])
+
+  const getSectionParts = () => {
+    // Если есть название модели, возвращаем массив ["Модели", "название"]
+    if (modelTitle) return ['Модели', modelTitle]
+    
+    if (pathname === '/dashboard') return ['Модели']
+    if (pathname === '/dashboard/projects') return ['Проекты']
+    if (pathname === '/dashboard/employees') return ['Сотрудники']
+    if (pathname === '/dashboard/logs') return ['Логи']
+    if (pathname === '/dashboard/deletion-requests') return ['Удаление моделей']
+    if (pathname?.startsWith('/dashboard/models')) return ['Модели']
+    if (pathname?.startsWith('/dashboard/projects')) return ['Проекты']
+    return []
   }
 
   const loadUser = async () => {
@@ -43,14 +64,14 @@ export default function MainHeader() {
     <header className="h-16 bg-white border-b border-gray-200">
       <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Логотип и активный раздел */}
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold text-gray-900">3D-Library</span>
-          {getSectionName() && (
-            <>
-              <span className="text-gray-300">|</span>
-              <span className="text-sm font-medium text-gray-600">{getSectionName()}</span>
-            </>
-          )}
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-lg font-semibold text-gray-900 flex-shrink-0">3D-Library</span>
+          {getSectionParts().map((part, index) => (
+            <React.Fragment key={index}>
+              <span className="text-gray-300 flex-shrink-0">|</span>
+              <span className="text-sm font-medium text-gray-600 truncate">{part}</span>
+            </React.Fragment>
+          ))}
         </div>
 
         {/* Пользователь и выход */}
