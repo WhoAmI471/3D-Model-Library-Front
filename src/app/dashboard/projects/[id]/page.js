@@ -10,6 +10,7 @@ import axios from 'axios'
 import { proxyUrl } from '@/lib/utils'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
+import AddModelsToProjectModal from "@/components/AddModelsToProjectModal"
 
 import Download from "../../../../../public/Download.svg"
 import Delete from "../../../../../public/Delete.svg"
@@ -33,13 +34,11 @@ export default function ProjectPage({ params }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [autoPlayInterval, setAutoPlayInterval] = useState(null)
   const [user, setUser] = useState();
+  const [showAddModelsModal, setShowAddModelsModal] = useState(false)
   
   useEffect(() => {
-    const load = async () =>
-    {
+    const load = async () => {
       const userRes = await axios.get('/api/auth/me')
-      setUser(userRes.data.user)
-      console.log(userRes.data.user)
       setUser(userRes.data.user)
     }
     load()
@@ -336,7 +335,7 @@ export default function ProjectPage({ params }) {
           {(userRole === 'ADMIN' || checkPermission(user, 'upload_models')) && (
             <div className="flex gap-4">
               <button
-                onClick={() => router.push(`/dashboard/models/upload?projectId=${project.id}`)}
+                onClick={() => setShowAddModelsModal(true)}
                 className="flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200 shadow-sm transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -509,6 +508,54 @@ export default function ProjectPage({ params }) {
             />
           )}
         </AnimatePresence>
+
+        {showAddModelsModal && (
+          <AddModelsToProjectModal
+            projectId={id}
+            existingModelIds={models.map(m => m.id)}
+            onClose={() => setShowAddModelsModal(false)}
+            onAdd={async (selectedModelIds) => {
+              try {
+                // Получаем текущие модели проекта
+                const currentModelIds = models.map(m => m.id)
+                // Объединяем существующие модели с новыми
+                const allModelIds = [...new Set([...currentModelIds, ...selectedModelIds])]
+                
+                // Обновляем проект
+                const response = await fetch(`/api/projects/${id}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    name: project.name,
+                    city: project.city,
+                    modelIds: allModelIds
+                  }),
+                })
+
+                if (response.ok) {
+                  // Перезагружаем данные
+                  const projectRes = await fetch(`/api/projects/${id}`)
+                  const projectData = await projectRes.json()
+                  setProject(projectData)
+
+                  const modelsRes = await fetch(`/api/models?projectId=${id}`)
+                  const modelsData = await modelsRes.json()
+                  setModels(modelsData)
+
+                  setShowAddModelsModal(false)
+                } else {
+                  const error = await response.json()
+                  alert(error.error || 'Ошибка при добавлении моделей')
+                }
+              } catch (error) {
+                console.error('Ошибка при добавлении моделей:', error)
+                alert('Ошибка при добавлении моделей')
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   )

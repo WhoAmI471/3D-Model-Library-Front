@@ -106,11 +106,21 @@ export default function ModelEditForm({ id, userRole }) {
           }
         }
         
+        // Получаем текущую версию модели (последняя версия из списка или 1.0 по умолчанию)
+        let currentVersion = '1.0'
+        if (data.versions && data.versions.length > 0) {
+          // Сортируем версии по дате создания (последняя первая)
+          const sortedVersions = [...data.versions].sort((a, b) => 
+            new Date(b.createdAt) - new Date(a.createdAt)
+          )
+          currentVersion = sortedVersions[0].version
+        }
+        
         setForm({
           title: data.title || '',
           description: data.description || '',
           authorId: authorIdValue,
-          version: '',
+          version: currentVersion,
           sphereId: data.sphere?.id || '',
         })
         

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
 
@@ -260,9 +261,18 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             maxLength={50}
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Модели в проекте
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Модели в проекте
+              </label>
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard/models/upload')}
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                Добавить новую модель
+              </button>
+            </div>
             {isLoadingModels ? (
               <div className="flex justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>

@@ -18,33 +18,74 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [user, setUser] = useState();
+  const [validImages, setValidImages] = useState(model.images || []);
+  
+  // Функция для получения текущей версии модели
+  const getCurrentVersion = () => {
+    if (model.versions && model.versions.length > 0) {
+      // Берем последнюю версию (по времени создания)
+      const sortedVersions = [...model.versions].sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      )
+      return sortedVersions[0].version
+    }
+    return '1.0' // По умолчанию версия 1.0
+  }
+
   // Всегда используем актуальные скриншоты из model.images как начальное значение
   const [selectedVersion, setSelectedVersion] = useState({
     fileUrl: model.fileUrl,
     images: model.images || [],
-    version: 'Последняя'
+    version: getCurrentVersion()
   });
-  
+
   // Обновляем selectedVersion при изменении model
   useEffect(() => {
+    const currentVersion = getCurrentVersion()
     // Всегда используем актуальные скриншоты из model.images, если они есть
-    // Версии используются только для исторических данных
     if (model.images && model.images.length > 0) {
       setSelectedVersion({ 
         fileUrl: model.fileUrl, 
         images: model.images, 
-        version: 'Последняя' 
+        version: currentVersion
       })
+      setValidImages(model.images)
     } else if (model.versions && model.versions.length > 0) {
       // Если актуальных скриншотов нет, используем последнюю версию
-      const latestVersion = model.versions[model.versions.length - 1]
+      const sortedVersions = [...model.versions].sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      )
+      const latestVersion = sortedVersions[0]
       setSelectedVersion(latestVersion)
+      setValidImages(latestVersion.images || [])
     } else {
-      setSelectedVersion({ fileUrl: model.fileUrl, images: [], version: 'Последняя' })
+      setSelectedVersion({ fileUrl: model.fileUrl, images: [], version: currentVersion })
+      setValidImages([])
     }
     // Сбрасываем индекс изображения при изменении модели
     setCurrentImageIndex(0)
   }, [model.images, model.fileUrl, model.versions])
+  
+  // Обработчик ошибки загрузки изображения
+  const handleImageError = (e, imageUrl) => {
+    // Скрываем изображение только после ошибки
+    if (e.target) {
+      e.target.style.display = 'none'
+    }
+    setValidImages(prev => {
+      // Удаляем только конкретное изображение, которое не загрузилось
+      const filtered = prev.filter(img => img !== imageUrl)
+      // Если все изображения были удалены, закрываем модальное окно
+      if (filtered.length === 0) {
+        setIsModalOpen(false)
+        setCurrentImageIndex(0)
+      } else if (currentImageIndex >= filtered.length) {
+        // Если текущий индекс больше количества доступных изображений, сбрасываем его
+        setCurrentImageIndex(Math.max(0, filtered.length - 1))
+      }
+      return filtered
+    })
+  }
   
   useEffect(() => {
     const load = async () =>
@@ -88,13 +129,13 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
 
   const nextImage = () => {
     setCurrentImageIndex((prev) =>
-      prev === selectedVersion.images.length - 1 ? 0 : prev + 1
+      prev === validImages.length - 1 ? 0 : prev + 1
     );
   };
 
   const prevImage = () => {
     setCurrentImageIndex((prev) =>
-      prev === 0 ? selectedVersion.images.length - 1 : prev - 1
+      prev === 0 ? validImages.length - 1 : prev - 1
     );
   };
 
@@ -153,21 +194,20 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
       <div className="p-6 text-gray-800">
         <h1 className="text-2xl pb-4 font-bold text-gray-800">{model.title}</h1>
         {/* Галерея изображений */}
-        {selectedVersion.images?.length > 0 && (
+        {validImages && validImages.length > 0 && (
           <div className="mb-6">
             <div className="flex space-x-4 overflow-x-auto pb-2">
-              {selectedVersion.images.map((image, index) => (
+              {validImages.map((image, index) => (
                 <div
                   key={`${image}-${index}`}
-                  className="relative flex-shrink-0 w-64 h-48 cursor-pointer"
+                  className="relative flex-shrink-0 w-64 h-48 cursor-pointer bg-gray-100 rounded-lg overflow-hidden"
                   onClick={() => openModal(index)}
                 >
-                  <Image
+                  <img
                     src={proxyUrl(image)}
                     alt={`${model.title} - изображение ${index + 1}`}
-                    fill
-                    className="object-cover rounded-lg"
-                    unoptimized
+                    className="object-cover w-full h-full"
+                    onError={(e) => handleImageError(e, image)}
                   />
                 </div>
               ))}
@@ -175,7 +215,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
           </div>
         )}
         
-        {isModalOpen && (
+        {isModalOpen && validImages.length > 0 && (
           <div className="fixed inset-0 bg-opacity-90 z-50 flex items-center justify-center p-4">
             <div className="relative max-w-4xl w-full bg-white rounded-lg shadow-md">
               <button 
@@ -187,18 +227,18 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
                 </svg>
               </button>
               
-              <div className="relative h-[70vh] w-full">
-                <Image
-                  src={proxyUrl(selectedVersion.images[currentImageIndex])}
+              <div className="relative h-[70vh] w-full flex items-center justify-center">
+                <img
+                  src={proxyUrl(validImages[currentImageIndex])}
                   alt={`${model.title} - изображение ${currentImageIndex + 1}`}
-                  fill
-                  className="object-contain"
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => handleImageError(e, validImages[currentImageIndex])}
                 />
               </div>
               
               <div className="flex justify-between items-center pb-6 ml-10 mr-10">
                 <div className="flex space-x-2">
-                  {selectedVersion.images.map((_, index) => (
+                  {validImages.map((_, index) => (
                     <div 
                       key={index}
                       className={`h-2 w-2 rounded-full ${index === currentImageIndex ? 'bg-blue-600' : 'bg-blue-300'}`}
@@ -237,12 +277,10 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
             <span className="font-medium">{model.author?.name || 'Не указан'}</span>
           </div>
           
-          {model.versions?.length > 0 && (
-            <div className="flex items-start">
-              <span className="w-34 text-gray-600">Версия:</span>
-              <span>{selectedVersion.version}</span>
-            </div>
-          )}
+          <div className="flex items-start">
+            <span className="w-34 text-gray-600">Версия:</span>
+            <span>{getCurrentVersion()}</span>
+          </div>
           
           <div className="flex items-start">
             <span className="w-34 text-gray-600">Описание:</span>

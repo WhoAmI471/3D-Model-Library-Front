@@ -1,4 +1,4 @@
-
+import { useState } from 'react'
 
 // Компонент фильтра проектов
 export const ProjectFilter = ({ 
@@ -12,13 +12,30 @@ export const ProjectFilter = ({
     const filteredProjects = projects.filter(project =>
       project.name.toLowerCase().includes(searchTerm.toLowerCase()))
     
+    const [mouseDownTarget, setMouseDownTarget] = useState(null)
+
+    const handleOverlayMouseDown = (e) => {
+      // Запоминаем элемент, на котором началось нажатие
+      setMouseDownTarget(e.target)
+    }
+
+    const handleOverlayClick = (e) => {
+      // Закрываем только если клик начался и закончился на overlay, а не на дочернем элементе
+      if (e.target === e.currentTarget && mouseDownTarget === e.currentTarget) {
+        onClose()
+      }
+      setMouseDownTarget(null)
+    }
+
     return (
       <div 
         className="fixed inset-0 bg-opacity-30 flex items-center justify-center z-50"
-        onClick={onClose}
+        onMouseDown={handleOverlayMouseDown}
+        onClick={handleOverlayClick}
       >
         <div 
           className="bg-white rounded-lg shadow-xl w-full max-w-md"
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={e => e.stopPropagation()}
         >
           <div className="p-4">

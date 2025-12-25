@@ -16,17 +16,32 @@ export const ModelPreview = ({
 }) => {
   const [localIndex, setLocalIndex] = useState(currentImageIndex)
   const [isMouseOver, setIsMouseOver] = useState(false)
+  const [validImages, setValidImages] = useState(model?.images || [])
 
   useEffect(() => {
     setLocalIndex(currentImageIndex)
   }, [currentImageIndex])
 
-  if (!model || !model.images?.length) return null
+  useEffect(() => {
+    setValidImages(model?.images || [])
+  }, [model?.images])
+
+  const handleImageError = (imageUrl) => {
+    setValidImages(prev => {
+      const filtered = prev.filter(img => img !== imageUrl)
+      if (localIndex >= filtered.length && filtered.length > 0) {
+        setLocalIndex(Math.max(0, filtered.length - 1))
+      }
+      return filtered
+    })
+  }
+
+  if (!model || !validImages?.length) return null
 
   const handleNextImage = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    const newIndex = localIndex === model.images.length - 1 ? 0 : localIndex + 1
+    const newIndex = localIndex === validImages.length - 1 ? 0 : localIndex + 1
     setLocalIndex(newIndex)
     onNextImage?.()
   }
@@ -34,7 +49,7 @@ export const ModelPreview = ({
   const handlePrevImage = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    const newIndex = localIndex === 0 ? model.images.length - 1 : localIndex - 1
+    const newIndex = localIndex === 0 ? validImages.length - 1 : localIndex - 1
     setLocalIndex(newIndex)
     onPrevImage?.()
   }
@@ -63,14 +78,19 @@ export const ModelPreview = ({
       }}
     >
       <div className="relative w-full h-full">
-        <Image
-          src={proxyUrl(model.images[localIndex])}
-          alt={`Превью ${model.title}`}
-          fill
-          className="object-cover"
-          priority
-          sizes="320px"
-        />
+        {validImages[localIndex] && (
+          <img
+            src={proxyUrl(validImages[localIndex])}
+            alt={`Превью ${model.title}`}
+            className="w-full h-full object-cover"
+            onError={() => {
+              handleImageError(validImages[localIndex])
+              if (validImages.length > 1) {
+                setLocalIndex(prev => Math.min(prev, validImages.length - 2))
+              }
+            }}
+          />
+        )}
         
         {isMouseOver && (
           <>
@@ -94,7 +114,7 @@ export const ModelPreview = ({
         )}
         
         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-          {model.images.map((_, index) => (
+          {validImages.map((_, index) => (
             <button 
               key={index}
               onClick={(e) => {
@@ -110,7 +130,7 @@ export const ModelPreview = ({
         
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
           <p className="text-white text-sm font-medium truncate">
-            {model.title} ({localIndex + 1}/{model.images.length})
+            {model.title} ({localIndex + 1}/{validImages.length})
           </p>
         </div>
       </div>

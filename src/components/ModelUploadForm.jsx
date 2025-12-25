@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { formatFileSize } from '@/lib/utils'
 import { ROLES } from '@/lib/roles'
 
-export default function ModelUploadForm() {
+export default function ModelUploadForm({ initialProjectId = null }) {
   const zipFileInputRef = useRef(null)
   const [loading, setLoading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -80,7 +80,14 @@ export default function ModelUploadForm() {
     
     fetchData()
   }, [])
-
+  
+  // Автоматически выбираем проект, если передан initialProjectId
+  useEffect(() => {
+    if (initialProjectId && projects.length > 0) {
+      setSelectedProjects([initialProjectId])
+    }
+  }, [initialProjectId, projects])
+  
   // Функция для фильтрации символов - разрешает только латиницу, кириллицу, цифры, пробелы и основные знаки препинания
   const filterAllowedCharacters = (text) => {
     // Регулярное выражение: латиница, кириллица, цифры, пробелы, точка, запятая, дефис, подчеркивание, скобки, двоеточие, точка с запятой
