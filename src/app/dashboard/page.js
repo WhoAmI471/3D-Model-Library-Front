@@ -186,8 +186,9 @@ export default function DashboardPage() {
   const handleMouseEnter = (model, event) => {
     if (model?.images?.length > 0) {
       const rect = event.currentTarget.getBoundingClientRect()
+      const previewWidth = 320
       setPreviewPosition({
-        x: rect.right + 10, // Позиция справа от строки
+        x: rect.left - previewWidth - 20, // Позиция слева от строки
         y: rect.top - 80
       })
       setPreviewModel(model)

@@ -152,10 +152,10 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
   const handleMouseEnter = (model, event) => {
     if (model?.images?.length > 0) {
       const rect = event.currentTarget.getBoundingClientRect()
-      // Позиционируем превью справа от элемента, но не выходим за границы экрана
+      // Позиционируем превью слева от элемента, но не выходим за границы экрана
       const previewWidth = 320
       const previewHeight = 240
-      const x = Math.min(rect.right + 20, window.innerWidth - previewWidth - 20)
+      const x = rect.left - previewWidth - 20 // Позиция слева от элемента
       const y = Math.min(rect.top, window.innerHeight - previewHeight - 20)
       setPreviewPosition({
         x: Math.max(20, x), // Минимум 20px от левого края

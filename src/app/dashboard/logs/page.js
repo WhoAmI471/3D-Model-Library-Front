@@ -161,8 +161,9 @@ export default function LogsPage() {
     if (currentModel?.images?.length > 0) {
       console.log("OPEN")
       const rect = event.currentTarget.getBoundingClientRect()
+      const previewWidth = 320
       setPreviewPosition({
-        x: rect.right + 100, // Позиция справа от строки
+        x: rect.left - previewWidth - 20, // Позиция слева от строки
         y: rect.top - 80
       })
       setPreviewModel(currentModel)
