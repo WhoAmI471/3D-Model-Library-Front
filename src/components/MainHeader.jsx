@@ -2,8 +2,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline'
-import Image from 'next/image'
-import Logo from "../../public/Logo.svg"
 import axios from 'axios'
 
 export default function MainHeader() {
@@ -34,13 +32,7 @@ export default function MainHeader() {
       <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Логотип */}
         <div className="flex items-center">
-          <Image 
-            src={Logo} 
-            alt="DigiTech Logo" 
-            width={120} 
-            height={32}
-            className="h-8 w-auto"
-          />
+          <span className="text-lg font-semibold text-gray-900">3D-Library</span>
         </div>
 
         {/* Пользователь и выход */}
