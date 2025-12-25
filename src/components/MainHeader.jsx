@@ -10,11 +10,16 @@ export default function MainHeader() {
   const [user, setUser] = useState(null)
   const [modelTitle, setModelTitle] = useState(null)
 
-  // Получаем название модели, если мы на странице конкретной модели
+  // Получаем название модели, если мы на странице конкретной модели или редактирования
   useEffect(() => {
+    // Проверяем страницу просмотра модели: /dashboard/models/[id]
     const modelIdMatch = pathname?.match(/^\/dashboard\/models\/([^\/]+)$/)
-    if (modelIdMatch) {
-      const modelId = modelIdMatch[1]
+    // Проверяем страницу редактирования: /dashboard/models/update/[id]
+    const updateIdMatch = pathname?.match(/^\/dashboard\/models\/update\/([^\/]+)$/)
+    
+    const modelId = modelIdMatch?.[1] || updateIdMatch?.[1]
+    
+    if (modelId) {
       axios.get(`/api/models/${modelId}`)
         .then(res => {
           setModelTitle(res.data.title)
@@ -28,6 +33,13 @@ export default function MainHeader() {
   }, [pathname])
 
   const getSectionParts = () => {
+    const isUpdatePage = pathname?.includes('/models/update/')
+    
+    // Если есть название модели и мы на странице редактирования
+    if (modelTitle && isUpdatePage) {
+      return ['Модели', modelTitle, 'Редактирование модели']
+    }
+    
     // Если есть название модели, возвращаем массив ["Модели", "название"]
     if (modelTitle) return ['Модели', modelTitle]
     
