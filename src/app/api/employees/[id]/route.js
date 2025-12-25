@@ -81,6 +81,20 @@ export async function PUT(request, { params }) {
       )
     }
 
+    // Проверка на дубликат email (если email изменен)
+    if (email && email !== existing.email) {
+      const userWithSameEmail = await prisma.user.findUnique({
+        where: { email },
+      })
+      
+      if (userWithSameEmail) {
+        return NextResponse.json(
+          { error: 'Почта уже используется у другого пользователя, пожалуйста используйте другую почту' },
+          { status: 400 }
+        )
+      }
+    }
+
     const updateData = {
       name,
       email,

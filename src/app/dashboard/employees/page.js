@@ -74,9 +74,14 @@ export default function EmployeesPage() {
         }
         setShowAddForm(false)
         setCurrentEmployee(null)
+      } else {
+        // Обработка ошибок от сервера
+        const errorData = await response.json()
+        alert(errorData.error || 'Ошибка при сохранении сотрудника')
       }
     } catch (error) {
       console.error('Ошибка сохранения сотрудника:', error)
+      alert('Ошибка при сохранении сотрудника')
     }
   }
 
