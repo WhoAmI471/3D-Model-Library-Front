@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [isHovering, setIsHovering] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [autoPlayInterval, setAutoPlayInterval] = useState(null)
+  const [expandedProjectsModelId, setExpandedProjectsModelId] = useState(null)
 
   const router = useRouter()
 
@@ -241,6 +242,12 @@ export default function DashboardPage() {
       direction = 'desc'
     }
     setSortConfig({ key, direction })
+    setExpandedProjectsModelId(null) // Сбрасываем развернутые проекты при сортировке
+  }
+
+  const toggleProjectsExpand = (modelId, e) => {
+    e.stopPropagation() // Предотвращаем переход на страницу модели
+    setExpandedProjectsModelId(expandedProjectsModelId === modelId ? null : modelId)
   }
 
   const filteredModels = models
@@ -291,6 +298,11 @@ export default function DashboardPage() {
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) return null
     return sortConfig.direction === 'asc' ? '↑' : '↓'
+  }
+
+  const getProjectsString = (model) => {
+    if (!model.projects || model.projects.length === 0) return '—'
+    return model.projects.map(p => p.name).join(', ')
   }
 
   return (
@@ -401,9 +413,19 @@ export default function DashboardPage() {
                     {/* </Link> */}
                   </td>
                   <td 
-                    className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
-                    onClick={() => router.push(`/dashboard/models/${model.id}`)}>
-                    {model.projects?.length > 0 ? model.projects.map(p => p.name).join(', ') : '—'}
+                    className="px-6 py-2 text-sm text-gray-500 max-w-md"
+                  >
+                    {model.projects?.length > 0 ? (
+                      <div 
+                        className={`cursor-pointer ${expandedProjectsModelId === model.id ? '' : 'truncate'}`}
+                        onClick={(e) => toggleProjectsExpand(model.id, e)}
+                        title={expandedProjectsModelId === model.id ? undefined : getProjectsString(model)}
+                      >
+                        {getProjectsString(model)}
+                      </div>
+                    ) : (
+                      <span>—</span>
+                    )}
                   </td>
                   <td 
                     className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" 
