@@ -17,7 +17,7 @@ import {
 export default function DashboardPage() {
   const [user, setUser] = useState(null)
   const [models, setModels] = useState([])
-  const [projects, setProjects] = useState([])
+  const [spheres, setSpheres] = useState([])
   const [activeTab, setActiveTab] = useState('all')
   const [isDownloading, setIsDownloading] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
@@ -35,8 +35,8 @@ export default function DashboardPage() {
         const modelsRes = await axios.get('/api/models')
         setModels(modelsRes.data)
 
-        const projectsRes = await axios.get('/api/projects')
-        setProjects(projectsRes.data)
+        const spheresRes = await axios.get('/api/spheres')
+        setSpheres(spheresRes.data)
       } catch (err) {
         router.push('/login')
       }
@@ -125,9 +125,9 @@ export default function DashboardPage() {
 
   const filteredModels = models
     .filter(model => {
-      // Фильтрация по вкладке проекта
+      // Фильтрация по вкладке сферы
       if (activeTab === 'all') return true
-      return model.projects?.some(project => project.id === activeTab)
+      return model.sphere?.id === activeTab
     })
     .filter(model => {
       // Фильтрация по поиску
@@ -137,6 +137,7 @@ export default function DashboardPage() {
       return (
         model.title?.toLowerCase().includes(searchLower) ||
         (model.author?.name?.toLowerCase().includes(searchLower)) ||
+        (model.sphere?.name?.toLowerCase().includes(searchLower)) ||
         (model.projects?.some(p => p.name.toLowerCase().includes(searchLower)))
       )
     })
@@ -152,7 +153,7 @@ export default function DashboardPage() {
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Поиск по названию, автору или проекту..."
+                placeholder="Поиск по названию, автору, сфере или проекту..."
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -186,7 +187,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Вкладки проектов */}
+          {/* Вкладки сфер */}
           <div className="mb-6">
             <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-gray-200">
               <button
@@ -202,24 +203,25 @@ export default function DashboardPage() {
                   {models.length}
                 </span>
               </button>
-              {projects.map((project) => {
-                const projectModelsCount = models.filter(model =>
-                  model.projects?.some(p => p.id === project.id)
+              <div className="h-6 w-px bg-gray-300"></div>
+              {spheres.map((sphere) => {
+                const sphereModelsCount = models.filter(model =>
+                  model.sphere?.id === sphere.id
                 ).length
                 
                 return (
                   <button
-                    key={project.id}
-                    onClick={() => setActiveTab(project.id)}
+                    key={sphere.id}
+                    onClick={() => setActiveTab(sphere.id)}
                     className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                      activeTab === project.id
+                      activeTab === sphere.id
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {project.name}
-                    <span className={`ml-1.5 text-xs ${activeTab === project.id ? 'text-blue-100' : 'text-gray-500'}`}>
-                      {projectModelsCount}
+                    {sphere.name}
+                    <span className={`ml-1.5 text-xs ${activeTab === sphere.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {sphereModelsCount}
                     </span>
                   </button>
                 )
