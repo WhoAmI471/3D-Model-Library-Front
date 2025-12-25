@@ -13,10 +13,27 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
     changePassword: false
   })
   
-  const [useDefaultPermissions, setUseDefaultPermissions] = useState(true)
+  // Загружаем сохраненное значение из localStorage или используем true по умолчанию
+  const getSavedUseDefaultPermissions = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('employeeForm_useDefaultPermissions')
+      return saved !== null ? saved === 'true' : true
+    }
+    return true
+  }
+
+  const [useDefaultPermissions, setUseDefaultPermissions] = useState(getSavedUseDefaultPermissions())
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
+
+  // Сохраняем состояние в localStorage при изменении
+  const handleUseDefaultPermissionsChange = (checked) => {
+    setUseDefaultPermissions(checked)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('employeeForm_useDefaultPermissions', checked.toString())
+    }
+  }
 
   useEffect(() => {
     if (employee) {
@@ -35,8 +52,8 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
         changePassword: false
       })
       
-      // Если у сотрудника есть права, не используем дефолтные
-      setUseDefaultPermissions(!hasPermissions)
+      // Используем сохраненное значение из localStorage
+      setUseDefaultPermissions(getSavedUseDefaultPermissions())
       setIsInitialized(true)
     } else {
       // Сброс формы для нового сотрудника
@@ -49,7 +66,8 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
         confirmPassword: '',
         changePassword: false
       })
-      setUseDefaultPermissions(true)
+      // Используем сохраненное значение из localStorage
+      setUseDefaultPermissions(getSavedUseDefaultPermissions())
       setIsInitialized(true)
     }
   }, [employee])
@@ -57,30 +75,17 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
   useEffect(() => {
     // Применяем права по умолчанию только если:
     // 1. Форма инициализирована
-    // 2. Это новый сотрудник (нет employee) ИЛИ у сотрудника нет прав
-    // 3. Флаг useDefaultPermissions установлен в true
+    // 2. Флаг useDefaultPermissions установлен в true
     if (!isInitialized) return
     
     if (useDefaultPermissions) {
-      // Если это редактирование существующего сотрудника с правами, не трогаем их
-      if (employee && employee.permissions && Array.isArray(employee.permissions) && employee.permissions.length > 0) {
-        // Восстанавливаем права сотрудника, если они были случайно очищены
-        setFormData(prev => {
-          if (prev.permissions.length === 0) {
-            return { ...prev, permissions: [...employee.permissions] }
-          }
-          return prev
-        })
-        return
-      }
-      
-      // Применяем права по умолчанию для новой роли
+      // Всегда применяем права по умолчанию для текущей роли, когда чекбокс включен
       setFormData(prev => ({
         ...prev,
         permissions: DEFAULT_PERMISSIONS[prev.role] || []
       }))
     }
-  }, [formData.role, useDefaultPermissions, isInitialized, employee])
+  }, [formData.role, useDefaultPermissions, isInitialized])
 
   const handlePermissionChange = (permission) => {
     setFormData(prev => {
@@ -362,7 +367,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                 type="checkbox"
                 id="useDefaultPermissions"
                 checked={useDefaultPermissions}
-                onChange={(e) => setUseDefaultPermissions(e.target.checked)}
+                onChange={(e) => handleUseDefaultPermissionsChange(e.target.checked)}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <label htmlFor="useDefaultPermissions" className="ml-2 text-sm text-gray-700">
