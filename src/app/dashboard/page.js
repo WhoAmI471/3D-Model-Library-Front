@@ -253,34 +253,36 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredModels.map((model) => (
-              <Link
+              <div
                 key={model.id}
-                href={`/dashboard/models/${model.id}`}
-                className="group bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 hover:border-gray-300"
+                className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 hover:border-gray-300"
               >
                 {/* Превью изображения */}
-                <div className="relative aspect-square bg-gray-100 overflow-hidden">
+                <Link
+                  href={`/dashboard/models/${model.id}`}
+                  className="block relative aspect-square bg-gray-100 overflow-hidden group"
+                >
                   {model.images && model.images.length > 0 ? (
                     <img
                       src={proxyUrl(model.images[0])}
                       alt={model.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 cursor-pointer"
                       onError={(e) => {
                         e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23e5e7eb" width="400" height="400"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="24"%3EНет изображения%3C/text%3E%3C/svg%3E'
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 cursor-pointer">
                       <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                       </svg>
                     </div>
                   )}
-                </div>
+                </Link>
 
                 {/* Контент карточки */}
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
                     {model.title}
                   </h3>
                   
@@ -293,17 +295,21 @@ export default function DashboardPage() {
                     {model.projects && model.projects.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {model.projects.slice(0, 2).map(project => (
-                          <span
+                          <Link
                             key={project.id}
-                            className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium"
+                            href={`/dashboard/models/${model.id}`}
+                            className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200 transition-colors cursor-pointer"
                           >
                             {project.name}
-                          </span>
+                          </Link>
                         ))}
                         {model.projects.length > 2 && (
-                          <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                          <Link
+                            href={`/dashboard/models/${model.id}`}
+                            className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                          >
                             +{model.projects.length - 2}
-                          </span>
+                          </Link>
                         )}
                       </div>
                     )}
@@ -319,7 +325,7 @@ export default function DashboardPage() {
                         <button
                           onClick={(e) => handleDownload(model, e)}
                           disabled={isDownloading[model.id]}
-                          className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
                           title="Скачать"
                         >
                           <ArrowDownTrayIcon className="h-5 w-5" />
@@ -329,7 +335,7 @@ export default function DashboardPage() {
                         <Link
                           href={`/dashboard/models/update/${model.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
                           title="Редактировать"
                         >
                           <PencilIcon className="h-5 w-5" />
@@ -338,7 +344,7 @@ export default function DashboardPage() {
                       {checkPermission(user, 'delete_models') && (
                         <button
                           onClick={(e) => handleDeleteRequest(model, e)}
-                          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
                           title="Удалить"
                         >
                           <TrashIcon className="h-5 w-5" />
@@ -347,7 +353,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
