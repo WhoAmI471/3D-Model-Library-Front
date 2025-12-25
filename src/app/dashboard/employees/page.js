@@ -183,52 +183,49 @@ export default function EmployeesPage() {
   return (
     <div className="min-h-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Заголовок */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-1">Сотрудники</h1>
-          <p className="text-sm text-gray-500">Список сотрудников компании ({totalEmployees})</p>
+        {/* Поиск и кнопка добавления */}
+        <div className="mb-6 flex gap-3">
+          <div className="flex-1 relative">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Поиск по имени или email..."
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {(user?.role === 'ADMIN' || checkPermission(user, 'manage_users')) && (
+            <button 
+              onClick={handleAdd}
+              className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer"
+              style={{ 
+                width: '2.5rem', 
+                paddingLeft: '0.625rem', 
+                paddingRight: '0.625rem',
+                transition: 'width 0.2s, padding-right 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.setProperty('width', '220px', 'important')
+                e.currentTarget.style.setProperty('padding-right', '2.5rem', 'important')
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.setProperty('width', '2.5rem', 'important')
+                e.currentTarget.style.setProperty('padding-right', '0.625rem', 'important')
+              }}
+              title="Добавить сотрудника"
+            >
+              <PlusIcon className="h-5 w-5 flex-shrink-0" style={{ color: '#ffffff', strokeWidth: 2 }} />
+              <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                Добавить сотрудника
+              </span>
+            </button>
+          )}
         </div>
 
+        {/* Список сотрудников компании */}
         <div className="mb-8">
-          {/* Поиск и кнопка добавления */}
-          <div className="mb-6 flex gap-3">
-            <div className="flex-1 relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Поиск по имени или email..."
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            {(user?.role === 'ADMIN' || checkPermission(user, 'manage_users')) && (
-              <button 
-                onClick={handleAdd}
-                className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer"
-                style={{ 
-                  width: '2.5rem', 
-                  paddingLeft: '0.625rem', 
-                  paddingRight: '0.625rem',
-                  transition: 'width 0.2s, padding-right 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.setProperty('width', '220px', 'important')
-                  e.currentTarget.style.setProperty('padding-right', '2.5rem', 'important')
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.setProperty('width', '2.5rem', 'important')
-                  e.currentTarget.style.setProperty('padding-right', '0.625rem', 'important')
-                }}
-                title="Добавить сотрудника"
-              >
-                <PlusIcon className="h-5 w-5 flex-shrink-0" style={{ color: '#ffffff', strokeWidth: 2 }} />
-                <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                  Добавить сотрудника
-                </span>
-              </button>
-            )}
-          </div>
+          <p className="text-sm text-gray-500">Список сотрудников компании ({totalEmployees})</p>
         </div>
 
         {/* Форма сотрудника */}
