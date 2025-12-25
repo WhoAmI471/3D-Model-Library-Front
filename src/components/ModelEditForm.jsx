@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { formatFileSize, proxyUrl } from '@/lib/utils'
 import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 export default function ModelEditForm({ id, userRole }) {
   const router = useRouter()
@@ -404,7 +404,15 @@ export default function ModelEditForm({ id, userRole }) {
     <div className="min-h-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Заголовок с редактируемым названием */}
-        <div className="mb-6 pb-6 border-b border-gray-200">
+        <div className="mb-6 pb-8 border-b border-gray-200 relative flex items-end gap-4">
+          <button
+            type="button"
+            onClick={() => router.push(`/dashboard/models/${id}`)}
+            className="absolute -left-12 bottom-8 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Назад"
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+          </button>
           {canEditModel ? (
             <input
               name="title"
