@@ -10,14 +10,12 @@ export default async function DashboardLayout({ children }) {
   const role = user?.role || null
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-screen bg-gray-50">
       <MainHeader />
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         <Navigation userRole={role} />
-        <main className="flex-1">
-          <div className="py-6 px-4 sm:px-6 lg:px-8 h-full">
-            {children}
-          </div>
+        <main className="flex-1 overflow-y-auto bg-white">
+          {children}
         </main>
       </div>
     </div>
