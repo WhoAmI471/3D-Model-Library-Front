@@ -663,7 +663,7 @@ export default function ModelEditForm({ id, userRole }) {
                       }
                     }}
                     className="sr-only"
-                    disabled={true}
+                    disabled={!canEditModel}
                   />
                 </label>
                 {zipFile && (
