@@ -471,6 +471,11 @@ export default function ModelUploadForm() {
                 </div>
               )}
             </div>
+            {formState.zipFile && (
+              <p className="mt-2 text-xs text-gray-500">
+                Загрузка начнется после заполнения всех обязательных полей и нажатия кнопки "Загрузить модель"
+              </p>
+            )}
           </div>
           
           {/* Описание */}
