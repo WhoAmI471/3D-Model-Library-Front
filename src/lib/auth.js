@@ -17,7 +17,8 @@ export async function createSession(user) {
     JWT_SECRET
   )
 
-  await cookies().set('session', token, {
+  const cookieStore = await cookies()
+  await cookieStore.set('session', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
@@ -74,7 +75,8 @@ async function verifyToken(token) {
 }
 
 export async function clearSession() {
-  await cookies().set('session', '', {
+  const cookieStore = await cookies()
+  await cookieStore.set('session', '', {
     httpOnly: true,
     path: '/',
     expires: new Date(0)

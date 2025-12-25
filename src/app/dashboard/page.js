@@ -9,6 +9,7 @@ import Image from 'next/image'
 import { AnimatePresence } from 'framer-motion'
 import { ProjectFilter } from "@/components/ProjectFilter"
 import { ModelPreview } from "@/components/ModelPreview"
+import DeleteReasonModal from "@/components/DeleteReasonModal"
 
 import Download from "../../../public/Download.svg"
 import Delete from "../../../public/Delete.svg"
@@ -74,50 +75,58 @@ export default function DashboardPage() {
     }
   }
 
-  const handleDeleteRequest = async (model) => {
+  const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false)
+  const [selectedModelForDeletion, setSelectedModelForDeletion] = useState(null)
+
+  const handleDeleteRequest = (model) => {
     if (user?.role === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
-        try {
-          const response = await fetch(`/api/models/${model.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ approve: true })
-          });
-          
-          const data = await response.json();
-          
-          if (response.ok) {
+        fetch(`/api/models/${model.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ approve: true })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success || data.message) {
             setModels(prev => prev.filter(m => m.id !== model.id));
             alert('Модель успешно удалена');
           } else {
             throw new Error(data.error || 'Ошибка при удалении');
           }
-        } catch (error) {
+        })
+        .catch(error => {
           console.error('Ошибка при удалении:', error);
           alert(error.message);
-        }
+        });
       }
     } else {
-      const comment = prompt('Укажите причину удаления:');
-      if (comment !== null) { // Если пользователь не нажал "Отмена"
-        try {
-          const response = await axios.put(`/api/models/${model.id}`, {
-            action: 'REQUEST_DELETE',
-            comment: comment || '' // Отправляем комментарий
-          });
-          
-          if (response.status === 200) {
-            alert(response.data.message);
-          } else {
-            throw new Error(response.data.error || 'Ошибка при отправке запроса');
-          }
-        } catch (error) {
-          console.error('Ошибка:', error);
-          alert(error.message);
-        }
+      // Для не-админов показываем модальное окно с формой
+      setSelectedModelForDeletion(model);
+      setShowDeleteReasonModal(true);
+    }
+  }
+
+  const handleDeleteConfirm = async (reason) => {
+    if (!selectedModelForDeletion) return;
+
+    try {
+      const response = await axios.put(`/api/models/${selectedModelForDeletion.id}`, {
+        comment: reason
+      });
+      
+      if (response.status === 200) {
+        alert(response.data.message);
+        setShowDeleteReasonModal(false);
+        setSelectedModelForDeletion(null);
+      } else {
+        throw new Error(response.data.error || 'Ошибка при отправке запроса');
       }
+    } catch (error) {
+      console.error('Ошибка:', error);
+      alert(error.response?.data?.error || error.message);
     }
   }
 
@@ -466,6 +475,15 @@ export default function DashboardPage() {
             />
           )}
         </AnimatePresence>
+
+        <DeleteReasonModal
+          isOpen={showDeleteReasonModal}
+          onClose={() => {
+            setShowDeleteReasonModal(false)
+            setSelectedModelForDeletion(null)
+          }}
+          onConfirm={handleDeleteConfirm}
+        />
       </main>
     </div>
   )

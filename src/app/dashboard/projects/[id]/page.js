@@ -11,6 +11,7 @@ import { proxyUrl } from '@/lib/utils'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
 import AddModelsToProjectModal from "@/components/AddModelsToProjectModal"
+import DeleteReasonModal from "@/components/DeleteReasonModal"
 
 import Download from "../../../../../public/Download.svg"
 import Delete from "../../../../../public/Delete.svg"
@@ -35,6 +36,8 @@ export default function ProjectPage({ params }) {
   const [autoPlayInterval, setAutoPlayInterval] = useState(null)
   const [user, setUser] = useState();
   const [showAddModelsModal, setShowAddModelsModal] = useState(false)
+  const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false)
+  const [selectedModelForDeletion, setSelectedModelForDeletion] = useState(null)
   
   useEffect(() => {
     const load = async () => {
@@ -98,49 +101,59 @@ export default function ProjectPage({ params }) {
     }
   }
 
-  const handleDeleteRequest = async (model) => {
+  const handleDeleteRequest = (model) => {
     if (userRole === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
-        try {
-          const response = await fetch(`/api/models/${model.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ approve: true })
-          });
-          
-          const data = await response.json();
-          
-          if (response.ok) {
+        fetch(`/api/models/${model.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ approve: true })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success || data.message) {
             setModels(prev => prev.filter(m => m.id !== model.id));
             alert('Модель успешно удалена');
           } else {
             throw new Error(data.error || 'Ошибка при удалении');
           }
-        } catch (error) {
+        })
+        .catch(error => {
           console.error('Ошибка при удалении:', error);
           alert(error.message);
-        }
+        });
       }
     } else {
-      if (confirm('Отправить запрос на удаление администратору?')) {
-        try {
-          // Для обычных пользователей - PUT запрос для пометки на удаление
-          const response = await axios.put(`/api/models/${model.id}`, {
-            action: 'REQUEST_DELETE'
-          });
-          
-          if (response.status === 200) {
-            alert(response.data.message);
-          } else {
-            throw new Error(response.data.error || 'Ошибка при отправке запроса');
-          }
-        } catch (error) {
-          console.error('Ошибка:', error);
-          alert(error.message);
-        }
+      // Для не-админов показываем модальное окно с формой
+      setSelectedModelForDeletion(model);
+      setShowDeleteReasonModal(true);
+    }
+  }
+
+  const handleDeleteConfirm = async (reason) => {
+    if (!selectedModelForDeletion) return;
+
+    try {
+      const response = await axios.put(`/api/models/${selectedModelForDeletion.id}`, {
+        comment: reason
+      });
+      
+      if (response.status === 200) {
+        alert(response.data.message);
+        setShowDeleteReasonModal(false);
+        setSelectedModelForDeletion(null);
+        // Обновляем список моделей
+        const modelsRes = await fetch(`/api/models?projectId=${id}`)
+        const modelsData = await modelsRes.json()
+        setModels(modelsData)
+      } else {
+        throw new Error(response.data.error || 'Ошибка при отправке запроса');
       }
+    } catch (error) {
+      console.error('Ошибка:', error);
+      alert(error.response?.data?.error || error.message);
     }
   }
 
@@ -556,6 +569,15 @@ export default function ProjectPage({ params }) {
             }}
           />
         )}
+
+        <DeleteReasonModal
+          isOpen={showDeleteReasonModal}
+          onClose={() => {
+            setShowDeleteReasonModal(false)
+            setSelectedModelForDeletion(null)
+          }}
+          onConfirm={handleDeleteConfirm}
+        />
       </div>
     </div>
   )

@@ -11,12 +11,14 @@ import Image from 'next/image';
 import Download from "../../public/Download.svg"
 import Delete from "../../public/Delete.svg"
 import Edit from "../../public/Edit.svg"
+import DeleteReasonModal from './DeleteReasonModal'
 
 export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const router = useRouter()
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false);
   const [user, setUser] = useState();
   const [validImages, setValidImages] = useState(model.images || []);
   
@@ -139,33 +141,42 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
     );
   };
 
-  const handleDeleteRequest = async () => {
+  const handleDeleteRequest = () => {
     if (user?.role === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
-        const result = await onDeleteRequest(model.id, true);
-        if (result?.success && result.redirect) {
-          router.push('/dashboard');
-        }
+        onDeleteRequest(model.id, true).then((result) => {
+          if (result?.success && result.redirect) {
+            router.push('/dashboard');
+          }
+        });
       }
     } else {
-      if (confirm('Отправить запрос на удаление администратору?')) {
-        try {
-          const response = await fetch(`/api/models/${model.id}`, {
-            method: 'PUT'
-          });
-          
-          const result = await response.json();
-          
-          if (response.ok) {
-            alert(result.message);
-            router.refresh();
-          } else {
-            throw new Error(result.error);
-          }
-        } catch (error) {
-          alert(error.message);
-        }
+      // Для не-админов показываем модальное окно с формой
+      setShowDeleteReasonModal(true);
+    }
+  };
+
+  const handleDeleteConfirm = async (reason) => {
+    try {
+      const response = await fetch(`/api/models/${model.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ comment: reason })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        alert(result.message);
+        setShowDeleteReasonModal(false);
+        router.refresh();
+      } else {
+        throw new Error(result.error);
       }
+    } catch (error) {
+      alert(error.message);
     }
   };
 
@@ -386,6 +397,12 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
           </div>
         </div>
       </div>
+
+      <DeleteReasonModal
+        isOpen={showDeleteReasonModal}
+        onClose={() => setShowDeleteReasonModal(false)}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };

@@ -1,15 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { TrashIcon, XCircleIcon, CheckCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
-import {Tooltip} from '@/components/Tooltip';
 
 export default function AdminDeletionPanel({ userRole }) {
+  const router = useRouter();
   const [modelsForDeletion, setModelsForDeletion] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'markedAt', direction: 'desc' });
+  const [expandedReasonId, setExpandedReasonId] = useState(null);
   
   const [previewModel, setPreviewModel] = useState(null)
   const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
@@ -129,6 +131,7 @@ export default function AdminDeletionPanel({ userRole }) {
   const fetchPendingDeletions = async () => {
     setIsLoading(true);
     setError(null);
+    setExpandedReasonId(null); // Сбрасываем развернутую причину при обновлении
     
     try {
       const response = await fetch(
@@ -171,6 +174,12 @@ export default function AdminDeletionPanel({ userRole }) {
       direction = 'desc';
     }
     setSortConfig({ key, direction });
+    setExpandedReasonId(null); // Сбрасываем развернутую причину при сортировке
+  };
+
+  const toggleReasonExpand = (modelId, e) => {
+    e.stopPropagation(); // Предотвращаем переход на страницу модели
+    setExpandedReasonId(expandedReasonId === modelId ? null : modelId);
   };
 
   const sortedModels = [...modelsForDeletion].sort((a, b) => {
@@ -263,7 +272,12 @@ export default function AdminDeletionPanel({ userRole }) {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedModels.map(model => (
-                <tr key={model.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white" onMouseEnter={(e) => handleMouseEnter(model, e)}>
+                <tr 
+                  key={model.id} 
+                  className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white cursor-pointer" 
+                  onMouseEnter={(e) => handleMouseEnter(model, e)}
+                  onClick={() => router.push(`/dashboard/models/${model.id}`)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{model.title}</div>
                     <div className="text-sm text-gray-500">{model.description?.substring(0, 30)}...</div>
@@ -284,16 +298,19 @@ export default function AdminDeletionPanel({ userRole }) {
                       }[model.markedBy?.role] || model.markedBy?.role || ''}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap" onMouseLeave={handleMouseLeave}>
+                  <td 
+                    className="px-6 py-4 text-sm text-gray-500 max-w-md"
+                    onMouseLeave={handleMouseLeave}
+                  >
                     {model.deletionComment ? (
-                      <Tooltip content={model.deletionComment}>
-                        <div className="flex items-center text-sm text-gray-500 max-w-xs truncate">
-                          <InformationCircleIcon className="h-4 w-4 mr-1 text-blue-500" />
-                          {model.deletionComment.length > 30 
-                            ? `${model.deletionComment.substring(0, 30)}...` 
-                            : model.deletionComment}
-                        </div>
-                      </Tooltip>
+                      <div 
+                        className={`flex items-center cursor-pointer ${expandedReasonId === model.id ? '' : 'truncate'}`}
+                        onClick={(e) => toggleReasonExpand(model.id, e)}
+                        title={expandedReasonId === model.id ? undefined : model.deletionComment}
+                      >
+                        <InformationCircleIcon className="h-4 w-4 mr-1 text-blue-500 flex-shrink-0" />
+                        <span>{model.deletionComment}</span>
+                      </div>
                     ) : (
                       <span className="text-sm text-gray-400">Не указана</span>
                     )}
@@ -301,17 +318,26 @@ export default function AdminDeletionPanel({ userRole }) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(model.markedAt).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td 
+                    className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="flex justify-end space-x-2">
                       <button
-                        onClick={() => handleDecision(model.id, false)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDecision(model.id, false);
+                        }}
                         className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
                         title="Отклонить"
                       >
                         <XCircleIcon className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => handleDecision(model.id, true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDecision(model.id, true);
+                        }}
                         className="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50"
                         title="Удалить"
                       >
