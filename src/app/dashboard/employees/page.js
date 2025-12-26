@@ -198,7 +198,7 @@ export default function EmployeesPage() {
           {(user?.role === 'ADMIN' || checkPermission(user, 'manage_users')) && (
             <button 
               onClick={handleAdd}
-              className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer"
+              className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer overflow-hidden"
               style={{ 
                 width: '2.5rem', 
                 paddingLeft: '0.625rem', 
