@@ -536,8 +536,8 @@ export default function ModelEditForm({ id, userRole }) {
     const result = await response.json()
 
     if (response.ok && result.success) {
-      // Перенаправляем на страницу моделей после успешного сохранения
-      router.push('/dashboard')
+      // Возвращаемся на предыдущую страницу после успешного сохранения
+      router.back()
     } else {
       throw new Error(result.error || 'Не удалось обновить модель')
     }

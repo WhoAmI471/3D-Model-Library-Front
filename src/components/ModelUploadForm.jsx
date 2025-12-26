@@ -331,9 +331,9 @@ export default function ModelUploadForm({ initialProjectId = null }) {
           if (result.success) {
             setUploadProgress(100);
             setUploadComplete(true);
-            // Небольшая задержка перед редиректом
+            // Небольшая задержка перед возвратом на предыдущую страницу
             setTimeout(() => {
-              router.push('/dashboard');
+              router.back();
             }, 500);
           } else {
             throw new Error(result.error || 'Ошибка при сохранении модели');
