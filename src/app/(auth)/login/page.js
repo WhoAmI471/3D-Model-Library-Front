@@ -6,6 +6,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
   async function handleLogin(e) {
@@ -33,54 +34,71 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form 
-        onSubmit={handleLogin} 
-        className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4"
-      >
-        <h2 className="text-2xl font-bold mb-6 text-center">Вход в систему</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-gray-700 mb-2" htmlFor="email">
-              Email
-            </label>
-            <input
-              id="email"
-              className="w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              type="email"
-              placeholder="Введите email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div className="p-8">
+          <div className="flex justify-center mb-8">
+            <img 
+              src="/Logo-3D-libary.svg" 
+              alt="3D Library" 
+              className="h-10 w-auto"
             />
           </div>
-          <div>
-            <label className="block text-gray-700 mb-2" htmlFor="password">
-              Пароль
-            </label>
-            <input
-              id="password"
-              className="w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              type="password"
-              placeholder="Введите пароль"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          {error && (
-            <div className="p-3 bg-red-100 text-red-700 rounded-lg">
-              {error}
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
+                Email
+              </label>
+              <input
+                id="email"
+                className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                type="email"
+                placeholder="Введите email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
             </div>
-          )}
-          <button 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg transition duration-200"
-            type="submit"
-          >
-            Войти
-          </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="password">
+                Пароль
+              </label>
+              <input
+                id="password"
+                className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                type={showPassword ? "text" : "password"}
+                placeholder="Введите пароль"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+              />
+              <div className="mt-3 flex items-center">
+                <input
+                  type="checkbox"
+                  id="showPassword"
+                  checked={showPassword}
+                  onChange={(e) => setShowPassword(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="showPassword" className="ml-2 text-sm text-gray-700">
+                  Показать пароль
+                </label>
+              </div>
+            </div>
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+            <button 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg transition-colors text-sm font-medium"
+              type="submit"
+            >
+              Войти
+            </button>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   )
 }
