@@ -23,6 +23,8 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false)
   const [selectedModelForDeletion, setSelectedModelForDeletion] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 16
 
   const router = useRouter()
 
@@ -156,6 +158,17 @@ export default function DashboardPage() {
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, searchTerm])
+
+  // Пагинация
+  const totalPages = Math.ceil(filteredModels.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedModels = filteredModels.slice(startIndex, endIndex)
+
   return (
     <div className="min-h-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -264,8 +277,9 @@ export default function DashboardPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredModels.map((model) => (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {paginatedModels.map((model) => (
               <div
                 key={model.id}
                 className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 hover:border-gray-300"
@@ -368,7 +382,33 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+
+            {/* Пагинация */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex justify-center">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                  >
+                    Назад
+                  </button>
+                  <div className="flex items-center px-4 text-sm text-gray-600">
+                    Страница {currentPage} из {totalPages}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                  >
+                    Вперед
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
