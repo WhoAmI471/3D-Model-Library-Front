@@ -1,6 +1,7 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
 import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
 
@@ -82,7 +83,13 @@ export default function MainHeader() {
       <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Логотип и активный раздел */}
         <div className="flex items-center gap-3 min-w-0">
-          <span className="text-lg font-semibold text-gray-900 flex-shrink-0">3D-Library</span>
+          <Link href="/dashboard" className="flex-shrink-0 cursor-pointer">
+            <img 
+              src="/Logo-3D-libary.svg" 
+              alt="3D Library" 
+              className="h-6 w-auto"
+            />
+          </Link>
           {getSectionParts().map((part, index) => (
             <React.Fragment key={index}>
               <span className="text-gray-300 flex-shrink-0">|</span>
