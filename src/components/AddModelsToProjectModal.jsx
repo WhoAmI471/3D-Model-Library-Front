@@ -1,10 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AnimatePresence } from 'framer-motion'
-import { ModelPreview } from "@/components/ModelPreview"
 import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS } from '@/lib/roles'
+import { proxyUrl } from '@/lib/utils'
+import { PlusIcon } from '@heroicons/react/24/outline'
 
 export default function AddModelsToProjectModal({ projectId, onClose, onAdd, existingModelIds = [] }) {
   const router = useRouter()
@@ -15,13 +15,8 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('all')
   const [currentUser, setCurrentUser] = useState(null)
-  
-  const [previewModel, setPreviewModel] = useState(null)
-  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
-  const [showPreview, setShowPreview] = useState(false)
-  const [isHovering, setIsHovering] = useState(false)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [autoPlayInterval, setAutoPlayInterval] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const modelsPerPage = 12
 
   useEffect(() => {
     const fetchData = async () => {
@@ -62,99 +57,10 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
     }
   }
 
-  const handleMouseMove = (event) => {
-    if (isHovering) {
-      updatePreviewPosition(event)
-    }
-  }
-
-  const updatePreviewPosition = (event) => {
-    const x = Math.min(event.clientX + 20, window.innerWidth - 340)
-    const y = Math.min(event.clientY + 20, window.innerHeight - 260)
-    setPreviewPosition({ x, y })
-  }
-
-  const nextImage = () => {
-    if (previewModel?.images?.length) {
-      setCurrentImageIndex(prev => 
-        prev === previewModel.images.length - 1 ? 0 : prev + 1
-      )
-    }
-  }
-
-  const prevImage = () => {
-    if (previewModel?.images?.length) {
-      setCurrentImageIndex(prev => 
-        prev === 0 ? previewModel.images.length - 1 : prev - 1
-      )
-    }
-  }
-
-  const startAutoPlay = () => {
-    if (!previewModel || !previewModel.images?.length) return
-    
-    stopAutoPlay()
-    
-    const interval = setInterval(() => {
-      if (!previewModel || !previewModel.images?.length) {
-        stopAutoPlay()
-        return
-      }
-      nextImage()
-    }, 2000)
-    
-    setAutoPlayInterval(interval)
-  }
-
-  const stopAutoPlay = () => {
-    if (autoPlayInterval) {
-      clearInterval(autoPlayInterval)
-      setAutoPlayInterval(null)
-    }
-  }
-
-  const handleWheel = (e) => {
-    if (!previewModel || !previewModel.images?.length) return
-    
-    e.preventDefault()
-    if (e.deltaY > 0) {
-      nextImage()
-    } else {
-      prevImage()
-    }
-  }
-
-  const handleMouseEnter = (model, event) => {
-    if (model?.images?.length > 0) {
-      const rect = event.currentTarget.getBoundingClientRect()
-      const previewWidth = 320
-      const previewHeight = 240
-      const x = rect.left - previewWidth - 20
-      const y = Math.min(rect.top, window.innerHeight - previewHeight - 20)
-      setPreviewPosition({
-        x: Math.max(20, x),
-        y: Math.max(20, y)
-      })
-      setPreviewModel(model)
-      setCurrentImageIndex(0)
-      setShowPreview(true)
-      startAutoPlay()
-    }
-  }
-  
-  const handleMouseLeave = () => {
-    setShowPreview(false)
-    setPreviewModel(null)
-    stopAutoPlay()
-  }
-
+  // Сброс страницы при изменении фильтров
   useEffect(() => {
-    return () => {
-      if (autoPlayInterval) {
-        clearInterval(autoPlayInterval)
-      }
-    }
-  }, [autoPlayInterval])
+    setCurrentPage(1)
+  }, [activeTab, searchTerm])
 
   // Фильтруем модели: исключаем те, что уже есть в проекте
   const availableModels = models.filter(model => 
@@ -184,6 +90,12 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
       model.title.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
+  // Пагинация
+  const totalPages = Math.ceil(filteredModels.length / modelsPerPage)
+  const startIndex = (currentPage - 1) * modelsPerPage
+  const endIndex = startIndex + modelsPerPage
+  const paginatedModels = filteredModels.slice(startIndex, endIndex)
+
   const [mouseDownTarget, setMouseDownTarget] = useState(null)
 
   const handleOverlayMouseDown = (e) => {
@@ -198,18 +110,16 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
   }
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-      onMouseDown={handleOverlayMouseDown}
-      onClick={handleOverlayClick}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
       <div 
-        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={e => e.stopPropagation()}
+        className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+        onMouseDown={handleOverlayMouseDown}
+        onClick={handleOverlayClick}
       >
+        <div 
+          className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
+        >
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-800">
@@ -227,15 +137,42 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
         </div>
 
         <div className="p-6 overflow-y-auto flex-1">
-          <div className="mb-4">
+          <div className="mb-4 flex items-center gap-3">
             <input
               type="text"
               placeholder="Поиск моделей..."
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               maxLength={50}
             />
+            {currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) && (
+              <button
+                type="button"
+                onClick={() => router.push(`/dashboard/models/upload?projectId=${projectId}`)}
+                className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer overflow-hidden"
+                style={{ 
+                  width: '2.5rem', 
+                  paddingLeft: '0.625rem', 
+                  paddingRight: '0.625rem',
+                  transition: 'width 0.2s, padding-right 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.setProperty('width', '195px', 'important')
+                  e.currentTarget.style.setProperty('padding-right', '2rem', 'important')
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.setProperty('width', '2.5rem', 'important')
+                  e.currentTarget.style.setProperty('padding-right', '0.625rem', 'important')
+                }}
+                title="Добавить модель"
+              >
+                <PlusIcon className="h-5 w-5 flex-shrink-0" style={{ color: '#ffffff', strokeWidth: 2 }} />
+                <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                  Добавить модель
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Вкладки сфер */}
@@ -284,62 +221,97 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
             </div>
           )}
 
-          {currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) && (
-            <div className="mb-4">
-              <button
-                type="button"
-                onClick={() => router.push(`/dashboard/models/upload?projectId=${projectId}`)}
-                className="text-sm text-blue-600 hover:text-blue-800 underline"
-              >
-                Добавить новую модель
-              </button>
-            </div>
-          )}
-
           {isLoadingModels ? (
             <div className="flex justify-center py-4">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
             </div>
           ) : (
-            <div className="border border-gray-300 rounded-md p-3 bg-gray-50 min-h-[240px]">
+            <div>
               {filteredModels.length === 0 ? (
-                <p className="text-gray-500 text-sm">Модели не найдены</p>
+                <p className="text-gray-500 text-sm text-center py-8">Модели не найдены</p>
               ) : (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {filteredModels.map(model => (
+                <>
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    {paginatedModels.map(model => (
                     <div 
                       key={model.id} 
-                      className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
+                      className={`relative bg-white border-2 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 ${
                         selectedModels.includes(model.id) 
-                          ? 'bg-blue-50 border border-blue-200' 
-                          : 'border border-transparent hover:bg-gray-100'
+                          ? 'border-blue-500 shadow-md' 
+                          : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                       }`}
                       onClick={() => handleModelSelect(model.id)}
-                      onMouseEnter={(e) => handleMouseEnter(model, e)}
                     >
-                      <input
-                        type="checkbox"
-                        id={`modal-model-${model.id}`}
-                        checked={selectedModels.includes(model.id)}
-                        onChange={() => handleModelSelect(model.id)}
-                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <label 
-                        htmlFor={`modal-model-${model.id}`} 
-                        className="ml-3 block text-sm text-gray-700 cursor-pointer flex-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <span className="font-medium">{model.title}</span>
-                        {model.author?.name && (
-                          <span className="text-xs text-gray-500 ml-2">
-                            ({model.author.name})
-                          </span>
+                      {/* Галочка в углу */}
+                      <div className="absolute top-2 right-2 z-10">
+                        <input
+                          type="checkbox"
+                          id={`modal-model-${model.id}`}
+                          checked={selectedModels.includes(model.id)}
+                          onChange={() => handleModelSelect(model.id)}
+                          className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+
+                      {/* Превью изображения */}
+                      <div className="relative aspect-square bg-gray-100 overflow-hidden">
+                        {model.images && model.images.length > 0 ? (
+                          <img
+                            src={proxyUrl(model.images[0])}
+                            alt={model.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23e5e7eb" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="14"%3EНет изображения%3C/text%3E%3C/svg%3E'
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                          </div>
                         )}
-                      </label>
+                      </div>
+
+                      {/* Информация о модели */}
+                      <div className="p-3">
+                        <h3 className="font-medium text-sm text-gray-900 line-clamp-2 mb-1">
+                          {model.title}
+                        </h3>
+                        {model.author?.name && (
+                          <p className="text-xs text-gray-500 truncate">
+                            {model.author.name}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
+
+                  {/* Пагинация */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-4">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                      >
+                        Назад
+                      </button>
+                      <div className="flex items-center px-4 text-sm text-gray-600">
+                        Страница {currentPage} из {totalPages}
+                      </div>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                      >
+                        Вперед
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -367,21 +339,6 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
           </button>
         </div>
       </div>
-
-      <AnimatePresence>
-        {showPreview && previewModel && (
-          <ModelPreview
-            model={previewModel}
-            position={previewPosition}
-            currentImageIndex={currentImageIndex}
-            onNextImage={nextImage}
-            onPrevImage={prevImage}
-            onWheel={handleWheel}
-            isHovering={isHovering}
-            setIsHovering={setShowPreview}
-          />
-        )}
-      </AnimatePresence>
     </div>
   )
 }
