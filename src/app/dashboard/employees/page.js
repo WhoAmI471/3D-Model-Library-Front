@@ -183,6 +183,7 @@ export default function EmployeesPage() {
   return (
     <div className="min-h-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
+        <h1 className="text-2xl font-bold mb-8">Сотрудники</h1>
         {/* Поиск и кнопка добавления */}
         <div className="mb-6 flex gap-3">
           <div className="flex-1 relative">
