@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
+import { checkPermission } from '@/lib/permission'
+import { ALL_PERMISSIONS } from '@/lib/roles'
 
 export async function GET() {
   try {
@@ -53,8 +55,8 @@ export async function POST(request) {
       )
     }
 
-    // Только администратор может создавать сферы
-    if (user.role !== 'ADMIN') {
+    // Проверяем право на создание сфер
+    if (user.role !== 'ADMIN' && !checkPermission(user, ALL_PERMISSIONS.ADD_SPHERE)) {
       return NextResponse.json(
         { error: 'Доступ запрещен' },
         { status: 403 }

@@ -231,25 +231,15 @@ export default function EmployeesPage() {
 
         {/* Форма сотрудника */}
         {showAddForm && (
-          <div 
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
-            onClick={() => {
+          <EmployeeForm
+            employee={currentEmployee}
+            onSubmit={handleEmployeeSubmit}
+            onCancel={() => {
               setShowAddForm(false)
               setCurrentEmployee(null)
             }}
-          >
-            <div onClick={(e) => e.stopPropagation()}>
-              <EmployeeForm
-                employee={currentEmployee}
-                onSubmit={handleEmployeeSubmit}
-                onCancel={() => {
-                  setShowAddForm(false)
-                  setCurrentEmployee(null)
-                }}
-                userRole={user?.role}
-              />
-            </div>
-          </div>
+            userRole={user?.role}
+          />
         )}
 
         {/* Группированные таблицы сотрудников */}

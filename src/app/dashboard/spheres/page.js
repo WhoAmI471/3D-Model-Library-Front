@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission } from '@/lib/permission'
+import { ALL_PERMISSIONS } from '@/lib/roles'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -170,7 +171,7 @@ export default function SpheresPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {(user?.role === 'ADMIN') && (
+            {(user?.role === 'ADMIN' || checkPermission(user, ALL_PERMISSIONS.ADD_SPHERE)) && (
               <button 
                 onClick={handleAdd}
                 className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer overflow-hidden"
