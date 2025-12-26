@@ -1,11 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import { useModal } from '@/hooks/useModal'
 
 export default function DeleteReasonModal({ isOpen, onClose, onConfirm }) {
   const [reason, setReason] = useState('')
   const [error, setError] = useState('')
-  const [mouseDownTarget, setMouseDownTarget] = useState(null)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -26,29 +26,20 @@ export default function DeleteReasonModal({ isOpen, onClose, onConfirm }) {
     onClose()
   }
 
+  const modalHandlers = useModal(handleCancel)
+
   if (!isOpen) return null
-
-  const handleOverlayMouseDown = (e) => {
-    setMouseDownTarget(e.target)
-  }
-
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget && mouseDownTarget === e.currentTarget) {
-      handleCancel()
-    }
-    setMouseDownTarget(null)
-  }
 
   return (
     <div 
       className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-      onMouseDown={handleOverlayMouseDown}
-      onClick={handleOverlayClick}
+      onMouseDown={modalHandlers.handleOverlayMouseDown}
+      onClick={modalHandlers.handleOverlayClick}
     >
       <div 
         className="bg-white rounded-lg shadow-xl w-full max-w-md"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={e => e.stopPropagation()}
+        onMouseDown={modalHandlers.handleContentMouseDown}
+        onClick={modalHandlers.handleContentClick}
       >
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">

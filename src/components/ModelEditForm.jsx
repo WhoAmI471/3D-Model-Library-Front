@@ -5,9 +5,11 @@ import { formatFileSize, proxyUrl } from '@/lib/utils'
 import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
 import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { useModelsData } from '@/hooks/useModelsData'
 
 export default function ModelEditForm({ id, userRole }) {
   const router = useRouter()
+  const { users, projects, spheres, models: allModels, currentUser, isLoading: isLoadingData } = useModelsData({ includeUsers: true, includeProjects: true })
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -18,11 +20,6 @@ export default function ModelEditForm({ id, userRole }) {
   const [selectedProjects, setSelectedProjects] = useState([])
   const [zipFile, setZipFile] = useState(null)
   const [screenshots, setScreenshots] = useState([])
-  const [users, setUsers] = useState([])
-  const [projects, setProjects] = useState([])
-  const [spheres, setSpheres] = useState([])
-  const [allModels, setAllModels] = useState([])
-  const [currentUser, setCurrentUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [currentFiles, setCurrentFiles] = useState({
@@ -42,52 +39,20 @@ export default function ModelEditForm({ id, userRole }) {
   const [canEditSphere, setCanEditSphere] = useState(null);
   const [canEditScreenshots, setCanEditScreenshots] = useState(null);
 
+  // Устанавливаем права доступа на основе объекта пользователя
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [usersRes, projectsRes, spheresRes, modelsRes, currentUserRes] = await Promise.all([
-          fetch('/api/users'),
-          fetch('/api/projects'),
-          fetch('/api/spheres'),
-          fetch('/api/models'),
-          fetch('/api/auth/me')
-        ])
-
-        const usersData = await usersRes.json()
-        const projectsData = await projectsRes.json()
-        const spheresData = await spheresRes.json()
-        const modelsData = await modelsRes.json()
-        const currentUserData = await currentUserRes.json()
-        
-        setUsers(Array.isArray(usersData) ? usersData : [])
-        setProjects(Array.isArray(projectsData) ? projectsData : [])
-        setSpheres(Array.isArray(spheresData) ? spheresData : [])
-        setAllModels(Array.isArray(modelsData) ? modelsData : [])
-        const user = currentUserData?.user || null
-        setCurrentUser(user)
-        
-        // Устанавливаем права доступа на основе объекта пользователя
-        if (user) {
-          setCanEditModel(checkPermission(user, ALL_PERMISSIONS.EDIT_MODELS))
-          setCanEditDescription(checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION))
-          setCanEditSphere(checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_SPHERE))
-          setCanEditScreenshots(checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS))
-        } else {
-          setCanEditModel(false)
-          setCanEditDescription(false)
-          setCanEditSphere(false)
-          setCanEditScreenshots(false)
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
-        setUsers([])
-        setProjects([])
-        setCurrentUser(null)
-      }
+    if (currentUser) {
+      setCanEditModel(checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODELS))
+      setCanEditDescription(checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION))
+      setCanEditSphere(checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODEL_SPHERE))
+      setCanEditScreenshots(checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS))
+    } else {
+      setCanEditModel(false)
+      setCanEditDescription(false)
+      setCanEditSphere(false)
+      setCanEditScreenshots(false)
     }
-    
-    fetchData()
-  }, [])
+  }, [currentUser])
 
   // Сортировка сфер: по количеству моделей, "Другое" в конце
   const sortedSpheres = [...spheres].sort((a, b) => {

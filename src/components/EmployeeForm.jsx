@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { ROLES, ROLE_OPTIONS, ALL_PERMISSIONS, PERMISSION_LABELS, DEFAULT_PERMISSIONS } from '@/lib/roles'
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import { useModal } from '@/hooks/useModal'
 
 export default function EmployeeForm({ employee, onSubmit, onCancel, userRole }) {
   const [formData, setFormData] = useState({
@@ -26,9 +27,10 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
-  const [mouseDownTarget, setMouseDownTarget] = useState(null)
   const [showPasswordChange, setShowPasswordChange] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+
+  const modalHandlers = useModal(onCancel)
 
 
   // Сохраняем состояние в localStorage при изменении
@@ -205,29 +207,16 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
     }
   }
 
-  const handleOverlayMouseDown = (e) => {
-    if (e.target === e.currentTarget) {
-      setMouseDownTarget(e.target)
-    }
-  }
-
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget && mouseDownTarget === e.currentTarget) {
-      onCancel()
-    }
-    setMouseDownTarget(null)
-  }
-
   return (
     <div 
       className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-      onMouseDown={handleOverlayMouseDown}
-      onClick={handleOverlayClick}
+      onMouseDown={modalHandlers.handleOverlayMouseDown}
+      onClick={modalHandlers.handleOverlayClick}
     >
       <div 
         className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
+        onMouseDown={modalHandlers.handleContentMouseDown}
+        onClick={modalHandlers.handleContentClick}
       >
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">

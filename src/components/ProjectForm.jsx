@@ -5,6 +5,9 @@ import { proxyUrl } from '@/lib/utils'
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS } from '@/lib/roles'
+import { useModelsData } from '@/hooks/useModelsData'
+import { useModal } from '@/hooks/useModal'
+import { usePagination } from '@/hooks/usePagination'
 
 export default function ProjectForm({ project, onSubmit, onCancel }) {
   const router = useRouter()
@@ -15,41 +18,14 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
   })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [models, setModels] = useState([])
-  const [spheres, setSpheres] = useState([])
-  const [isLoadingModels, setIsLoadingModels] = useState(false)
-  const [currentUser, setCurrentUser] = useState(null)
+  const { models, spheres, currentUser, isLoading: isLoadingModels } = useModelsData()
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('all')
-  const [currentPage, setCurrentPage] = useState(1)
   const modelsPerPage = 12
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoadingModels(true)
-      try {
-        const [modelsRes, spheresRes, userRes] = await Promise.all([
-          fetch('/api/models'),
-          fetch('/api/spheres'),
-          fetch('/api/auth/me')
-        ])
-        const modelsData = await modelsRes.json()
-        const spheresData = await spheresRes.json()
-        const userData = await userRes.json()
-        setModels(modelsData)
-        setSpheres(spheresData)
-        setCurrentUser(userData.user || null)
-      } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
-      } finally {
-        setIsLoadingModels(false)
-      }
-    }
-
-    fetchData()
-  }, [])
+  const modalHandlers = useModal(onCancel)
 
   useEffect(() => {
     if (project) {
@@ -75,10 +51,6 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     }
   }, [project])
 
-  // Сброс страницы при изменении фильтров
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [activeTab, searchTerm])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -181,35 +153,23 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     )
 
   // Пагинация
-  const totalPages = Math.ceil(filteredModels.length / modelsPerPage)
-  const startIndex = (currentPage - 1) * modelsPerPage
-  const endIndex = startIndex + modelsPerPage
-  const paginatedModels = filteredModels.slice(startIndex, endIndex)
-
-  const [mouseDownTarget, setMouseDownTarget] = useState(null)
-
-  const handleOverlayMouseDown = (e) => {
-    setMouseDownTarget(e.target)
-  }
-
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget && mouseDownTarget === e.currentTarget) {
-      onCancel()
-    }
-    setMouseDownTarget(null)
-  }
+  const { currentPage, totalPages, paginatedItems: paginatedModels, setCurrentPage } = usePagination(
+    filteredModels,
+    modelsPerPage,
+    [activeTab, searchTerm]
+  )
 
   return (
     <>
       <div 
         className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-        onMouseDown={handleOverlayMouseDown}
-        onClick={handleOverlayClick}
+        onMouseDown={modalHandlers.handleOverlayMouseDown}
+        onClick={modalHandlers.handleOverlayClick}
       >
         <div 
           className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={e => e.stopPropagation()}
+          onMouseDown={modalHandlers.handleContentMouseDown}
+          onClick={modalHandlers.handleContentClick}
         >
           <div className="p-6 border-b border-gray-200">
             <div className="flex justify-between items-center">

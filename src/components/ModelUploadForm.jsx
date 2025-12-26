@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { formatFileSize } from '@/lib/utils'
 import { ROLES } from '@/lib/roles'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { useModelsData } from '@/hooks/useModelsData'
+import { useDragAndDrop } from '@/hooks/useDragAndDrop'
 
 export default function ModelUploadForm({ initialProjectId = null }) {
   const router = useRouter()
@@ -11,12 +13,8 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   const [loading, setLoading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadComplete, setUploadComplete] = useState(false)
-  const [users, setUsers] = useState([])
-  const [projects, setProjects] = useState([])
-  const [spheres, setSpheres] = useState([])
-  const [allModels, setAllModels] = useState([])
+  const { users, projects, spheres, models: allModels, currentUser } = useModelsData({ includeUsers: true, includeProjects: true })
   const [selectedProjects, setSelectedProjects] = useState([])
-  const [currentUser, setCurrentUser] = useState(null)
   const [formState, setFormState] = useState({
     title: '',
     description: '',
@@ -28,8 +26,6 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     screenshots: []
   })
   const [projectSearchTerm, setProjectSearchTerm] = useState('')
-  const [draggedIndex, setDraggedIndex] = useState(null)
-  const [dragOverIndex, setDragOverIndex] = useState(null)
 
   const toggleProject = (projectId) => {
     setSelectedProjects(prev => 
@@ -39,56 +35,15 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     )
   }
 
+  // Устанавливаем текущего пользователя по умолчанию, если автор еще не выбран
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [usersRes, projectsRes, spheresRes, modelsRes, currentUserRes] = await Promise.all([
-          fetch('/api/users'),
-          fetch('/api/projects'),
-          fetch('/api/spheres'),
-          fetch('/api/models'),
-          fetch('/api/auth/me')
-        ])
-        
-        const usersData = await usersRes.json()
-        const projectsData = await projectsRes.json()
-        const spheresData = await spheresRes.json()
-        const modelsData = await modelsRes.json()
-        const currentUserData = await currentUserRes.json()
-        
-        const usersList = Array.isArray(usersData) ? usersData : []
-        const user = currentUserData?.user || null
-        
-        setUsers(usersList)
-        setProjects(Array.isArray(projectsData) ? projectsData : [])
-        setSpheres(Array.isArray(spheresData) ? spheresData : [])
-        setAllModels(Array.isArray(modelsData) ? modelsData : [])
-        setCurrentUser(user)
-        
-        // Устанавливаем текущего пользователя по умолчанию, если автор еще не выбран
-        if (user) {
-          setFormState(prev => {
-            // Устанавливаем только если автор еще не выбран
-            if (!prev.authorId) {
-              return {
-                ...prev,
-                authorId: user.id
-              }
-            }
-            return prev
-          })
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
-        setUsers([])
-        setProjects([])
-        setSpheres([])
-        setCurrentUser(null)
-      }
+    if (currentUser && !formState.authorId) {
+      setFormState(prev => ({
+        ...prev,
+        authorId: currentUser.id
+      }))
     }
-    
-    fetchData()
-  }, [])
+  }, [currentUser, formState.authorId])
   
   // Автоматически выбираем проект, если передан initialProjectId
   useEffect(() => {
@@ -240,44 +195,22 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     })
   }
 
-  const handleDragStart = (index) => {
-    setDraggedIndex(index)
+  // Drag and drop для скриншотов
+  const handleScreenshotsReorder = (newScreenshots) => {
+    setFormState(prev => ({
+      ...prev,
+      screenshots: newScreenshots
+    }))
   }
 
-  const handleDragOver = (e, index) => {
-    e.preventDefault()
-    setDragOverIndex(index)
-  }
-
-  const handleDragLeave = () => {
-    setDragOverIndex(null)
-  }
-
-  const handleDrop = (e, dropIndex) => {
-    e.preventDefault()
-    
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null)
-      setDragOverIndex(null)
-      return
-    }
-
-    setFormState(prev => {
-      const newScreenshots = [...prev.screenshots]
-      const draggedItem = newScreenshots[draggedIndex]
-      
-      // Удаляем элемент из исходной позиции
-      newScreenshots.splice(draggedIndex, 1)
-      
-      // Вставляем элемент в новую позицию
-      newScreenshots.splice(dropIndex, 0, draggedItem)
-      
-      return { ...prev, screenshots: newScreenshots }
-    })
-
-    setDraggedIndex(null)
-    setDragOverIndex(null)
-  }
+  const {
+    draggedIndex,
+    dragOverIndex,
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop
+  } = useDragAndDrop(formState.screenshots, handleScreenshotsReorder)
 
   const removeZipFile = () => {
     setFormState(prev => ({ ...prev, zipFile: null }))

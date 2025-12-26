@@ -1,47 +1,23 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS } from '@/lib/roles'
 import { proxyUrl } from '@/lib/utils'
 import { PlusIcon } from '@heroicons/react/24/outline'
+import { useModelsData } from '@/hooks/useModelsData'
+import { useModal } from '@/hooks/useModal'
+import { usePagination } from '@/hooks/usePagination'
 
 export default function AddModelsToProjectModal({ projectId, onClose, onAdd, existingModelIds = [] }) {
   const router = useRouter()
-  const [models, setModels] = useState([])
-  const [spheres, setSpheres] = useState([])
+  const { models, spheres, currentUser, isLoading: isLoadingModels } = useModelsData()
   const [selectedModels, setSelectedModels] = useState([])
-  const [isLoadingModels, setIsLoadingModels] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('all')
-  const [currentUser, setCurrentUser] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
   const modelsPerPage = 12
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoadingModels(true)
-      try {
-        const [modelsRes, spheresRes, userRes] = await Promise.all([
-          fetch('/api/models'),
-          fetch('/api/spheres'),
-          fetch('/api/auth/me')
-        ])
-        const modelsData = await modelsRes.json()
-        const spheresData = await spheresRes.json()
-        const userData = await userRes.json()
-        setModels(modelsData)
-        setSpheres(spheresData)
-        setCurrentUser(userData.user || null)
-      } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
-      } finally {
-        setIsLoadingModels(false)
-      }
-    }
-
-    fetchData()
-  }, [])
+  const modalHandlers = useModal(onClose)
 
   const handleModelSelect = (modelId) => {
     setSelectedModels(prev => 
@@ -57,10 +33,6 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
     }
   }
 
-  // Сброс страницы при изменении фильтров
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [activeTab, searchTerm])
 
   // Фильтруем модели: исключаем те, что уже есть в проекте
   const availableModels = models.filter(model => 
@@ -91,34 +63,22 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
     )
 
   // Пагинация
-  const totalPages = Math.ceil(filteredModels.length / modelsPerPage)
-  const startIndex = (currentPage - 1) * modelsPerPage
-  const endIndex = startIndex + modelsPerPage
-  const paginatedModels = filteredModels.slice(startIndex, endIndex)
-
-  const [mouseDownTarget, setMouseDownTarget] = useState(null)
-
-  const handleOverlayMouseDown = (e) => {
-    setMouseDownTarget(e.target)
-  }
-
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget && mouseDownTarget === e.currentTarget) {
-      onClose()
-    }
-    setMouseDownTarget(null)
-  }
+  const { currentPage, totalPages, paginatedItems: paginatedModels, setCurrentPage } = usePagination(
+    filteredModels,
+    modelsPerPage,
+    [activeTab, searchTerm]
+  )
 
   return (
       <div 
         className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-        onMouseDown={handleOverlayMouseDown}
-        onClick={handleOverlayClick}
+        onMouseDown={modalHandlers.handleOverlayMouseDown}
+        onClick={modalHandlers.handleOverlayClick}
       >
         <div 
           className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={e => e.stopPropagation()}
+          onMouseDown={modalHandlers.handleContentMouseDown}
+          onClick={modalHandlers.handleContentClick}
         >
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
