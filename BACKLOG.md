@@ -37,7 +37,7 @@
 
 ### 2. Разбить большие компоненты на меньшие
 
-**Статус:** ⏳ Не начато
+**Статус:** ✅ Завершено
 
 **Описание:**
 Компоненты `ModelEditForm.jsx` и `ModelUploadForm.jsx` содержат более 1200 строк кода. Необходимо разбить их на более мелкие, переиспользуемые компоненты.
@@ -45,22 +45,28 @@
 **Задачи:**
 
 #### ModelEditForm.jsx
-- [ ] Выделить `ScreenshotsSection` компонент
-- [ ] Выделить `ModelInfoSection` компонент (название, описание, автор, версия, сфера)
-- [ ] Выделить `ProjectsSection` компонент
-- [ ] Выделить `FileUploadSection` компонент
-- [ ] Создать `FormActions` компонент (кнопки сохранения/отмены)
+- [x] Выделить `ScreenshotsSection` компонент
+- [x] Выделить `ModelInfoSection` компонент (название, описание, автор, версия, сфера)
+- [x] Выделить `ProjectsSection` компонент
+- [x] Выделить `FileUploadSection` компонент
+- [x] Создать `FormActions` компонент (кнопки сохранения/отмены)
 
 #### ModelUploadForm.jsx
-- [ ] Выделить `ScreenshotsUploadSection` компонент
-- [ ] Выделить `ModelInfoSection` компонент (переиспользовать из ModelEditForm)
-- [ ] Выделить `ProjectsSelectionSection` компонент
-- [ ] Выделить `FileUploadSection` компонент (переиспользовать из ModelEditForm)
-- [ ] Создать `FormActions` компонент (переиспользовать)
+- [x] Выделить `ScreenshotsUploadSection` компонент
+- [x] Выделить `ModelInfoSection` компонент (переиспользовать из ModelEditForm)
+- [x] Выделить `ProjectsSelectionSection` компонент
+- [x] Выделить `FileUploadSection` компонент (переиспользовать из ModelEditForm)
+- [x] Создать `FormActions` компонент (переиспользовать)
 
 **Затронутые файлы:**
-- `src/components/ModelEditForm.jsx` (1218 строк → ~300-400 строк)
-- `src/components/ModelUploadForm.jsx` (~700 строк → ~200-300 строк)
+- `src/components/ModelEditForm.jsx` (1183 строк → 855 строк, сокращение на ~28%)
+- `src/components/ModelUploadForm.jsx` (~700 строк → 421 строка, сокращение на ~40%)
+- `src/components/modelForm/FormActions.jsx` (новый компонент)
+- `src/components/modelForm/ModelInfoSection.jsx` (новый компонент)
+- `src/components/modelForm/ScreenshotsSection.jsx` (новый компонент)
+- `src/components/modelForm/ScreenshotsUploadSection.jsx` (новый компонент)
+- `src/components/modelForm/ProjectsSection.jsx` (новый компонент)
+- `src/components/modelForm/FileUploadSection.jsx` (новый компонент)
 
 **Ожидаемый результат:**
 - Уменьшение размера компонентов до 200-400 строк
@@ -224,11 +230,11 @@
 
 ## Прогресс
 
-### Общий прогресс: 1/6 задач завершено (17%)
+### Общий прогресс: 2/6 задач завершено (33%)
 
-**Высокий приоритет:** 1/3 (33%)
+**Высокий приоритет:** 2/3 (67%)
 - [x] Кастомные хуки ✅ (полностью завершено - все хуки созданы и интегрированы во все компоненты)
-- [ ] Разбиение компонентов
+- [x] Разбиение компонентов ✅ (завершено - создано 6 новых компонентов, ModelEditForm сокращен на 28%, ModelUploadForm на 40%)
 - [ ] API клиент
 
 **Средний приоритет:** 0/3 (0%)

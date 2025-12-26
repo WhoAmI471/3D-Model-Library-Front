@@ -6,6 +6,10 @@ import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
 import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useModelsData } from '@/hooks/useModelsData'
+import ScreenshotsSection from '@/components/modelForm/ScreenshotsSection'
+import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
+import ProjectsSection from '@/components/modelForm/ProjectsSection'
+import FileUploadSection from '@/components/modelForm/FileUploadSection'
 
 export default function ModelEditForm({ id, userRole }) {
   const router = useRouter()
@@ -573,347 +577,66 @@ export default function ModelEditForm({ id, userRole }) {
         {canEditModel === true ? (
           <>
             {/* Галерея скриншотов */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Текущие скриншоты
-            </label>
-            {(currentFiles.screenshots.length > 0 || screenshots.length > 0) && (
-              <div className="mb-2">
-                <div className="text-xs text-gray-500 mb-2">
-                  Первый скриншот будет отображаться в карточке модели. Перетаскивайте скриншоты для изменения порядка.
-                </div>
-              </div>
-            )}
-            <div className="flex gap-4 overflow-x-auto pb-2">
-                {currentFiles.screenshots.map((file, index) => {
-                  const totalIndex = index
-                  const totalLength = currentFiles.screenshots.length + screenshots.length
-                  return (
-                    <div
-                      key={index}
-                      draggable
-                      onDragStart={() => handleCurrentDragStart(index)}
-                      onDragOver={(e) => handleCurrentDragOver(e, index)}
-                      onDragLeave={handleCurrentDragLeave}
-                      onDrop={(e) => handleCurrentDrop(e, index)}
-                      className={`relative flex-shrink-0 w-64 h-48 cursor-move bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-all group ${
-                        draggedType === 'current' && draggedIndex === index ? 'opacity-50 scale-95' : ''
-                      } ${
-                        draggedType === 'current' && dragOverIndex === index && draggedIndex !== index ? 'ring-2 ring-blue-500 scale-105' : ''
-                      } ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}
-                    >
-                      <img
-                        src={proxyUrl(file)}
-                        alt={`Скриншот ${index + 1}`}
-                        className="object-cover w-full h-full pointer-events-none"
-                        draggable={false}
-                      />
-                      {index === 0 && (
-                        <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded">
-                          Главный
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeCurrentScreenshot(index)
-                        }}
-                        className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
-                        disabled={!canEditModel && !canEditScreenshots}
-                      >
-                        <XMarkIcon className="h-5 w-5" />
-                      </button>
-                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-medium rounded">
-                        {totalIndex + 1} / {totalLength}
-                      </div>
-                    </div>
-                  )
-                })}
-                {/* Новые скриншоты */}
-                {screenshots.map((file, index) => {
-                  const totalIndex = currentFiles.screenshots.length + index
-                  const totalLength = currentFiles.screenshots.length + screenshots.length
-                  // Новый скриншот может быть первым только если нет существующих скриншотов
-                  const isFirst = currentFiles.screenshots.length === 0 && index === 0
-                  return (
-                    <div
-                      key={`new-${index}`}
-                      draggable
-                      onDragStart={() => handleNewDragStart(index)}
-                      onDragOver={(e) => handleNewDragOver(e, index)}
-                      onDragLeave={handleNewDragLeave}
-                      onDrop={(e) => handleNewDrop(e, index)}
-                      className={`relative flex-shrink-0 w-64 h-48 cursor-move bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-all group ${
-                        draggedType === 'new' && draggedIndex === index ? 'opacity-50 scale-95' : ''
-                      } ${
-                        draggedType === 'new' && dragOverIndex === index && draggedIndex !== index ? 'ring-2 ring-blue-500 scale-105' : ''
-                      } ${isFirst ? 'ring-2 ring-blue-500' : ''}`}
-                    >
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Новый скриншот ${index + 1}`}
-                        className="object-cover w-full h-full pointer-events-none"
-                        draggable={false}
-                      />
-                      {isFirst && (
-                        <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded">
-                          Главный
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeScreenshot(index)
-                        }}
-                        className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
-                      >
-                        <XMarkIcon className="h-5 w-5" />
-                      </button>
-                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-medium rounded">
-                        {totalIndex + 1} / {totalLength}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              
-              {/* Кнопка добавления скриншотов */}
-              <div className="mt-4">
-                <label className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                  <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                  </svg>
-                  Добавить скриншоты
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleScreenshotAdd}
-                    className="sr-only"
-                    disabled={!canEditModel && !canEditScreenshots}
-                  />
-                </label>
-              </div>
-            </div>
+            <ScreenshotsSection
+              currentScreenshots={currentFiles.screenshots}
+              newScreenshots={screenshots}
+              deletedScreenshots={deletedScreenshots}
+              onRemoveCurrent={removeCurrentScreenshot}
+              onRemoveNew={removeScreenshot}
+              onAdd={handleScreenshotAdd}
+              onRestoreDeleted={restoreDeletedScreenshot}
+              draggedIndex={draggedIndex}
+              dragOverIndex={dragOverIndex}
+              draggedType={draggedType}
+              onCurrentDragStart={handleCurrentDragStart}
+              onCurrentDragOver={handleCurrentDragOver}
+              onCurrentDragLeave={handleCurrentDragLeave}
+              onCurrentDrop={handleCurrentDrop}
+              onNewDragStart={handleNewDragStart}
+              onNewDragOver={handleNewDragOver}
+              onNewDragLeave={handleNewDragLeave}
+              onNewDrop={handleNewDrop}
+              canEditModel={canEditModel}
+              canEditScreenshots={canEditScreenshots}
+              disabled={isLoading}
+            />
             
-            {/* Удаленные скриншоты (можно восстановить) */}
-            {deletedScreenshots.length > 0 && (
-              <div className="mb-8">
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Удаленные скриншоты (можно восстановить)</div>
-                <div className="flex gap-4 overflow-x-auto pb-2">
-                  {deletedScreenshots.map((deletedUrl, index) => (
-                    <div key={`deleted-${deletedUrl}`} className="relative flex-shrink-0 w-64 h-48 bg-gray-100 rounded-lg overflow-hidden opacity-60 border-2 border-red-300">
-                      <img
-                        src={proxyUrl(deletedUrl)}
-                        alt={`Удаленный скриншот ${index + 1}`}
-                        className="object-cover w-full h-full"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => restoreDeletedScreenshot(deletedUrl)}
-                        className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        title="Восстановить скриншот"
-                      >
-                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Описание */}
-            <div className="mb-8 bg-gray-50 rounded-lg p-6 border border-gray-200">
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Описание</div>
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                rows={6}
-                className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
-                maxLength={1000}
-                placeholder="Введите описание модели..."
-              />
-            </div>
-
             {/* Информация о модели */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              
-              {/* Автор */}
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Автор</div>
-                <select
-                  name="authorId"
-                  value={form.authorId || (currentUser ? currentUser.id : 'UNKNOWN')}
-                  onChange={handleChange}
-                  className={`block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${
-                    currentUser?.role === 'ADMIN' ? '' : 'bg-gray-50'
-                  }`}
-                  required
-                  disabled={currentUser?.role !== 'ADMIN'}
-                >
-                  {currentUser?.role === 'ADMIN' ? (
-                    <>
-                      {currentUser && (
-                        <option value={currentUser.id}>
-                          {currentUser.name} (Я)
-                        </option>
-                      )}
-                      <option value="UNKNOWN">Неизвестно</option>
-                      <option value="EXTERNAL">Сторонняя модель</option>
-                      {users
-                        .filter(user => user.role === ROLES.ARTIST && user.id !== currentUser?.id)
-                        .map(user => (
-                          <option key={user.id} value={user.id}>
-                            {user.name}
-                          </option>
-                        ))}
-                    </>
-                  ) : (
-                    <>
-                      {currentUser && (
-                        <option value={currentUser.id}>
-                          {currentUser.name} (Я)
-                        </option>
-                      )}
-                      <option value="UNKNOWN">Неизвестно</option>
-                      <option value="EXTERNAL">Сторонняя модель</option>
-                    </>
-                  )}
-                </select>
-              </div>
-              
-              {/* Версия */}
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Версия</div>
-                <input
-                  name="version"
-                  value={form.version}
-                  onChange={handleChange}
-                  className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
-                  maxLength={20}
-                />
-              </div>
-              
-              {/* Сфера */}
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Сфера <span className="text-red-500">*</span></div>
-                <select
-                  name="sphereId"
-                  value={form.sphereId || ''}
-                  onChange={handleChange}
-                  required
-                  className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm cursor-pointer text-gray-900"
-                  disabled={canEditModel ? false : !canEditSphere}
-                  style={!form.sphereId ? { color: 'rgba(156, 163, 175, 0.7)' } : {}}
-                >
-                  <option value="" disabled hidden className="text-gray-400">
-                    Выберите сферу
-                  </option>
-                  {sortedSpheres.map((sphere) => (
-                    <option key={sphere.id} value={sphere.id} className="text-gray-900">
-                      {sphere.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <ModelInfoSection
+              form={form}
+              handleChange={handleChange}
+              users={users}
+              currentUser={currentUser}
+              sortedSpheres={sortedSpheres}
+              canEditModel={canEditModel}
+              canEditDescription={canEditDescription}
+              canEditSphere={canEditSphere}
+              showTitle={false}
+            />
 
             {/* ZIP-архив модели */}
-            <div className="mb-8">
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">ZIP-архив модели</div>
-              {currentFiles.zip && (
-                <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <svg className="h-5 w-5 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          Текущий файл: {currentFiles.zip.split('/').pop()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div>
-                <label className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                  <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  {currentFiles.zip ? 'Заменить ZIP-файл' : 'Выберите ZIP-файл'}
-                  <input
-                    type="file"
-                    accept=".zip"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        const fileName = file.name.toLowerCase()
-                        if (!fileName.endsWith('.zip')) {
-                          alert('Можно загружать только .zip файлы!')
-                          e.target.value = ''
-                          return
-                        }
-                        setZipFile(file)
-                        if (currentFiles.zip) {
-                          setCurrentFiles(prev => ({ ...prev, zip: null }))
-                        }
-                      }
-                    }}
-                    className="sr-only"
-                    disabled={!canEditModel}
-                  />
-                </label>
-                {zipFile && (
-                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-700">
-                      Новый файл: {zipFile.name} ({formatFileSize(zipFile.size)})
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <FileUploadSection
+              currentFile={currentFiles.zip}
+              newFile={zipFile}
+              onFileChange={(file) => {
+                setZipFile(file)
+                if (currentFiles.zip) {
+                  setCurrentFiles(prev => ({ ...prev, zip: null }))
+                }
+              }}
+              disabled={!canEditModel || isLoading}
+              label="ZIP-архив модели"
+            />
 
             {/* Проекты */}
-            <div className="mb-8">
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Проекты</div>
-              
-              {/* Поиск проектов */}
-              <div className="mb-3">
-                <input
-                  type="text"
-                  placeholder="Поиск проектов..."
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
-                  value={projectSearchTerm}
-                  onChange={(e) => setProjectSearchTerm(e.target.value)}
-                  maxLength={50}
-                />
-              </div>
-              
-              {/* Список проектов */}
-              <div className="space-y-2 max-h-40 overflow-y-auto p-3 bg-white border border-gray-200 rounded-lg">
-                {filteredProjects.map(project => (
-                  <div key={project.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`project-${project.id}`}
-                      checked={selectedProjects.includes(project.id)}
-                      onChange={() => toggleProject(project.id)}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <label htmlFor={`project-${project.id}`} className="ml-2 text-sm text-gray-700">
-                      {project.name}{project.city ? ` • ${project.city}` : ''}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ProjectsSection
+              projects={projects}
+              selectedProjects={selectedProjects}
+              onToggleProject={toggleProject}
+              searchTerm={projectSearchTerm}
+              onSearchChange={setProjectSearchTerm}
+              disabled={isLoading}
+            />
           </>
         ) : (canEditDescription === true || canEditSphere === true || canEditScreenshots === true) ? (
           /* Если можно редактировать описание, сферу или скриншоты, показываем соответствующие поля */
@@ -1152,27 +875,38 @@ export default function ModelEditForm({ id, userRole }) {
         )}
       </form>
       
-      {/* Кнопки действий - закреплены внизу справа */}
+      {/* Кнопки действий */}
       {(canEditModel === true || canEditDescription === true || canEditSphere === true || canEditScreenshots === true) && (
-        <div className="sticky bottom-6 mt-8 flex justify-end z-10">
-          <div className="flex gap-3 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
-            >
-              Отмена
-            </button>
-            <button
-              type="submit"
-              form="model-edit-form"
-              disabled={isLoading || !isValidScreenshotsCount()}
-              className={`inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                (isLoading || !isValidScreenshotsCount()) ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? 'Сохранение...' : 'Сохранить'}
-            </button>
+        <div className="sticky bottom-6 mt-8 flex flex-col items-end gap-4 z-10">
+          <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                disabled={isLoading || !isValidScreenshotsCount()}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Отмена
+              </button>
+              <button
+                type="submit"
+                form="model-edit-form"
+                disabled={isLoading || !isValidScreenshotsCount()}
+                className={`inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                  (isLoading || !isValidScreenshotsCount()) ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Сохранение...
+                  </>
+                ) : 'Сохранить'}
+              </button>
+            </div>
           </div>
         </div>
       )}
