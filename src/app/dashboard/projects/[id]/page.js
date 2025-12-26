@@ -200,7 +200,7 @@ export default function ProjectPage({ params }) {
         <div className="mb-6 pb-6 border-b border-gray-200 flex justify-between items-end gap-4 relative">
           <button
             type="button"
-            onClick={() => router.push('/dashboard/projects')}
+            onClick={() => router.back()}
             className="absolute -left-12 top-0 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
             title="Назад"
           >

@@ -407,7 +407,7 @@ export default function ModelEditForm({ id, userRole }) {
         <div className="mb-6 pb-8 border-b border-gray-200 relative flex items-end gap-4">
                 <button
                   type="button"
-                  onClick={() => router.push(`/dashboard/models/${id}`)}
+                  onClick={() => router.back()}
                   className="absolute -left-12 bottom-8 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
                   title="Назад"
                 >
@@ -907,7 +907,7 @@ export default function ModelEditForm({ id, userRole }) {
           <div className="flex gap-3 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
             <button
               type="button"
-              onClick={() => router.push(`/dashboard/models/${id}`)}
+              onClick={() => router.back()}
               className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
             >
               Отмена

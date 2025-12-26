@@ -357,7 +357,7 @@ export default function ModelUploadForm({ initialProjectId = null }) {
         <div className="mb-6 pb-8 border-b border-gray-200 relative flex items-end gap-4">
           <button
             type="button"
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.back()}
             className="absolute -left-12 bottom-8 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
             title="Назад"
           >
