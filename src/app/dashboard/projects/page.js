@@ -218,24 +218,14 @@ export default function ProjectsPage() {
 
         {/* Форма проекта */}
         {showAddForm && (
-          <div 
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
-            onClick={() => {
+          <ProjectForm
+            project={currentProject}
+            onSubmit={handleProjectSubmit}
+            onCancel={() => {
               setShowAddForm(false)
               setCurrentProject(null)
             }}
-          >
-            <div onClick={(e) => e.stopPropagation()}>
-              <ProjectForm
-                project={currentProject}
-                onSubmit={handleProjectSubmit}
-                onCancel={() => {
-                  setShowAddForm(false)
-                  setCurrentProject(null)
-                }}
-              />
-            </div>
-          </div>
+          />
         )}
 
         {/* Сетка проектов */}

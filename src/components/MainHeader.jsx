@@ -100,7 +100,7 @@ export default function MainHeader() {
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               title="Выйти"
             >
               <ArrowRightStartOnRectangleIcon className="h-5 w-5" />

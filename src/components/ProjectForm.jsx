@@ -1,12 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AnimatePresence } from 'framer-motion'
-import { ModelPreview } from "@/components/ModelPreview"
 import { proxyUrl } from '@/lib/utils'
-
+import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { checkPermission } from '@/lib/permission'
+import { ALL_PERMISSIONS } from '@/lib/roles'
 
 export default function ProjectForm({ project, onSubmit, onCancel }) {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     name: '',
     city: '',
@@ -15,33 +16,39 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [models, setModels] = useState([])
+  const [spheres, setSpheres] = useState([])
   const [isLoadingModels, setIsLoadingModels] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
-  
-  const [previewModel, setPreviewModel] = useState(null)
-  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
-  const [showPreview, setShowPreview] = useState(false)
-  const [isHovering, setIsHovering] = useState(false)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [autoPlayInterval, setAutoPlayInterval] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [activeTab, setActiveTab] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const modelsPerPage = 12
 
   useEffect(() => {
-    const fetchModels = async () => {
+    const fetchData = async () => {
       setIsLoadingModels(true)
       try {
-        const response = await fetch('/api/models')
-        const data = await response.json()
-        setModels(data)
+        const [modelsRes, spheresRes, userRes] = await Promise.all([
+          fetch('/api/models'),
+          fetch('/api/spheres'),
+          fetch('/api/auth/me')
+        ])
+        const modelsData = await modelsRes.json()
+        const spheresData = await spheresRes.json()
+        const userData = await userRes.json()
+        setModels(modelsData)
+        setSpheres(spheresData)
+        setCurrentUser(userData.user || null)
       } catch (error) {
-        console.error('Ошибка загрузки моделей:', error)
+        console.error('Ошибка загрузки данных:', error)
       } finally {
         setIsLoadingModels(false)
       }
     }
 
-    fetchModels()
+    fetchData()
   }, [])
 
   useEffect(() => {
@@ -68,11 +75,16 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     }
   }, [project])
 
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, searchTerm])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     const filteredValue = value
-      .replace(/[^а-яА-ЯёЁa-zA-Z0-9\s]/g, '') // Удаляем недопустимые символы
-      .replace(/\s+/g, ' ') // Заменяем множественные пробелы на один
+      .replace(/[^а-яА-ЯёЁa-zA-Z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
       .trim()
       
     setFormData(prev => ({
@@ -107,104 +119,9 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleMouseMove = (event) => {
-    if (isHovering) {
-      updatePreviewPosition(event)
-    }
-  }
-
-  const updatePreviewPosition = (event) => {
-    const x = Math.min(event.clientX + 20, window.innerWidth - 340)
-    const y = Math.min(event.clientY + 20, window.innerHeight - 260)
-    setPreviewPosition({ x, y })
-  }
-
-  const nextImage = () => {
-    if (!previewModel || !previewModel.images?.length) return
-    
-    setCurrentImageIndex(prev => 
-      prev === previewModel.images.length - 1 ? 0 : prev + 1
-    )
-  }
-
-  const prevImage = () => {
-    if (!previewModel || !previewModel.images?.length) return
-    
-    setCurrentImageIndex(prev => 
-      prev === 0 ? previewModel.images.length - 1 : prev - 1
-    )
-  }
-
-  const startAutoPlay = () => {
-    if (!previewModel || !previewModel.images?.length) return
-    
-    stopAutoPlay()
-    
-    const interval = setInterval(() => {
-      if (!previewModel || !previewModel.images?.length) {
-        stopAutoPlay()
-        return
-      }
-      nextImage()
-    }, 2000)
-    
-    setAutoPlayInterval(interval)
-  }
-
-  const stopAutoPlay = () => {
-    if (autoPlayInterval) {
-      clearInterval(autoPlayInterval)
-      setAutoPlayInterval(null)
-    }
-  }
-
-  const handleWheel = (e) => {
-    if (!previewModel || !previewModel.images?.length) return
-    
-    e.preventDefault()
-    if (e.deltaY > 0) {
-      nextImage()
-    } else {
-      prevImage()
-    }
-  }
-
-  const handleMouseEnter = (model, event) => {
-    if (model?.images?.length > 0) {
-      const rect = event.currentTarget.getBoundingClientRect()
-      // Позиционируем превью слева от элемента, но не выходим за границы экрана
-      const previewWidth = 320
-      const previewHeight = 240
-      const x = rect.left - previewWidth - 20 // Позиция слева от элемента
-      const y = Math.min(rect.top, window.innerHeight - previewHeight - 20)
-      setPreviewPosition({
-        x: Math.max(20, x), // Минимум 20px от левого края
-        y: Math.max(20, y)  // Минимум 20px от верхнего края
-      })
-      setPreviewModel(model)
-      setCurrentImageIndex(0)
-      setShowPreview(true)
-      startAutoPlay()
-    }
-  }
-  
-  const handleMouseLeave = () => {
-    setShowPreview(false)
-    setPreviewModel(null)
-    stopAutoPlay()
-  }
-  useEffect(() => {
-    return () => {
-      if (autoPlayInterval) {
-        clearInterval(autoPlayInterval)
-      }
-    }
-  }, [autoPlayInterval])
-
   const handleImageChange = (e) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Проверка типа файла
       const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
       if (!validMimeTypes.includes(file.type?.toLowerCase())) {
         setErrors(prev => ({ ...prev, image: 'Разрешены только изображения: JPG, PNG, GIF, WEBP, BMP' }))
@@ -242,229 +159,384 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
       setIsSubmitting(false)
     }
   }
-  const filteredModels = models.filter(model =>
-    model.title.toLowerCase().includes(searchTerm.toLowerCase()))
+
+  // Сортировка сфер: по количеству моделей, "Другое" в конце
+  const sortedSpheres = [...spheres].sort((a, b) => {
+    const aCount = models.filter(model => model.sphere?.id === a.id).length
+    const bCount = models.filter(model => model.sphere?.id === b.id).length
+    
+    if (a.name === 'Другое') return 1
+    if (b.name === 'Другое') return -1
+    
+    return bCount - aCount
+  })
+
+  const filteredModels = models
+    .filter(model => {
+      if (activeTab === 'all') return true
+      return model.sphere?.id === activeTab
+    })
+    .filter(model =>
+      model.title.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+  // Пагинация
+  const totalPages = Math.ceil(filteredModels.length / modelsPerPage)
+  const startIndex = (currentPage - 1) * modelsPerPage
+  const endIndex = startIndex + modelsPerPage
+  const paginatedModels = filteredModels.slice(startIndex, endIndex)
+
+  const [mouseDownTarget, setMouseDownTarget] = useState(null)
+
+  const handleOverlayMouseDown = (e) => {
+    setMouseDownTarget(e.target)
+  }
+
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget && mouseDownTarget === e.currentTarget) {
+      onCancel()
+    }
+    setMouseDownTarget(null)
+  }
 
   return (
-    <div className="mb-6 p-6 rounded-lg bg-white shadow-sm w-full max-w-2xl" onMouseLeave={handleMouseLeave}>
-      <h2 className="text-xl font-semibold mb-6 text-gray-800">
-        {project ? 'Редактировать проект' : 'Создать новый проект'}
-      </h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-6" onMouseLeave={handleMouseLeave}>
-        <div className="space-y-4">
-          <div onMouseLeave={handleMouseLeave}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Название проекта <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
-              disabled={isSubmitting}
-              placeholder="Введите название проекта"
-              maxLength={50}
-            />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-            )}
-          </div>
-          <div onMouseLeave={handleMouseLeave}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Город
-            </label>
-            <input
-              type="text"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.city ? 'border-red-500' : 'border-gray-300'
-              }`}
-              disabled={isSubmitting}
-              placeholder="Введите город"
-              maxLength={50}
-            />
-            {errors.city && (
-              <p className="mt-1 text-sm text-red-600">{errors.city}</p>
-            )}
-          </div>
-          <div onMouseLeave={handleMouseLeave}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Изображение проекта
-            </label>
-            {imagePreview ? (
-              <div className="relative">
-                <img 
-                  src={imagePreview.startsWith('blob:') ? imagePreview : proxyUrl(imagePreview)} 
-                  alt="Превью изображения проекта" 
-                  className="w-full h-48 object-cover rounded-md border border-gray-300"
-                />
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                  disabled={isSubmitting}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp"
-                  onChange={handleImageChange}
-                  className="hidden"
-                  id="project-image-upload"
-                  disabled={isSubmitting}
-                />
-                <label
-                  htmlFor="project-image-upload"
-                  className="cursor-pointer text-sm text-gray-600 hover:text-blue-600"
-                >
-                  <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span>Нажмите для загрузки изображения</span>
-                </label>
-              </div>
-            )}
-            {errors.image && (
-              <p className="mt-1 text-sm text-red-600">{errors.image}</p>
-            )}
-          </div>
-          <input
-            type="text"
-            placeholder="Поиск моделей..."
-            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            maxLength={50}
-          />
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm font-medium text-gray-700">
-                Модели в проекте
-              </label>
+    <>
+      <div 
+        className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+        onMouseDown={handleOverlayMouseDown}
+        onClick={handleOverlayClick}
+      >
+        <div 
+          className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {project ? 'Редактировать проект' : 'Создать новый проект'}
+              </h2>
               <button
-                type="button"
-                onClick={() => router.push('/dashboard/models/upload')}
-                className="text-sm text-blue-600 hover:text-blue-800 underline"
+                onClick={onCancel}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
               >
-                Добавить новую модель
+                <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
-            {isLoadingModels ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+          </div>
+
+          <div className="p-6 overflow-y-auto flex-1">
+            {/* Поля проекта */}
+            <div className="mb-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Название проекта <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.name ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  disabled={isSubmitting}
+                  placeholder="Введите название проекта"
+                  maxLength={50}
+                />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                )}
               </div>
-            ) : (
-              <div className="border border-gray-300 rounded-md p-3 bg-gray-50 min-h-[240px]">
-                {models.length === 0 ? (
-                  <p className="text-gray-500 text-sm">Нет доступных моделей</p>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Город
+                </label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.city ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  disabled={isSubmitting}
+                  placeholder="Введите город"
+                  maxLength={50}
+                />
+                {errors.city && (
+                  <p className="mt-1 text-sm text-red-600">{errors.city}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Изображение проекта
+                </label>
+                {imagePreview ? (
+                  <div className="relative">
+                    <img 
+                      src={imagePreview.startsWith('blob:') ? imagePreview : proxyUrl(imagePreview)} 
+                      alt="Превью изображения проекта" 
+                      className="w-full h-48 object-cover rounded-md border border-gray-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      disabled={isSubmitting}
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  </div>
                 ) : (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {filteredModels.map(model => (
-                      <div 
-                        key={model.id} 
-                        className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
-                          formData.modelIds.includes(model.id) 
-                            ? 'bg-blue-50 border border-blue-200' 
-                            : 'border border-transparent hover:bg-gray-100'
-                        }`}
-                        onClick={() => handleModelSelect(model.id)}
-                        onMouseEnter={(e) => handleMouseEnter(model, e)}
-                      >
-                        <input
-                          type="checkbox"
-                          id={`model-${model.id}`}
-                          checked={formData.modelIds.includes(model.id)}
-                          onChange={() => handleModelSelect(model.id)}
-                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                          disabled={isSubmitting}
-                          onClick={() => handleModelSelect(model.id)}
-                        />
-                        <label 
-                          htmlFor={`model-${model.id}`} 
-                          className="ml-3 block text-sm text-gray-700 cursor-pointer"
+                  <label
+                    htmlFor="project-image-upload"
+                    className="block border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                  >
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp"
+                      onChange={handleImageChange}
+                      className="hidden"
+                      id="project-image-upload"
+                      disabled={isSubmitting}
+                    />
+                    <div className="text-sm text-gray-600 hover:text-blue-600">
+                      <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>Нажмите для загрузки изображения</span>
+                    </div>
+                  </label>
+                )}
+                {errors.image && (
+                  <p className="mt-1 text-sm text-red-600">{errors.image}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-6">
+              <div className="mb-4 flex items-center gap-3">
+                <input
+                  type="text"
+                  placeholder="Поиск моделей..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  maxLength={50}
+                />
+                {currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) && (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/dashboard/models/upload')}
+                    className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer overflow-hidden"
+                    style={{ 
+                      width: '2.5rem', 
+                      paddingLeft: '0.625rem', 
+                      paddingRight: '0.625rem',
+                      transition: 'width 0.2s, padding-right 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.setProperty('width', '195px', 'important')
+                      e.currentTarget.style.setProperty('padding-right', '2rem', 'important')
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.setProperty('width', '2.5rem', 'important')
+                      e.currentTarget.style.setProperty('padding-right', '0.625rem', 'important')
+                    }}
+                    title="Добавить модель"
+                  >
+                    <PlusIcon className="h-5 w-5 flex-shrink-0" style={{ color: '#ffffff', strokeWidth: 2 }} />
+                    <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                      Добавить модель
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              {/* Вкладки сфер */}
+              {spheres.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-gray-200">
+                    <button
+                      onClick={() => setActiveTab('all')}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                        activeTab === 'all'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Все модели
+                      <span className={`ml-1.5 text-xs ${activeTab === 'all' ? 'text-blue-100' : 'text-gray-500'}`}>
+                        {models.length}
+                      </span>
+                    </button>
+                    <div className="h-6 w-px bg-gray-300"></div>
+                    {sortedSpheres.map((sphere) => {
+                      const sphereModelsCount = models.filter(model =>
+                        model.sphere?.id === sphere.id
+                      ).length
+                      
+                      if (sphereModelsCount === 0) return null
+                      
+                      return (
+                        <button
+                          key={sphere.id}
+                          onClick={() => setActiveTab(sphere.id)}
+                          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                            activeTab === sphere.id
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {sphere.name}
+                          <span className={`ml-1.5 text-xs ${activeTab === sphere.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                            {sphereModelsCount}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {isLoadingModels ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                </div>
+              ) : (
+                <div>
+                  {filteredModels.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center py-8">Модели не найдены</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        {paginatedModels.map(model => (
+                        <div 
+                          key={model.id} 
+                          className={`relative bg-white border-2 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 ${
+                            formData.modelIds.includes(model.id) 
+                              ? 'border-blue-500 shadow-md' 
+                              : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                          }`}
                           onClick={() => handleModelSelect(model.id)}
                         >
-                          <span className="font-medium">{model.title}</span>
-                          {model.author?.name && (
-                            <span className="text-xs text-gray-500 ml-2">
-                              (проекты: {model.projects?.length > 0 ? model.projects.map(p => p.name).join(', ') : '—'})
-                            </span>
-                          )}
-                        </label>
+                          {/* Галочка в углу */}
+                          <div className="absolute top-2 right-2 z-10">
+                            <input
+                              type="checkbox"
+                              id={`project-model-${model.id}`}
+                              checked={formData.modelIds.includes(model.id)}
+                              onChange={() => handleModelSelect(model.id)}
+                              className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+
+                          {/* Превью изображения */}
+                          <div className="relative aspect-square bg-gray-100 overflow-hidden">
+                            {model.images && model.images.length > 0 ? (
+                              <img
+                                src={proxyUrl(model.images[0])}
+                                alt={model.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23e5e7eb" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="14"%3EНет изображения%3C/text%3E%3C/svg%3E'
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Информация о модели */}
+                          <div className="p-3">
+                            <h3 className="font-medium text-sm text-gray-900 line-clamp-2 mb-1">
+                              {model.title}
+                            </h3>
+                            {model.author?.name && (
+                              <p className="text-xs text-gray-500 truncate">
+                                {model.author.name}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+
+                      {/* Пагинация */}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center items-center gap-2 mt-4">
+                          <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                          >
+                            Назад
+                          </button>
+                          <div className="flex items-center px-4 text-sm text-gray-600">
+                            Страница {currentPage} из {totalPages}
+                          </div>
+                          <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                          >
+                            Вперед
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {errors.form && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-600">{errors.form}</p>
               </div>
             )}
           </div>
-        </div>
-        
-        {errors.form && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4">
-            <p className="text-sm text-red-700">{errors.form}</p>
+
+          <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              disabled={isSubmitting}
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              onClick={handleSubmit}
+              className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                isSubmitting
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Сохранение...
+                </span>
+              ) : project ? 'Сохранить изменения' : 'Создать проект'}
+            </button>
           </div>
-        )}
-        
-        <div className="flex justify-end space-x-3 pt-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            disabled={isSubmitting}
-            onMouseLeave={handleMouseLeave}
-          >
-            Отмена
-          </button>
-          <button
-            type="submit"
-            className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
-            disabled={isSubmitting}
-            onMouseLeave={handleMouseLeave}
-          >
-            {isSubmitting ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Сохранение...
-              </span>
-            ) : project ? 'Сохранить изменения' : 'Создать проект'}
-          </button>
         </div>
-      </form>
-      
-      <AnimatePresence>
-        {showPreview && previewModel && (
-          <ModelPreview
-            model={previewModel}
-            position={previewPosition}
-            currentImageIndex={currentImageIndex}
-            onNextImage={nextImage}
-            onPrevImage={prevImage}
-            onWheel={handleWheel}
-            isHovering={isHovering}
-            setIsHovering={setShowPreview}
-          />
-        )}
-      </AnimatePresence>
-    </div>
+      </div>
+    </>
   )
 }

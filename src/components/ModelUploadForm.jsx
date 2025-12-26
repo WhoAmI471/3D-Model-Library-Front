@@ -96,6 +96,9 @@ export default function ModelUploadForm({ initialProjectId = null }) {
       setSelectedProjects([initialProjectId])
     }
   }, [initialProjectId, projects])
+
+  // Получаем информацию о выбранном проекте для отображения города
+  const selectedProject = projects.find(p => selectedProjects.includes(p.id))
   
   // Функция для фильтрации символов - разрешает только латиницу, кириллицу, цифры, пробелы и основные знаки препинания
   const filterAllowedCharacters = (text) => {
@@ -511,6 +514,18 @@ export default function ModelUploadForm({ initialProjectId = null }) {
 
         {/* Информация о модели */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Проект (если выбран) */}
+          {selectedProject && (
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Проект</div>
+              <div className="text-sm font-medium text-gray-900">
+                {selectedProject.name}
+                {selectedProject.city && (
+                  <span className="text-gray-500 ml-2">• {selectedProject.city}</span>
+                )}
+              </div>
+            </div>
+          )}
           {/* Автор */}
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Автор</div>
