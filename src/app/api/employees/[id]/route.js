@@ -31,7 +31,8 @@ export async function GET(request, { params }) {
         name: true,
         email: true,
         role: true,
-        permissions: true
+        permissions: true,
+        sphereId: true
       }
     })
 
@@ -63,7 +64,7 @@ export async function PUT(request, { params }) {
     }
 
     const { id } = await params
-    const { name, email, role, password, permissions = [] } = await request.json()
+    const { name, email, role, password, permissions = [], sphereId } = await request.json()
 
     if (!id) {
       return NextResponse.json(
@@ -99,7 +100,8 @@ export async function PUT(request, { params }) {
       name,
       email,
       role,
-      permissions: permissions || [] // Убеждаемся, что permissions всегда массив
+      permissions: permissions || [], // Убеждаемся, что permissions всегда массив
+      sphereId: (role === 'ANALYST' || role === 'ARTIST') ? (sphereId || null) : null,
     }
 
     // Если передан пароль, хешируем его
@@ -116,7 +118,8 @@ export async function PUT(request, { params }) {
         name: true,
         email: true,
         role: true,
-        permissions: true
+        permissions: true,
+        sphereId: true
       }
     })
 
@@ -127,6 +130,17 @@ export async function PUT(request, { params }) {
     if (password) changes.push('Пароль изменён')
     if (JSON.stringify(existing.permissions) !== JSON.stringify(permissions)) {
       changes.push('Права изменены')
+    }
+    
+    // Проверка изменения сферы
+    const newSphereId = updateData.sphereId
+    if (newSphereId !== existing.sphereId) {
+      if (newSphereId) {
+        const sphere = await prisma.sphere.findUnique({ where: { id: newSphereId } })
+        changes.push(`Сфера: ${sphere ? sphere.name : newSphereId}`)
+      } else if (existing.sphereId) {
+        changes.push('Сфера удалена')
+      }
     }
 
     if (changes.length > 0) {

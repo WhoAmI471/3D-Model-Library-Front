@@ -6,7 +6,8 @@ import {
   CubeIcon, 
   UsersIcon, 
   TrashIcon, 
-  DocumentTextIcon 
+  DocumentTextIcon,
+  Squares2X2Icon
 } from '@heroicons/react/24/outline'
 
 export default function Navigation({ userRole }) {
@@ -24,6 +25,12 @@ export default function Navigation({ userRole }) {
       href: '/dashboard/projects',
       icon: FolderIcon,
       current: pathname === '/dashboard/projects'
+    },
+    {
+      name: 'Сферы',
+      href: '/dashboard/spheres',
+      icon: Squares2X2Icon,
+      current: pathname === '/dashboard/spheres'
     },
     {
       name: 'Сотрудники',

@@ -3,13 +3,17 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
+import { checkPermission } from '@/lib/permission'
+import { ALL_PERMISSIONS } from '@/lib/roles'
 
 export default function AddModelsToProjectModal({ projectId, onClose, onAdd, existingModelIds = [] }) {
   const router = useRouter()
   const [models, setModels] = useState([])
+  const [spheres, setSpheres] = useState([])
   const [selectedModels, setSelectedModels] = useState([])
   const [isLoadingModels, setIsLoadingModels] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [activeTab, setActiveTab] = useState('all')
   const [currentUser, setCurrentUser] = useState(null)
   
   const [previewModel, setPreviewModel] = useState(null)
@@ -23,13 +27,16 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
     const fetchData = async () => {
       setIsLoadingModels(true)
       try {
-        const [modelsRes, userRes] = await Promise.all([
+        const [modelsRes, spheresRes, userRes] = await Promise.all([
           fetch('/api/models'),
+          fetch('/api/spheres'),
           fetch('/api/auth/me')
         ])
         const modelsData = await modelsRes.json()
+        const spheresData = await spheresRes.json()
         const userData = await userRes.json()
         setModels(modelsData)
+        setSpheres(spheresData)
         setCurrentUser(userData.user || null)
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
@@ -153,10 +160,29 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
   const availableModels = models.filter(model => 
     !existingModelIds.includes(model.id)
   )
+
+  // Сортировка сфер: по количеству моделей, "Другое" в конце
+  const sortedSpheres = [...spheres].sort((a, b) => {
+    const aCount = availableModels.filter(model => model.sphere?.id === a.id).length
+    const bCount = availableModels.filter(model => model.sphere?.id === b.id).length
+    
+    // Если одна из сфер называется "Другое", она идет в конец
+    if (a.name === 'Другое') return 1
+    if (b.name === 'Другое') return -1
+    
+    // Остальные сортируем по количеству моделей (от большего к меньшему)
+    return bCount - aCount
+  })
   
-  const filteredModels = availableModels.filter(model =>
-    model.title.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredModels = availableModels
+    .filter(model => {
+      // Фильтрация по вкладке сферы
+      if (activeTab === 'all') return true
+      return model.sphere?.id === activeTab
+    })
+    .filter(model =>
+      model.title.toLowerCase().includes(searchTerm.toLowerCase())
+    )
 
   const [mouseDownTarget, setMouseDownTarget] = useState(null)
 
@@ -211,6 +237,52 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
               maxLength={50}
             />
           </div>
+
+          {/* Вкладки сфер */}
+          {spheres.length > 0 && (
+            <div className="mb-4">
+              <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-gray-200">
+                <button
+                  onClick={() => setActiveTab('all')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                    activeTab === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Все модели
+                  <span className={`ml-1.5 text-xs ${activeTab === 'all' ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {availableModels.length}
+                  </span>
+                </button>
+                <div className="h-6 w-px bg-gray-300"></div>
+                {sortedSpheres.map((sphere) => {
+                  const sphereModelsCount = availableModels.filter(model =>
+                    model.sphere?.id === sphere.id
+                  ).length
+                  
+                  if (sphereModelsCount === 0) return null // Не показываем сферы без доступных моделей
+                  
+                  return (
+                    <button
+                      key={sphere.id}
+                      onClick={() => setActiveTab(sphere.id)}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                        activeTab === sphere.id
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {sphere.name}
+                      <span className={`ml-1.5 text-xs ${activeTab === sphere.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                        {sphereModelsCount}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) && (
             <div className="mb-4">

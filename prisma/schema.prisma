@@ -13,12 +13,14 @@ model User {
   email        String            @unique
   password     String
   role         Role
+  sphereId     String?
   createdAt    DateTime          @default(now())
   permissions  String[]
   deletedLogs  DeletedModelLog[] @relation("UserDeletedLogs")
   logs         Log[]
   models       Model[]           @relation("UserModels")
   markedModels Model[]           @relation("MarkedForDeletion")
+  sphere       Sphere?           @relation("UserSphere", fields: [sphereId], references: [id])
 }
 
 model Model {
@@ -67,6 +69,7 @@ model Sphere {
   name      String   @unique
   createdAt DateTime @default(now())
   models    Model[]
+  users     User[]   @relation("UserSphere")
 }
 
 model Log {

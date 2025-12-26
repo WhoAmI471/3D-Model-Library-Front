@@ -10,8 +10,10 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
     permissions: [],
     password: '',
     confirmPassword: '',
-    changePassword: false
+    changePassword: false,
+    sphereId: ''
   })
+  const [spheres, setSpheres] = useState([])
   
   // Загружаем сохраненное значение из localStorage или используем true по умолчанию
   const getSavedUseDefaultPermissions = () => {
@@ -26,6 +28,20 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
+
+  // Загрузка сфер
+  useEffect(() => {
+    const fetchSpheres = async () => {
+      try {
+        const response = await fetch('/api/spheres')
+        const data = await response.json()
+        setSpheres(data)
+      } catch (error) {
+        console.error('Ошибка загрузки сфер:', error)
+      }
+    }
+    fetchSpheres()
+  }, [])
 
   // Сохраняем состояние в localStorage при изменении
   const handleUseDefaultPermissionsChange = (checked) => {
@@ -49,7 +65,8 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
         permissions: [...employeePermissions], // Создаем копию массива
         password: '', // Пароль всегда пустой - никогда не показываем существующий пароль
         confirmPassword: '',
-        changePassword: false
+        changePassword: false,
+        sphereId: employee.sphereId || ''
       })
       
       // Используем сохраненное значение из localStorage
@@ -64,7 +81,8 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
         permissions: [],
         password: '',
         confirmPassword: '',
-        changePassword: false
+        changePassword: false,
+        sphereId: ''
       })
       // Используем сохраненное значение из localStorage
       setUseDefaultPermissions(getSavedUseDefaultPermissions())
@@ -119,7 +137,12 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
 
   const handleRoleChange = (e) => {
     const { value } = e.target
-    setFormData(prev => ({ ...prev, role: value }))
+    setFormData(prev => ({ 
+      ...prev, 
+      role: value,
+      // Очищаем сферу, если роль не ANALYST или ARTIST
+      sphereId: (value === 'ANALYST' || value === 'ARTIST') ? prev.sphereId : ''
+    }))
     // Если это редактирование и у сотрудника есть права, сохраняем их
     // Иначе используем права по умолчанию для новой роли
     if (employee && employee.permissions && Array.isArray(employee.permissions) && employee.permissions.length > 0) {
@@ -182,7 +205,8 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
         name: formData.name,
         email: formData.email,
         role: formData.role,
-        permissions: formData.permissions // Добавляем permissions
+        permissions: formData.permissions, // Добавляем permissions
+        sphereId: (formData.role === 'ANALYST' || formData.role === 'ARTIST') ? (formData.sphereId || null) : null
       }
       
       // Добавляем пароль только если:
@@ -273,6 +297,28 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
               ))}
             </select>
           </div>
+
+          {/* Сфера (только для аналитиков и художников) */}
+          {(formData.role === 'ANALYST' || formData.role === 'ARTIST') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Сфера
+              </label>
+              <select
+                name="sphereId"
+                value={formData.sphereId}
+                onChange={handleChange}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Выберите сферу</option>
+                {spheres.map((sphere) => (
+                  <option key={sphere.id} value={sphere.id}>
+                    {sphere.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Поля для пароля */}
           {(!employee || (employee && userRole === 'ADMIN')) && (

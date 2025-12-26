@@ -14,6 +14,7 @@ export async function GET() {
         email: true,
         role: true,
         permissions: true,
+        sphereId: true,
       },
       orderBy: {
         name: 'asc',
@@ -31,7 +32,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { name, email, role, password, permissions = [] } = await request.json()
+    const { name, email, role, password, permissions = [], sphereId } = await request.json()
     
     // Валидация данных
     if (!name || !email || !role || !password) {
@@ -72,6 +73,7 @@ export async function POST(request) {
         role,
         permissions: permissions || [], // Убеждаемся, что permissions всегда массив
         password: hashedPassword,
+        sphereId: (role === 'ANALYST' || role === 'ARTIST') ? (sphereId || null) : null,
       },
     })
 
