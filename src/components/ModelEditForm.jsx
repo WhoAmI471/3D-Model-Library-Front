@@ -6,7 +6,9 @@ import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
 import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useModelsData } from '@/hooks/useModelsData'
-import apiClient from '@/lib/apiClient'
+import apiClient, { ApiError } from '@/lib/apiClient'
+import { useToast } from '@/hooks/useToast'
+import ToastContainer from '@/components/ToastContainer'
 import ScreenshotsSection from '@/components/modelForm/ScreenshotsSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
 import ProjectsSection from '@/components/modelForm/ProjectsSection'
@@ -15,6 +17,7 @@ import FileUploadSection from '@/components/modelForm/FileUploadSection'
 export default function ModelEditForm({ id, userRole }) {
   const router = useRouter()
   const { users, projects, spheres, models: allModels, currentUser, isLoading: isLoadingData } = useModelsData({ includeUsers: true, includeProjects: true })
+  const { toasts, success, error: showErrorToast, removeToast } = useToast()
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -496,22 +499,22 @@ export default function ModelEditForm({ id, userRole }) {
       screenshots.forEach(screenshot => formData.append('screenshots', screenshot))
     }
 
-    const response = await fetch('/api/models/update', {
-      method: 'POST',
-      body: formData,
-    })
+    const result = await apiClient.models.update(id, formData)
 
-    const result = await response.json()
-
-    if (response.ok && result.success) {
+    if (result && result.success) {
+      success('Модель успешно обновлена')
       // Возвращаемся на предыдущую страницу после успешного сохранения
-      router.back()
+      setTimeout(() => {
+        router.back()
+      }, 500)
     } else {
-      throw new Error(result.error || 'Не удалось обновить модель')
+      throw new Error(result?.error || 'Не удалось обновить модель')
     }
   } catch (err) {
     console.error('Ошибка обновления:', err)
-    setError(err.message || 'Произошла ошибка')
+    const errorMessage = err instanceof ApiError ? err.message : (err.message || 'Произошла ошибка')
+    setError(errorMessage)
+    showErrorToast(errorMessage)
   } finally {
     setIsLoading(false)
   }
@@ -910,6 +913,9 @@ export default function ModelEditForm({ id, userRole }) {
         </div>
       )}
       </div>
+      
+      {/* Toast контейнер */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ProjectForm from '@/components/ProjectForm'
+import Loading from '@/components/Loading'
 import { formatDateTime, proxyUrl } from '@/lib/utils'
 import { checkPermission, checkAnyPermission } from '@/lib/permission'
 import { useRouter } from 'next/navigation'
@@ -152,8 +153,8 @@ export default function ProjectsPage() {
     return (
       <div className="min-h-full bg-white">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="text-center py-16">
-            <p className="text-gray-500 text-lg">Загрузка...</p>
+          <div className="flex items-center justify-center h-64">
+            <Loading />
           </div>
         </div>
       </div>

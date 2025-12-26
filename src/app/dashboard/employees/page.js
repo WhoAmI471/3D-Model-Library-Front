@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import EmployeeForm from '@/components/EmployeeForm'
+import Loading from '@/components/Loading'
 import { checkPermission } from '@/lib/permission'
 import apiClient from '@/lib/apiClient'
 import { 
@@ -165,8 +166,8 @@ export default function EmployeesPage() {
     return (
       <div className="min-h-full bg-white">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="text-center py-16">
-            <p className="text-gray-500 text-lg">Загрузка...</p>
+          <div className="flex items-center justify-center h-64">
+            <Loading />
           </div>
         </div>
       </div>

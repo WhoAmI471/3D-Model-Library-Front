@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission, checkAnyPermission } from '@/lib/permission';
 import apiClient, { ApiError } from '@/lib/apiClient'
+import Loading from '@/components/Loading'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
 import AddModelsToProjectModal from "@/components/AddModelsToProjectModal"
 import DeleteReasonModal from "@/components/DeleteReasonModal"
@@ -155,7 +156,7 @@ export default function ProjectPage({ params }) {
     return (
       <div className="min-h-full bg-white">
         <div className="max-w-7xl mx-auto px-6 py-8 flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <Loading />
         </div>
       </div>
     )

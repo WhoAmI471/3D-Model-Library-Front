@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
+import Loading from '@/components/Loading'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import apiClient from '@/lib/apiClient'
 
@@ -336,8 +337,8 @@ export default function LogsPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan="4" className="py-4 text-center">
-                  Загрузка...
+                <td colSpan="4" className="py-8 text-center">
+                  <Loading />
                 </td>
               </tr>
             ) : logs.length > 0 ? (
