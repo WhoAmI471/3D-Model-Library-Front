@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { XMarkIcon } from '@heroicons/react/24/outline'
 
 export default function DeleteReasonModal({ isOpen, onClose, onConfirm }) {
   const [reason, setReason] = useState('')
@@ -50,15 +51,23 @@ export default function DeleteReasonModal({ isOpen, onClose, onConfirm }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Указать причину удаления
-          </h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Указать причину удаления
+            </h2>
+            <button
+              onClick={handleCancel}
+              className="text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Причина удаления <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Причина удаления
             </label>
             <textarea
               value={reason}
@@ -66,7 +75,7 @@ export default function DeleteReasonModal({ isOpen, onClose, onConfirm }) {
                 setReason(e.target.value)
                 if (error) setError('')
               }}
-              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              className={`block w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
                 error ? 'border-red-500' : 'border-gray-300'
               }`}
               rows={4}
@@ -78,17 +87,17 @@ export default function DeleteReasonModal({ isOpen, onClose, onConfirm }) {
             )}
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
             >
               Отмена
             </button>
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+              className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors"
             >
               Отправить запрос
             </button>
