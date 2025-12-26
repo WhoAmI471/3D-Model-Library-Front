@@ -32,6 +32,9 @@ export default function ModelEditForm({ id, userRole }) {
   const [deletedScreenshots, setDeletedScreenshots] = useState([])
   const [projectSearchTerm, setProjectSearchTerm] = useState('')
   const [existingModel, setExistingModel] = useState(null)
+  const [draggedIndex, setDraggedIndex] = useState(null)
+  const [dragOverIndex, setDragOverIndex] = useState(null)
+  const [draggedType, setDraggedType] = useState(null) // 'current' или 'new'
 
   
   const [canEditModel, setCanEditModel] = useState(null);
@@ -241,6 +244,164 @@ export default function ModelEditForm({ id, userRole }) {
     })
   }
 
+  // Функции для drag and drop скриншотов (работают с объединенным списком)
+  const handleDragStart = (index) => {
+    setDraggedIndex(index)
+  }
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault()
+    setDragOverIndex(index)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault()
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    // Определяем, из какого массива был взят элемент и куда он попадает
+    const draggedIsCurrent = draggedIndex < currentFiles.screenshots.length
+    const dropIsCurrent = dropIndex < currentFiles.screenshots.length
+    
+    // Если перетаскивание внутри одного массива
+    if (draggedIsCurrent && dropIsCurrent) {
+      // Перетаскивание внутри существующих скриншотов
+      setCurrentFiles(prev => {
+        const newScreenshots = [...prev.screenshots]
+        const draggedItem = newScreenshots[draggedIndex]
+        newScreenshots.splice(draggedIndex, 1)
+        newScreenshots.splice(dropIndex, 0, draggedItem)
+        return { ...prev, screenshots: newScreenshots }
+      })
+    } else if (!draggedIsCurrent && !dropIsCurrent) {
+      // Перетаскивание внутри новых скриншотов
+      const adjustedDraggedIndex = draggedIndex - currentFiles.screenshots.length
+      const adjustedDropIndex = dropIndex - currentFiles.screenshots.length
+      setScreenshots(prev => {
+        const newScreenshots = [...prev]
+        const draggedItem = newScreenshots[adjustedDraggedIndex]
+        newScreenshots.splice(adjustedDraggedIndex, 1)
+        newScreenshots.splice(adjustedDropIndex, 0, draggedItem)
+        return newScreenshots
+      })
+    } else {
+      // Перетаскивание между массивами - перемещаем элемент из одного в другой
+      if (draggedIsCurrent && !dropIsCurrent) {
+        // Из существующих в новые
+        const draggedItem = currentFiles.screenshots[draggedIndex]
+        const adjustedDropIndex = dropIndex - currentFiles.screenshots.length
+        
+        setCurrentFiles(prev => {
+          const newScreenshots = [...prev.screenshots]
+          newScreenshots.splice(draggedIndex, 1)
+          return { ...prev, screenshots: newScreenshots }
+        })
+        
+        // Создаем File объект из URL (это сложно, поэтому лучше не поддерживать такое перемещение)
+        // Вместо этого просто перемещаем внутри массивов
+        console.warn('Перемещение между существующими и новыми скриншотами не поддерживается')
+      } else {
+        // Из новых в существующие - аналогично, не поддерживаем
+        console.warn('Перемещение между новыми и существующими скриншотами не поддерживается')
+      }
+    }
+
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
+  // Отдельные функции для перетаскивания только существующих скриншотов
+  const handleCurrentDragStart = (index) => {
+    setDraggedIndex(index)
+    setDraggedType('current')
+  }
+
+  const handleCurrentDragOver = (e, index) => {
+    e.preventDefault()
+    if (draggedType === 'current') {
+      setDragOverIndex(index)
+    }
+  }
+
+  const handleCurrentDragLeave = () => {
+    if (draggedType === 'current') {
+      setDragOverIndex(null)
+    }
+  }
+
+  const handleCurrentDrop = (e, dropIndex) => {
+    e.preventDefault()
+    
+    if (draggedType !== 'current' || draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null)
+      setDragOverIndex(null)
+      setDraggedType(null)
+      return
+    }
+
+    setCurrentFiles(prev => {
+      const newScreenshots = [...prev.screenshots]
+      const draggedItem = newScreenshots[draggedIndex]
+      newScreenshots.splice(draggedIndex, 1)
+      newScreenshots.splice(dropIndex, 0, draggedItem)
+      return { ...prev, screenshots: newScreenshots }
+    })
+
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    setDraggedType(null)
+  }
+
+  // Отдельные функции для перетаскивания только новых скриншотов
+  const handleNewDragStart = (index) => {
+    setDraggedIndex(index)
+    setDraggedType('new')
+  }
+
+  const handleNewDragOver = (e, index) => {
+    e.preventDefault()
+    if (draggedType === 'new') {
+      setDragOverIndex(index)
+    }
+  }
+
+  const handleNewDragLeave = () => {
+    if (draggedType === 'new') {
+      setDragOverIndex(null)
+    }
+  }
+
+  const handleNewDrop = (e, dropIndex) => {
+    e.preventDefault()
+    
+    if (draggedType !== 'new' || draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null)
+      setDragOverIndex(null)
+      setDraggedType(null)
+      return
+    }
+
+    setScreenshots(prev => {
+      const newScreenshots = [...prev]
+      const draggedItem = newScreenshots[draggedIndex]
+      newScreenshots.splice(draggedIndex, 1)
+      newScreenshots.splice(dropIndex, 0, draggedItem)
+      return newScreenshots
+    })
+
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    setDraggedType(null)
+  }
+
   const removeCurrentScreenshot = (index) => {
     setCurrentFiles(prev => {
       const newScreenshots = [...prev.screenshots]
@@ -325,6 +486,12 @@ export default function ModelEditForm({ id, userRole }) {
         deletedScreenshots.forEach(url => {
           formData.append('deletedScreenshots', url)
         })
+        // Отправляем порядок существующих скриншотов (после удаления удаленных)
+        currentFiles.screenshots
+          .filter(url => !deletedScreenshots.includes(url))
+          .forEach(url => {
+            formData.append('currentScreenshotUrls', url)
+          })
         // Добавляем новые скриншоты
         screenshots.forEach(screenshot => formData.append('screenshots', screenshot))
       }
@@ -343,6 +510,13 @@ export default function ModelEditForm({ id, userRole }) {
       deletedScreenshots.forEach(url => {
         formData.append('deletedScreenshots', url)
       })
+      
+      // Отправляем порядок существующих скриншотов (после удаления удаленных)
+      currentFiles.screenshots
+        .filter(url => !deletedScreenshots.includes(url))
+        .forEach(url => {
+          formData.append('currentScreenshotUrls', url)
+        })
       
       // Добавляем информацию об удалении ZIP-файла, если он был удален
       if (!currentFiles.zip && !zipFile && existingModel?.fileUrl) {
@@ -438,41 +612,106 @@ export default function ModelEditForm({ id, userRole }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Текущие скриншоты
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {currentFiles.screenshots.map((file, index) => (
-                  <div key={index} className="relative flex-shrink-0 w-64 h-48 bg-gray-100 rounded-lg overflow-hidden">
-                    <img
-                      src={proxyUrl(file)}
-                      alt={`Скриншот ${index + 1}`}
-                      className="object-cover w-full h-full"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeCurrentScreenshot(index)}
-                      className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
-                      disabled={!canEditModel && !canEditScreenshots}
+            {(currentFiles.screenshots.length > 0 || screenshots.length > 0) && (
+              <div className="mb-2">
+                <div className="text-xs text-gray-500 mb-2">
+                  Первый скриншот будет отображаться в карточке модели. Перетаскивайте скриншоты для изменения порядка.
+                </div>
+              </div>
+            )}
+            <div className="flex gap-4 overflow-x-auto pb-2">
+                {currentFiles.screenshots.map((file, index) => {
+                  const totalIndex = index
+                  const totalLength = currentFiles.screenshots.length + screenshots.length
+                  return (
+                    <div
+                      key={index}
+                      draggable
+                      onDragStart={() => handleCurrentDragStart(index)}
+                      onDragOver={(e) => handleCurrentDragOver(e, index)}
+                      onDragLeave={handleCurrentDragLeave}
+                      onDrop={(e) => handleCurrentDrop(e, index)}
+                      className={`relative flex-shrink-0 w-64 h-48 cursor-move bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-all group ${
+                        draggedType === 'current' && draggedIndex === index ? 'opacity-50 scale-95' : ''
+                      } ${
+                        draggedType === 'current' && dragOverIndex === index && draggedIndex !== index ? 'ring-2 ring-blue-500 scale-105' : ''
+                      } ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}
                     >
-                      <XMarkIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                ))}
+                      <img
+                        src={proxyUrl(file)}
+                        alt={`Скриншот ${index + 1}`}
+                        className="object-cover w-full h-full pointer-events-none"
+                        draggable={false}
+                      />
+                      {index === 0 && (
+                        <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded">
+                          Главный
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeCurrentScreenshot(index)
+                        }}
+                        className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
+                        disabled={!canEditModel && !canEditScreenshots}
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                      </button>
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-medium rounded">
+                        {totalIndex + 1} / {totalLength}
+                      </div>
+                    </div>
+                  )
+                })}
                 {/* Новые скриншоты */}
-                {screenshots.map((file, index) => (
-                  <div key={`new-${index}`} className="relative flex-shrink-0 w-64 h-48 bg-gray-100 rounded-lg overflow-hidden">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Новый скриншот ${index + 1}`}
-                      className="object-cover w-full h-full"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeScreenshot(index)}
-                      className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+                {screenshots.map((file, index) => {
+                  const totalIndex = currentFiles.screenshots.length + index
+                  const totalLength = currentFiles.screenshots.length + screenshots.length
+                  // Новый скриншот может быть первым только если нет существующих скриншотов
+                  const isFirst = currentFiles.screenshots.length === 0 && index === 0
+                  return (
+                    <div
+                      key={`new-${index}`}
+                      draggable
+                      onDragStart={() => handleNewDragStart(index)}
+                      onDragOver={(e) => handleNewDragOver(e, index)}
+                      onDragLeave={handleNewDragLeave}
+                      onDrop={(e) => handleNewDrop(e, index)}
+                      className={`relative flex-shrink-0 w-64 h-48 cursor-move bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-all group ${
+                        draggedType === 'new' && draggedIndex === index ? 'opacity-50 scale-95' : ''
+                      } ${
+                        draggedType === 'new' && dragOverIndex === index && draggedIndex !== index ? 'ring-2 ring-blue-500 scale-105' : ''
+                      } ${isFirst ? 'ring-2 ring-blue-500' : ''}`}
                     >
-                      <XMarkIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                ))}
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Новый скриншот ${index + 1}`}
+                        className="object-cover w-full h-full pointer-events-none"
+                        draggable={false}
+                      />
+                      {isFirst && (
+                        <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded">
+                          Главный
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeScreenshot(index)
+                        }}
+                        className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                      </button>
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-medium rounded">
+                        {totalIndex + 1} / {totalLength}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
               
               {/* Кнопка добавления скриншотов */}
@@ -765,26 +1004,52 @@ export default function ModelEditForm({ id, userRole }) {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Текущие скриншоты
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {currentFiles.screenshots.length > 0 && (
+                    <div className="mb-2">
+                      <div className="text-xs text-gray-500 mb-2">
+                        Первый скриншот будет отображаться в карточке модели. Перетаскивайте скриншоты для изменения порядка.
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-4 overflow-x-auto pb-2">
                     {currentFiles.screenshots.map((file, index) => (
-                      <div key={index} className="relative group">
-                        <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-md overflow-hidden">
-                          <img
-                            src={proxyUrl(file)}
-                            alt={`Скриншот ${index + 1}`}
-                            className="object-cover w-full h-full"
-                          />
-                        </div>
-                        <div className="mt-1 text-xs text-gray-500 truncate">
-                          {file.split('/').pop()}
-                        </div>
+                      <div
+                        key={index}
+                        draggable
+                        onDragStart={() => handleCurrentDragStart(index)}
+                        onDragOver={(e) => handleCurrentDragOver(e, index)}
+                        onDragLeave={handleCurrentDragLeave}
+                        onDrop={(e) => handleCurrentDrop(e, index)}
+                        className={`relative flex-shrink-0 w-64 h-48 cursor-move bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-all group ${
+                          draggedType === 'current' && draggedIndex === index ? 'opacity-50 scale-95' : ''
+                        } ${
+                          draggedType === 'current' && dragOverIndex === index && draggedIndex !== index ? 'ring-2 ring-blue-500 scale-105' : ''
+                        } ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}
+                      >
+                        <img
+                          src={proxyUrl(file)}
+                          alt={`Скриншот ${index + 1}`}
+                          className="object-cover w-full h-full pointer-events-none"
+                          draggable={false}
+                        />
+                        {index === 0 && (
+                          <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded">
+                            Главный
+                          </div>
+                        )}
                         <button
                           type="button"
-                          onClick={() => removeCurrentScreenshot(index)}
-                          className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeCurrentScreenshot(index)
+                          }}
+                          className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
                         >
                           <XMarkIcon className="h-5 w-5" />
                         </button>
+                        <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-medium rounded">
+                          {index + 1} / {currentFiles.screenshots.length}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -849,31 +1114,52 @@ export default function ModelEditForm({ id, userRole }) {
                   
                   {/* Галерея добавленных скриншотов */}
                   {screenshots.length > 0 && (
-                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {screenshots.map((file, index) => (
-                        <div key={index} className="relative group">
-                          <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-md overflow-hidden">
+                    <div className="mt-4">
+                      <div className="text-xs text-gray-500 mb-2">
+                        Перетаскивайте скриншоты для изменения порядка.
+                      </div>
+                      <div className="flex gap-4 overflow-x-auto pb-2">
+                        {screenshots.map((file, index) => (
+                          <div
+                            key={index}
+                            draggable
+                            onDragStart={() => handleNewDragStart(index)}
+                            onDragOver={(e) => handleNewDragOver(e, index)}
+                            onDragLeave={handleNewDragLeave}
+                            onDrop={(e) => handleNewDrop(e, index)}
+                            className={`relative flex-shrink-0 w-64 h-48 cursor-move bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-all group ${
+                              draggedType === 'new' && draggedIndex === index ? 'opacity-50 scale-95' : ''
+                            } ${
+                              draggedType === 'new' && dragOverIndex === index && draggedIndex !== index ? 'ring-2 ring-blue-500 scale-105' : ''
+                            } ${index === 0 && currentFiles.screenshots.length === 0 ? 'ring-2 ring-blue-500' : ''}`}
+                          >
                             <img
                               src={URL.createObjectURL(file)}
                               alt={`Новый скриншот ${index + 1}`}
-                              className="object-cover w-full h-full"
+                              className="object-cover w-full h-full pointer-events-none"
+                              draggable={false}
                             />
+                            {index === 0 && currentFiles.screenshots.length === 0 && (
+                              <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded">
+                                Главный
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeScreenshot(index)
+                              }}
+                              className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
+                            >
+                              <XMarkIcon className="h-5 w-5" />
+                            </button>
+                            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-medium rounded">
+                              {currentFiles.screenshots.length + index + 1} / {currentFiles.screenshots.length + screenshots.length}
+                            </div>
                           </div>
-                          <div className="mt-1 text-xs text-gray-500 truncate">
-                            {file.name}
-                          </div>
-                          <div className="mt-1 text-xs text-gray-400">
-                            {formatFileSize(file.size)}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeScreenshot(index)}
-                            className="absolute top-2 right-2 p-1 rounded-full bg-red-500 text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-                          >
-                            <XMarkIcon className="h-5 w-5" />
-                          </button>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

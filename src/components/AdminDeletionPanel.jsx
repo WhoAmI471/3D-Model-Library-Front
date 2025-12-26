@@ -195,28 +195,29 @@ export default function AdminDeletionPanel({ userRole }) {
   if (userRole !== 'ADMIN') return null;
 
   return (
-    <div className="rounded-lg p-2 w-full max-w-8xl mx-auto" onMouseLeave={handleMouseLeave}>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Запросы на удаление моделей</h2>
-      </div>
+    <div className="min-h-full bg-white" onMouseLeave={handleMouseLeave}>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold mb-6">Запросы на удаление моделей</h1>
+        </div>
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
 
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : modelsForDeletion.length === 0 ? (
-        <div className="bg-gray-50 text-gray-500 p-8 text-center rounded-lg">
-          Нет ожидающих запросов на удаление
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : modelsForDeletion.length === 0 ? (
+          <div className="bg-gray-50 text-gray-500 p-8 text-center rounded-lg">
+            Нет ожидающих запросов на удаление
+          </div>
+        ) : (
+          <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th 
@@ -228,7 +229,7 @@ export default function AdminDeletionPanel({ userRole }) {
                   <div className="flex items-center">
                     Модель
                     {sortConfig.key === 'title' && (
-                      <span className="ml-1">
+                      <span className="ml-1 text-blue-600">
                         {sortConfig.direction === 'asc' ? '↑' : '↓'}
                       </span>
                     )}
@@ -252,7 +253,7 @@ export default function AdminDeletionPanel({ userRole }) {
                   <div className="flex items-center">
                     Дата запроса
                     {sortConfig.key === 'markedAt' && (
-                      <span className="ml-1">
+                      <span className="ml-1 text-blue-600">
                         {sortConfig.direction === 'asc' ? '↑' : '↓'}
                       </span>
                     )}
@@ -267,7 +268,7 @@ export default function AdminDeletionPanel({ userRole }) {
               {sortedModels.map(model => (
                 <tr 
                   key={model.id} 
-                  className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white cursor-pointer" 
+                  className="hover:bg-gray-50 cursor-pointer" 
                   onMouseEnter={(e) => handleMouseEnter(model, e)}
                   onClick={() => router.push(`/dashboard/models/${model.id}`)}
                 >
@@ -342,8 +343,9 @@ export default function AdminDeletionPanel({ userRole }) {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
       <AnimatePresence>
         {showPreview && previewModel && (
           <ModelPreview

@@ -28,6 +28,8 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     screenshots: []
   })
   const [projectSearchTerm, setProjectSearchTerm] = useState('')
+  const [draggedIndex, setDraggedIndex] = useState(null)
+  const [dragOverIndex, setDragOverIndex] = useState(null)
 
   const toggleProject = (projectId) => {
     setSelectedProjects(prev => 
@@ -235,6 +237,45 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     })
   }
 
+  const handleDragStart = (index) => {
+    setDraggedIndex(index)
+  }
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault()
+    setDragOverIndex(index)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault()
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    setFormState(prev => {
+      const newScreenshots = [...prev.screenshots]
+      const draggedItem = newScreenshots[draggedIndex]
+      
+      // Удаляем элемент из исходной позиции
+      newScreenshots.splice(draggedIndex, 1)
+      
+      // Вставляем элемент в новую позицию
+      newScreenshots.splice(dropIndex, 0, draggedItem)
+      
+      return { ...prev, screenshots: newScreenshots }
+    })
+
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
   const removeZipFile = () => {
     setFormState(prev => ({ ...prev, zipFile: null }))
     // Очищаем input
@@ -400,25 +441,54 @@ export default function ModelUploadForm({ initialProjectId = null }) {
 
           {/* Галерея добавленных скриншотов */}
           {formState.screenshots.length > 0 && (
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {formState.screenshots.map((screenshot, index) => (
-                <div key={index} className="relative flex-shrink-0 w-64 h-48 cursor-pointer bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-opacity group">
-                  <img
-                    src={screenshot.preview}
-                    alt={`Скриншот ${index + 1}`}
-                    className="object-cover w-full h-full"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeScreenshot(index)}
-                    className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+            <div className="space-y-2">
+              <div className="text-xs text-gray-500 mb-2">
+                Первый скриншот будет отображаться в карточке модели. Перетаскивайте скриншоты для изменения порядка.
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {formState.screenshots.map((screenshot, index) => (
+                  <div 
+                    key={index}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, index)}
+                    className={`relative flex-shrink-0 w-64 h-48 cursor-move bg-gray-100 rounded-lg overflow-hidden hover:opacity-90 transition-all group ${
+                      draggedIndex === index ? 'opacity-50 scale-95' : ''
+                    } ${
+                      dragOverIndex === index && draggedIndex !== index ? 'ring-2 ring-blue-500 scale-105' : ''
+                    } ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}
                   >
-                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
+                    <img
+                      src={screenshot.preview}
+                      alt={`Скриншот ${index + 1}`}
+                      className="object-cover w-full h-full pointer-events-none"
+                      draggable={false}
+                    />
+                    {index === 0 && (
+                      <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded">
+                        Главный
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeScreenshot(index)
+                      }}
+                      className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
+                    >
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-medium rounded">
+                      {index + 1} / {formState.screenshots.length}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

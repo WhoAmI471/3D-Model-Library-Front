@@ -32,6 +32,7 @@ export async function POST(request) {
     const id = formData.get('id')
     const version = formData.get('version')
     const deletedScreenshots = formData.getAll('deletedScreenshots')
+    const currentScreenshotUrls = formData.getAll('currentScreenshotUrls')
     
     if (!id) {
       return NextResponse.json(
@@ -209,15 +210,22 @@ export async function POST(request) {
           screenshots.map(file => saveModelFile(file, newTitle || existingModel.title, version || 'current', true))
         )
 
-        const currentImages = existingModel.images
-          ? existingModel.images.filter(image => !deletedScreenshots.includes(image))
-          : []
+        // Используем новый порядок существующих скриншотов, если он был передан
+        const currentImages = currentScreenshotUrls.length > 0
+          ? currentScreenshotUrls.filter(url => !deletedScreenshots.includes(url))
+          : (existingModel.images
+              ? existingModel.images.filter(image => !deletedScreenshots.includes(image))
+              : [])
 
         updateData.images = [
           ...currentImages,
           ...newScreenshots
         ]
         changes.push(`Добавлено ${screenshots.length} скриншотов`)
+      } else if (currentScreenshotUrls.length > 0) {
+        // Если скриншоты только переставляются (без добавления новых), обновляем порядок
+        const currentImages = currentScreenshotUrls.filter(url => !deletedScreenshots.includes(url))
+        updateData.images = currentImages
       }
     } else {
       // Если нет права EDIT_MODELS, но есть права на отдельные поля
@@ -259,10 +267,12 @@ export async function POST(request) {
             deletedScreenshots.map(url => deleteFile(url))
           )
           
-          // Обновляем список изображений, исключая удаленные
-          const updatedImages = existingModel.images.filter(
-            image => !deletedScreenshots.includes(image)
-          )
+          // Используем новый порядок существующих скриншотов, если он был передан
+          const updatedImages = currentScreenshotUrls.length > 0
+            ? currentScreenshotUrls.filter(url => !deletedScreenshots.includes(url))
+            : existingModel.images.filter(
+                image => !deletedScreenshots.includes(image)
+              )
           
           await prisma.model.update({
             where: { id: String(id) },
@@ -298,15 +308,22 @@ export async function POST(request) {
             screenshots.map(file => saveModelFile(file, existingModel.title, version || 'current', true))
           )
 
-          const currentImages = existingModel.images
-            ? existingModel.images.filter(image => !deletedScreenshots.includes(image))
-            : []
+          // Используем новый порядок существующих скриншотов, если он был передан
+          const currentImages = currentScreenshotUrls.length > 0
+            ? currentScreenshotUrls.filter(url => !deletedScreenshots.includes(url))
+            : (existingModel.images
+                ? existingModel.images.filter(image => !deletedScreenshots.includes(image))
+                : [])
 
           updateData.images = [
             ...currentImages,
             ...newScreenshots
           ]
           changes.push(`Добавлено ${screenshots.length} скриншотов`)
+        } else if (currentScreenshotUrls.length > 0) {
+          // Если скриншоты только переставляются (без добавления новых), обновляем порядок
+          const currentImages = currentScreenshotUrls.filter(url => !deletedScreenshots.includes(url))
+          updateData.images = currentImages
         }
       }
     }
