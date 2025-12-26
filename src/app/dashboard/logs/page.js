@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 
 export default function LogsPage() {
   const [logs, setLogs] = useState([])
@@ -210,67 +211,68 @@ export default function LogsPage() {
 
   
   return (
-    <div className="p-4 text-gray-800" onMouseLeave={handleMouseLeave}>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Журнал событий</h1>
-      </div>
+    <div className="min-h-full bg-white" onMouseLeave={handleMouseLeave}>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold mb-6">Журнал событий</h1>
 
-      {/* Фильтры */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          <div>
-            <label className="block mb-1 text-sm">Действие</label>
-            <input
-              type="text"
-              name="action"
-              value={filters.action}
-              onChange={handleFilterChange}
-              className="border p-2 rounded w-full"
-              placeholder="Фильтр по действию"
-            />
-          </div>
-          <div>
-            <label className="block mb-1 text-sm">Пользователь</label>
-            <input
-              type="text"
-              name="user"
-              value={filters.user}
-              onChange={handleFilterChange}
-              className="border p-2 rounded w-full"
-              placeholder="Фильтр по пользователю"
-            />
-          </div>
-          <div>
-            <label className="block mb-1 text-sm">Дата с</label>
-            <input
-              type="date"
-              name="dateFrom"
-              value={filters.dateFrom}
-              onChange={handleFilterChange}
-              className="border p-2 rounded w-full"
-            />
-          </div>
-          <div>
-            <label className="block mb-1 text-sm">Дата по</label>
-            <input
-              type="date"
-              name="dateTo"
-              value={filters.dateTo}
-              onChange={handleFilterChange}
-              className="border p-2 rounded w-full"
-            />
+          {/* Фильтры */}
+          <div className="mb-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  name="action"
+                  value={filters.action}
+                  onChange={handleFilterChange}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="Фильтр по действию"
+                />
+              </div>
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  name="user"
+                  value={filters.user}
+                  onChange={handleFilterChange}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="Фильтр по пользователю"
+                />
+              </div>
+              <div>
+                <input
+                  type="date"
+                  name="dateFrom"
+                  value={filters.dateFrom}
+                  onChange={handleFilterChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="Дата с"
+                />
+              </div>
+              <div>
+                <input
+                  type="date"
+                  name="dateTo"
+                  value={filters.dateTo}
+                  onChange={handleFilterChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="Дата по"
+                />
+              </div>
+            </div>
+            <button
+              onClick={resetFilters}
+              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+            >
+              Сбросить фильтры
+            </button>
           </div>
         </div>
-        <button
-          onClick={resetFilters}
-          className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm"
-        >
-          Сбросить фильтры
-        </button>
-      </div>
 
-      {/* Таблица логов */}
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+        {/* Таблица логов */}
+        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -364,6 +366,32 @@ export default function LogsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Пагинация */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex justify-center">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              Назад
+            </button>
+            <div className="flex items-center px-4 text-sm text-gray-600">
+              Страница {page} из {totalPages}
+            </div>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              Вперед
+            </button>
+          </div>
+        </div>
+      )}
+      </div>
       <AnimatePresence>
         {showPreview && previewModel && (
           <ModelPreview
@@ -378,30 +406,6 @@ export default function LogsPage() {
           />
         )}
       </AnimatePresence>
-      {/* Пагинация */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex justify-center">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 border rounded disabled:opacity-50"
-              >
-              Назад
-            </button>
-            <div className="flex items-center px-4">
-              Страница {page} из {totalPages}
-            </div>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-4 py-2 border rounded disabled:opacity-50"
-              >
-              Вперед
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
