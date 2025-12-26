@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
-import axios from 'axios'
+import apiClient, { ApiError } from '@/lib/apiClient'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
 import DeleteReasonModal from "@/components/DeleteReasonModal"
@@ -31,14 +31,14 @@ export default function DashboardPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const userRes = await axios.get('/api/auth/me')
-        setUser(userRes.data.user)
+        const userData = await apiClient.auth.me()
+        setUser(userData.user)
 
-        const modelsRes = await axios.get('/api/models')
-        setModels(modelsRes.data)
+        const modelsData = await apiClient.models.getAll()
+        setModels(modelsData)
 
-        const spheresRes = await axios.get('/api/spheres')
-        setSpheres(spheresRes.data)
+        const spheresData = await apiClient.spheres.getAll()
+        setSpheres(spheresData)
       } catch (err) {
         router.push('/login')
       }
@@ -68,30 +68,22 @@ export default function DashboardPage() {
     }
   }
 
-  const handleDeleteRequest = (model, e) => {
+  const handleDeleteRequest = async (model, e) => {
     e.stopPropagation()
     if (user?.role === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
-        fetch(`/api/models/${model.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ approve: true })
-        })
-        .then(response => response.json())
-        .then(data => {
+        try {
+          const data = await apiClient.models.delete(model.id, true)
           if (data.success || data.message) {
             setModels(prev => prev.filter(m => m.id !== model.id))
             alert('Модель успешно удалена')
           } else {
             throw new Error(data.error || 'Ошибка при удалении')
           }
-        })
-        .catch(error => {
+        } catch (error) {
           console.error('Ошибка при удалении:', error)
-          alert(error.message)
-        })
+          alert(error instanceof ApiError ? error.message : 'Ошибка при удалении')
+        }
       }
     } else {
       setSelectedModelForDeletion(model)
@@ -103,21 +95,14 @@ export default function DashboardPage() {
     if (!selectedModelForDeletion) return
 
     try {
-      const response = await axios.put(`/api/models/${selectedModelForDeletion.id}`, {
-        comment: reason
-      })
-      
-      if (response.status === 200) {
-        alert(response.data.message)
-        setShowDeleteReasonModal(false)
-        setSelectedModelForDeletion(null)
-        setModels(prev => prev.filter(m => m.id !== selectedModelForDeletion.id))
-      } else {
-        throw new Error(response.data.error || 'Ошибка при отправке запроса')
-      }
+      const data = await apiClient.models.requestDeletion(selectedModelForDeletion.id, reason)
+      alert(data.message || 'Запрос на удаление отправлен')
+      setShowDeleteReasonModal(false)
+      setSelectedModelForDeletion(null)
+      setModels(prev => prev.filter(m => m.id !== selectedModelForDeletion.id))
     } catch (error) {
       console.error('Ошибка:', error)
-      alert(error.response?.data?.error || error.message)
+      alert(error instanceof ApiError ? error.message : 'Ошибка при отправке запроса')
     }
   }
 

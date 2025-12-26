@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { TrashIcon, XCircleIcon, CheckCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
+import apiClient from '@/lib/apiClient'
 
 export default function AdminDeletionPanel({ userRole }) {
   const router = useRouter();

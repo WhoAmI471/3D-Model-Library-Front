@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission, checkAnyPermission } from '@/lib/permission';
-import axios from 'axios'
+import apiClient, { ApiError } from '@/lib/apiClient'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
 import AddModelsToProjectModal from "@/components/AddModelsToProjectModal"
 import DeleteReasonModal from "@/components/DeleteReasonModal"
@@ -34,8 +34,12 @@ export default function ProjectPage({ params }) {
   
   useEffect(() => {
     const load = async () => {
-      const userRes = await axios.get('/api/auth/me')
-      setUser(userRes.data.user)
+      try {
+        const userData = await apiClient.auth.me()
+        setUser(userData.user)
+      } catch (err) {
+        console.error('Ошибка загрузки пользователя:', err)
+      }
     }
     load()
   }, [])
@@ -47,19 +51,15 @@ export default function ProjectPage({ params }) {
         setIsLoading(true)
         
         // Получаем данные пользователя
-        const userRes = await fetch('/api/auth/me')
-        const userData = await userRes.json()
+        const userData = await apiClient.auth.me()
         setUserRole(userData.user?.role || null)
 
         // Получаем данные проекта
-        const projectRes = await fetch(`/api/projects/${id}`)
-        if (!projectRes.ok) throw new Error('Проект не найден')
-        const projectData = await projectRes.json()
+        const projectData = await apiClient.projects.getById(id)
         setProject(projectData)
 
         // Получаем модели проекта
-        const modelsRes = await fetch(`/api/models?projectId=${id}`)
-        const modelsData = await modelsRes.json()
+        const modelsData = await apiClient.models.getAll({ projectId: id })
         setModels(modelsData)
         
       } catch (error) {
@@ -103,54 +103,38 @@ export default function ProjectPage({ params }) {
     if (!selectedModelForDeletion) return;
 
     try {
-      const response = await axios.put(`/api/models/${selectedModelForDeletion.id}`, {
-        comment: reason
-      });
-      
-      if (response.status === 200) {
-        alert(response.data.message);
-        setShowDeleteReasonModal(false);
-        setSelectedModelForDeletion(null);
-        // Обновляем список моделей
-        const modelsRes = await fetch(`/api/models?projectId=${id}`)
-        const modelsData = await modelsRes.json()
-        setModels(modelsData)
-      } else {
-        throw new Error(response.data.error || 'Ошибка при отправке запроса');
-      }
+      const data = await apiClient.models.requestDeletion(selectedModelForDeletion.id, reason)
+      alert(data.message || 'Запрос на удаление отправлен');
+      setShowDeleteReasonModal(false);
+      setSelectedModelForDeletion(null);
+      // Обновляем список моделей
+      const modelsData = await apiClient.models.getAll({ projectId: id })
+      setModels(modelsData)
     } catch (error) {
       console.error('Ошибка:', error);
-      alert(error.response?.data?.error || error.message);
+      alert(error instanceof ApiError ? error.message : 'Ошибка при отправке запроса');
     }
   }
 
-  const handleDeleteRequest = (model, e) => {
+  const handleDeleteRequest = async (model, e) => {
     if (e) {
       e.preventDefault()
       e.stopPropagation()
     }
     if (userRole === 'ADMIN') {
       if (confirm('Вы уверены, что хотите удалить эту модель?')) {
-        fetch(`/api/models/${model.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ approve: true })
-        })
-        .then(response => response.json())
-        .then(data => {
+        try {
+          const data = await apiClient.models.delete(model.id, true)
           if (data.success || data.message) {
             setModels(prev => prev.filter(m => m.id !== model.id));
             alert('Модель успешно удалена');
           } else {
             throw new Error(data.error || 'Ошибка при удалении');
           }
-        })
-        .catch(error => {
+        } catch (error) {
           console.error('Ошибка при удалении:', error);
-          alert(error.message);
-        });
+          alert(error instanceof ApiError ? error.message : 'Ошибка при удалении');
+        }
       }
     } else {
       // Для не-админов показываем модальное окно с формой
@@ -374,36 +358,23 @@ export default function ProjectPage({ params }) {
                 const allModelIds = [...new Set([...currentModelIds, ...selectedModelIds])]
                 
                 // Обновляем проект
-                const response = await fetch(`/api/projects/${id}`, {
-                  method: 'PUT',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    name: project.name,
-                    city: project.city,
-                    modelIds: allModelIds
-                  }),
+                await apiClient.projects.update(id, {
+                  name: project.name,
+                  city: project.city,
+                  modelIds: allModelIds
                 })
 
-                if (response.ok) {
-                  // Перезагружаем данные
-                  const projectRes = await fetch(`/api/projects/${id}`)
-                  const projectData = await projectRes.json()
-                  setProject(projectData)
+                // Перезагружаем данные
+                const projectData = await apiClient.projects.getById(id)
+                setProject(projectData)
 
-                  const modelsRes = await fetch(`/api/models?projectId=${id}`)
-                  const modelsData = await modelsRes.json()
-                  setModels(modelsData)
+                const modelsData = await apiClient.models.getAll({ projectId: id })
+                setModels(modelsData)
 
-                  setShowAddModelsModal(false)
-                } else {
-                  const error = await response.json()
-                  alert(error.error || 'Ошибка при добавлении моделей')
-                }
+                setShowAddModelsModal(false)
               } catch (error) {
                 console.error('Ошибка при добавлении моделей:', error)
-                alert('Ошибка при добавлении моделей')
+                alert(error instanceof ApiError ? error.message : 'Ошибка при добавлении моделей')
               }
             }}
           />

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import apiClient from '@/lib/apiClient'
 
 /**
  * Хук для загрузки моделей, сфер и текущего пользователя
@@ -28,17 +29,17 @@ export function useModelsData(options = {}) {
       
       try {
         const promises = [
-          fetch('/api/models').then(res => res.json()),
-          fetch('/api/spheres').then(res => res.json()),
-          fetch('/api/auth/me').then(res => res.json())
+          apiClient.models.getAll(),
+          apiClient.spheres.getAll(),
+          apiClient.auth.me()
         ]
 
         if (includeUsers) {
-          promises.push(fetch('/api/users').then(res => res.json()))
+          promises.push(apiClient.users.getAll())
         }
 
         if (includeProjects) {
-          promises.push(fetch('/api/projects').then(res => res.json()))
+          promises.push(apiClient.projects.getAll())
         }
 
         const results = await Promise.all(promises)
@@ -89,17 +90,17 @@ export function useModelsData(options = {}) {
       const fetchData = async () => {
         try {
           const promises = [
-            fetch('/api/models').then(res => res.json()),
-            fetch('/api/spheres').then(res => res.json()),
-            fetch('/api/auth/me').then(res => res.json())
+            apiClient.models.getAll(),
+            apiClient.spheres.getAll(),
+            apiClient.auth.me()
           ]
 
           if (includeUsers) {
-            promises.push(fetch('/api/users').then(res => res.json()))
+            promises.push(apiClient.users.getAll())
           }
 
           if (includeProjects) {
-            promises.push(fetch('/api/projects').then(res => res.json()))
+            promises.push(apiClient.projects.getAll())
           }
 
           const results = await Promise.all(promises)

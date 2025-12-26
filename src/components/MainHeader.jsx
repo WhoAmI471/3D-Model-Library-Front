@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline'
-import axios from 'axios'
+import apiClient from '@/lib/apiClient'
 
 export default function MainHeader() {
   const router = useRouter()
@@ -21,9 +21,9 @@ export default function MainHeader() {
     const modelId = modelIdMatch?.[1] || updateIdMatch?.[1]
     
     if (modelId) {
-      axios.get(`/api/models/${modelId}`)
-        .then(res => {
-          setModelTitle(res.data.title)
+      apiClient.models.getById(modelId)
+        .then(data => {
+          setModelTitle(data.title)
         })
         .catch(() => {
           setModelTitle(null)
@@ -61,8 +61,8 @@ export default function MainHeader() {
 
   const loadUser = async () => {
     try {
-      const userRes = await axios.get('/api/auth/me')
-      setUser(userRes.data.user)
+      const data = await apiClient.auth.me()
+      setUser(data.user)
     } catch (err) {
       router.push('/login')
     }
@@ -73,7 +73,7 @@ export default function MainHeader() {
   }, [])
 
   const handleLogout = async () => {
-    await axios.post('/api/auth/logout')
+    await apiClient.auth.logout()
     setUser(null)
     router.push('/login')
   }

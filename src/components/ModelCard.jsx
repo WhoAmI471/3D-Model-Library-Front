@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { formatDateTime, proxyUrl } from '@/lib/utils'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
 import Link from 'next/link';
-import axios from 'axios'
+import apiClient, { ApiError } from '@/lib/apiClient'
 import DeleteReasonModal from './DeleteReasonModal'
 import { 
   ArrowDownTrayIcon,
@@ -83,8 +83,12 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   
   useEffect(() => {
     const load = async () => {
-      const userRes = await axios.get('/api/auth/me')
-      setUser(userRes.data.user)
+      try {
+        const userData = await apiClient.auth.me()
+        setUser(userData.user)
+      } catch (err) {
+        console.error('Ошибка загрузки пользователя:', err)
+      }
     }
     load()
   }, [])
@@ -146,25 +150,12 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
 
   const handleDeleteConfirm = async (reason) => {
     try {
-      const response = await fetch(`/api/models/${model.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ comment: reason })
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        alert(result.message);
-        setShowDeleteReasonModal(false);
-        router.refresh();
-      } else {
-        throw new Error(result.error);
-      }
+      const data = await apiClient.models.requestDeletion(model.id, reason)
+      alert(data.message || 'Запрос на удаление отправлен');
+      setShowDeleteReasonModal(false);
+      router.refresh();
     } catch (error) {
-      alert(error.message);
+      alert(error instanceof ApiError ? error.message : 'Ошибка при отправке запроса');
     }
   };
 

@@ -5,6 +5,7 @@ import ProjectForm from '@/components/ProjectForm'
 import { formatDateTime, proxyUrl } from '@/lib/utils'
 import { checkPermission, checkAnyPermission } from '@/lib/permission'
 import { useRouter } from 'next/navigation'
+import apiClient from '@/lib/apiClient'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -28,11 +29,9 @@ export default function ProjectsPage() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch('/api/projects')
-        const data = await response.json()
-        setProjects(data)
-        const userResponse = await fetch('/api/auth/me')
-        const userData = await userResponse.json()
+        const projectsData = await apiClient.projects.getAll()
+        setProjects(projectsData)
+        const userData = await apiClient.auth.me()
         setUser(userData.user || null)
       } catch (error) {
         console.error('Ошибка загрузки проектов:', error)
@@ -131,17 +130,8 @@ export default function ProjectsPage() {
     const id = project.id
 
     try {
-      const response = await fetch(`/api/projects/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(project),
-      })
-      
-      if (response.ok) {
-        setProjects(projects.filter(proj => proj.id !== id))
-      }
+      await apiClient.projects.delete(id)
+      setProjects(projects.filter(proj => proj.id !== id))
     } catch (error) {
       console.error('Ошибка удаления проекта:', error)
     }

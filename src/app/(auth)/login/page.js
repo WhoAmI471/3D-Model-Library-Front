@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import apiClient, { ApiError } from '@/lib/apiClient'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,22 +15,14 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.message || 'Ошибка входа')
-        return
-      }
-
+      await apiClient.auth.login(email, password)
       window.location.href = '/dashboard'
     } catch (err) {
-      setError('Ошибка соединения с сервером')
+      if (err instanceof ApiError) {
+        setError(err.message || 'Ошибка входа')
+      } else {
+        setError('Ошибка соединения с сервером')
+      }
     }
   }
 

@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS } from '@/lib/roles'
+import apiClient from '@/lib/apiClient'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -23,11 +24,9 @@ export default function SpheresPage() {
   useEffect(() => {
     const fetchSpheres = async () => {
       try {
-        const response = await fetch('/api/spheres')
-        const data = await response.json()
-        setSpheres(data)
-        const userResponse = await fetch('/api/auth/me')
-        const userData = await userResponse.json()
+        const spheresData = await apiClient.spheres.getAll()
+        setSpheres(spheresData)
+        const userData = await apiClient.auth.me()
         setUser(userData.user || null)
       } catch (error) {
         console.error('Ошибка загрузки сфер:', error)
@@ -122,16 +121,9 @@ export default function SpheresPage() {
     const id = sphere.id
 
     try {
-      const response = await fetch(`/api/spheres/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-      
-      const data = await response.json()
+      const data = await apiClient.spheres.delete(id)
 
-      if (response.ok) {
+      if (data) {
         setSpheres(spheres.filter(s => s.id !== id))
       } else {
         alert(data.error || 'Ошибка удаления сферы')

@@ -6,6 +6,7 @@ import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
 import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useModelsData } from '@/hooks/useModelsData'
+import apiClient from '@/lib/apiClient'
 import ScreenshotsSection from '@/components/modelForm/ScreenshotsSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
 import ProjectsSection from '@/components/modelForm/ProjectsSection'
@@ -77,9 +78,7 @@ export default function ModelEditForm({ id, userRole }) {
     const loadModel = async () => {
       try {
         setIsLoading(true)
-        const res = await fetch(`/api/models/${id}?include=projects`)
-        if (!res.ok) throw new Error('Не удалось загрузить модель')
-        const data = await res.json()
+        const data = await apiClient.models.getById(id, { include: 'projects' })
         
         // Обрабатываем authorId: если null, используем текущего пользователя для админа, иначе 'UNKNOWN'
         // Для админа сохраняем реальный ID автора (если есть), иначе устанавливаем текущего пользователя

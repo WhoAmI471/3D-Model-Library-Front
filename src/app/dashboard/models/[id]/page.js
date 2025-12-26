@@ -1,7 +1,6 @@
 // app/dashboard/models/[id]/page.js
 import { ModelCard } from '@/components/ModelCard'
 import { prisma } from '@/lib/prisma'
-import axios from 'axios'
 import { getUserFromSession } from '@/lib/auth'
 import { logModelAction } from '@/lib/logger'
 import { deleteFile } from '@/lib/fileStorage'

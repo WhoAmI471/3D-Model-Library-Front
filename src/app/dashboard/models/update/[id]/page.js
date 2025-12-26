@@ -1,7 +1,7 @@
 'use client'
 import ModelEditForm from '@/components/ModelEditForm'
 import { use, useState, useEffect } from 'react';
-import axios from 'axios'
+import apiClient from '@/lib/apiClient'
 
 export default function UpdatePage({ params }) {
   const { id } = use(params)
@@ -11,10 +11,10 @@ export default function UpdatePage({ params }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const userRes = await axios.get('/api/auth/me')
-        setUserRole(userRes.data.user.role)
+        const userData = await apiClient.auth.me()
+        setUserRole(userData.user.role)
       } catch (err) {
-        router.push('/login')
+        // router.push('/login')
       }
     }
     

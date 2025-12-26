@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import EmployeeForm from '@/components/EmployeeForm'
 import { checkPermission } from '@/lib/permission'
+import apiClient from '@/lib/apiClient'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -21,12 +22,10 @@ export default function EmployeesPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const employeesResponse = await fetch('/api/employees')
-        const employeesData = await employeesResponse.json()
+        const employeesData = await apiClient.employees.getAll()
         setEmployees(employeesData)
 
-        const userResponse = await fetch('/api/auth/me')
-        const userData = await userResponse.json()
+        const userData = await apiClient.auth.me()
         setUser(userData.user || null)
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
@@ -134,13 +133,8 @@ export default function EmployeesPage() {
     if (!confirm('Вы уверены, что хотите удалить этого сотрудника?')) return
     
     try {
-      const response = await fetch(`/api/employees/${employee.id}`, {
-        method: 'DELETE',
-      })
-      
-      if (response.ok) {
-        setEmployees(employees.filter(emp => emp.id !== employee.id))
-      }
+      await apiClient.employees.delete(employee.id)
+      setEmployees(employees.filter(emp => emp.id !== employee.id))
     } catch (error) {
       console.error('Ошибка удаления сотрудника:', error)
     }
@@ -149,11 +143,10 @@ export default function EmployeesPage() {
   const handleEdit = async (employee, e) => {
     e.stopPropagation()
     try {
-      const response = await fetch(`/api/employees/${employee.id}`)
-      if (response.ok) {
-        const fullEmployeeData = await response.json()
+      try {
+        const fullEmployeeData = await apiClient.employees.getById(employee.id)
         setCurrentEmployee(fullEmployeeData)
-      } else {
+      } catch (error) {
         setCurrentEmployee(employee)
       }
     } catch (error) {

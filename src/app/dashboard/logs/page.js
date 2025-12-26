@@ -6,6 +6,7 @@ import { ru } from 'date-fns/locale'
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import apiClient from '@/lib/apiClient'
 
 export default function LogsPage() {
   const [logs, setLogs] = useState([])
@@ -49,16 +50,22 @@ export default function LogsPage() {
         ...(filters.dateTo && { dateTo: filters.dateTo })
       })
 
-      const response = await fetch(`/api/logs?${params}`)
-      const data = await response.json()
+      const logsData = await apiClient.logs.getAll({
+        page: page.toString(),
+        sortBy: sortConfig.key,
+        sortOrder: sortConfig.direction,
+        ...(filters.action && { action: filters.action }),
+        ...(filters.user && { user: filters.user }),
+        ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
+        ...(filters.dateTo && { dateTo: filters.dateTo })
+      })
       
-      setLogs(data.logs)
+      setLogs(logsData.logs || [])
       
-      const modelsRes = await fetch('/api/models')
-      const modelsData = await modelsRes.json()
+      const modelsData = await apiClient.models.getAll()
       setModels(modelsData)
       
-      setTotalPages(data.totalPages)
+      setTotalPages(logsData.totalPages || 1)
     } catch (error) {
       console.error('Ошибка загрузки логов:', error)
     } finally {
