@@ -222,7 +222,7 @@ export default function LogsPage() {
     <div className="min-h-full bg-white" onMouseLeave={handleMouseLeave}>
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-6">Журнал событий</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Журнал событий</h1>
 
           {/* Фильтры */}
           <div className="mb-6 space-y-4">

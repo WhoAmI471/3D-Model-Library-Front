@@ -199,7 +199,7 @@ export default function AdminDeletionPanel({ userRole }) {
     <div className="min-h-full bg-white" onMouseLeave={handleMouseLeave}>
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-6">Запросы на удаление моделей</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Запросы на удаление моделей</h1>
         </div>
 
         {error && (

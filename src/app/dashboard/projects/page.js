@@ -164,7 +164,7 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-bold mb-8">Проекты</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-8">Проекты</h1>
         <div className="mb-8">
           {/* Поиск и кнопка добавления */}
           <div className="mb-6 flex gap-3">
