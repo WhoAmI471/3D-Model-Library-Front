@@ -1,8 +1,13 @@
 // scripts/seed-admin.js
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcrypt'
+import { config } from 'dotenv'
 import { ALL_PERMISSIONS } from '../../src/lib/roles.js'
 
+config()
+
+// Используем PrismaClient напрямую с переменной окружения
+// В Prisma 7 конфигурация должна быть доступна через process.env.DATABASE_URL
 const prisma = new PrismaClient()
 
 async function main() {
