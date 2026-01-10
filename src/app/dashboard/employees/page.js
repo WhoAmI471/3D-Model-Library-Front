@@ -4,6 +4,7 @@ import EmployeeForm from '@/components/EmployeeForm'
 import Loading from '@/components/Loading'
 import { checkPermission } from '@/lib/permission'
 import apiClient from '@/lib/apiClient'
+import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -94,37 +95,23 @@ export default function EmployeesPage() {
   // Обработка добавления/обновления сотрудника
   const handleEmployeeSubmit = async (employeeData) => {
     try {
-      const method = currentEmployee ? 'PUT' : 'POST'
-      const url = currentEmployee 
-        ? `/api/employees/${currentEmployee.id}`
-        : '/api/employees'
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(employeeData),
-      })
+      const result = currentEmployee
+        ? await apiClient.employees.update(currentEmployee.id, employeeData)
+        : await apiClient.employees.create(employeeData)
       
-      if (response.ok) {
-        const result = await response.json()
-        if (currentEmployee) {
-          setEmployees(employees.map(emp => 
-            emp.id === currentEmployee.id ? result : emp
-          ))
-        } else {
-          setEmployees([...employees, result])
-        }
-        setShowAddForm(false)
-        setCurrentEmployee(null)
+      if (currentEmployee) {
+        setEmployees(employees.map(emp => 
+          emp.id === currentEmployee.id ? result : emp
+        ))
       } else {
-        const errorData = await response.json()
-        alert(errorData.error || 'Ошибка при сохранении сотрудника')
+        setEmployees([...employees, result])
       }
+      setShowAddForm(false)
+      setCurrentEmployee(null)
     } catch (error) {
-      console.error('Ошибка сохранения сотрудника:', error)
-      alert('Ошибка при сохранении сотрудника')
+      const formattedError = await handleError(error, { context: 'EmployeesPage.handleEmployeeSubmit', employeeId: currentEmployee?.id })
+      const errorMessage = getErrorMessage(formattedError)
+      alert(errorMessage)
     }
   }
 
@@ -137,7 +124,8 @@ export default function EmployeesPage() {
       await apiClient.employees.delete(employee.id)
       setEmployees(employees.filter(emp => emp.id !== employee.id))
     } catch (error) {
-      console.error('Ошибка удаления сотрудника:', error)
+      await handleError(error, { context: 'EmployeesPage.handleDelete', employeeId: employee.id })
+      // Ошибка логируется через handleError, можно показать alert если нужно
     }
   }
 

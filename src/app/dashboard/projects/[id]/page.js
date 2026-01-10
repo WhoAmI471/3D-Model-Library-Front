@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission, checkAnyPermission } from '@/lib/permission';
-import apiClient, { ApiError } from '@/lib/apiClient'
+import apiClient from '@/lib/apiClient'
 import Loading from '@/components/Loading'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
+import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import AddModelsToProjectModal from "@/components/AddModelsToProjectModal"
 import DeleteReasonModal from "@/components/DeleteReasonModal"
 import { 
@@ -112,8 +113,9 @@ export default function ProjectPage({ params }) {
       const modelsData = await apiClient.models.getAll({ projectId: id })
       setModels(modelsData)
     } catch (error) {
-      console.error('Ошибка:', error);
-      alert(error instanceof ApiError ? error.message : 'Ошибка при отправке запроса');
+      const formattedError = await handleError(error, { context: 'ProjectPage.handleDeleteConfirm', modelId: selectedModelForDeletion.id, projectId: id })
+      const errorMessage = getErrorMessage(formattedError)
+      alert(errorMessage)
     }
   }
 
@@ -133,8 +135,9 @@ export default function ProjectPage({ params }) {
             throw new Error(data.error || 'Ошибка при удалении');
           }
         } catch (error) {
-          console.error('Ошибка при удалении:', error);
-          alert(error instanceof ApiError ? error.message : 'Ошибка при удалении');
+          const formattedError = await handleError(error, { context: 'ProjectPage.handleDeleteRequest', modelId: model.id, projectId: id })
+          const errorMessage = getErrorMessage(formattedError)
+          alert(errorMessage)
         }
       }
     } else {
@@ -374,8 +377,9 @@ export default function ProjectPage({ params }) {
 
                 setShowAddModelsModal(false)
               } catch (error) {
-                console.error('Ошибка при добавлении моделей:', error)
-                alert(error instanceof ApiError ? error.message : 'Ошибка при добавлении моделей')
+                const formattedError = await handleError(error, { context: 'ProjectPage.onAdd', projectId: id, modelIds: selectedModelIds })
+                const errorMessage = getErrorMessage(formattedError)
+                alert(errorMessage)
               }
             }}
           />

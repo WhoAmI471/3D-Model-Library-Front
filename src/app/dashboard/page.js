@@ -2,8 +2,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
-import apiClient, { ApiError } from '@/lib/apiClient'
+import apiClient from '@/lib/apiClient'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
+import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import Link from 'next/link'
 import DeleteReasonModal from "@/components/DeleteReasonModal"
 import { 
@@ -81,8 +82,9 @@ export default function DashboardPage() {
             throw new Error(data.error || 'Ошибка при удалении')
           }
         } catch (error) {
-          console.error('Ошибка при удалении:', error)
-          alert(error instanceof ApiError ? error.message : 'Ошибка при удалении')
+          const formattedError = await handleError(error, { context: 'DashboardPage.handleDeleteRequest', modelId: model.id })
+          const errorMessage = getErrorMessage(formattedError)
+          alert(errorMessage)
         }
       }
     } else {
@@ -101,8 +103,9 @@ export default function DashboardPage() {
       setSelectedModelForDeletion(null)
       setModels(prev => prev.filter(m => m.id !== selectedModelForDeletion.id))
     } catch (error) {
-      console.error('Ошибка:', error)
-      alert(error instanceof ApiError ? error.message : 'Ошибка при отправке запроса')
+      const formattedError = await handleError(error, { context: 'DashboardPage.handleDeleteConfirm', modelId: selectedModelForDeletion.id })
+      const errorMessage = getErrorMessage(formattedError)
+      alert(errorMessage)
     }
   }
 

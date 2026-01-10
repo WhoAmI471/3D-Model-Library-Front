@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline'
 import apiClient from '@/lib/apiClient'
+import { handleError } from '@/lib/errorHandler'
 
 export default function MainHeader() {
   const router = useRouter()
@@ -25,7 +26,8 @@ export default function MainHeader() {
         .then(data => {
           setModelTitle(data.title)
         })
-        .catch(() => {
+        .catch(async (error) => {
+          await handleError(error, { context: 'MainHeader.loadModelTitle', modelId })
           setModelTitle(null)
         })
     } else {
@@ -64,6 +66,7 @@ export default function MainHeader() {
       const data = await apiClient.auth.me()
       setUser(data.user)
     } catch (err) {
+      await handleError(err, { context: 'MainHeader.loadUser' })
       router.push('/login')
     }
   }

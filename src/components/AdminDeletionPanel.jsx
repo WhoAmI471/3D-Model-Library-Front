@@ -5,6 +5,7 @@ import { TrashIcon, XCircleIcon, CheckCircleIcon, InformationCircleIcon } from '
 import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
 import apiClient from '@/lib/apiClient'
+import { getErrorMessage, handleError } from '@/lib/errorHandler'
 
 export default function AdminDeletionPanel({ userRole }) {
   const router = useRouter();
@@ -144,10 +145,11 @@ export default function AdminDeletionPanel({ userRole }) {
       const data = await response.json();
       setModelsForDeletion(data);
     } catch (err) {
-      console.error('Ошибка загрузки запросов на удаление:', err);
-      setError(err.message);
+      const formattedError = await handleError(err, { context: 'AdminDeletionPanel.fetchPendingDeletions' })
+      const errorMessage = getErrorMessage(formattedError)
+      setError(errorMessage)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   };
 
@@ -164,8 +166,9 @@ export default function AdminDeletionPanel({ userRole }) {
       
       setModelsForDeletion(prev => prev.filter(m => m.id !== modelId));
     } catch (err) {
-      console.error('Ошибка обработки запроса:', err);
-      setError(err.message);
+      const formattedError = await handleError(err, { context: 'AdminDeletionPanel.handleDecision', modelId, approve })
+      const errorMessage = getErrorMessage(formattedError)
+      setError(errorMessage)
     }
   };
 

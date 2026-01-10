@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation'
 import { formatDateTime, proxyUrl } from '@/lib/utils'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
 import Link from 'next/link';
-import apiClient, { ApiError } from '@/lib/apiClient'
+import apiClient from '@/lib/apiClient'
 import DeleteReasonModal from './DeleteReasonModal'
+import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import { 
   ArrowDownTrayIcon,
   PencilIcon,
@@ -155,7 +156,9 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
       setShowDeleteReasonModal(false);
       router.refresh();
     } catch (error) {
-      alert(error instanceof ApiError ? error.message : 'Ошибка при отправке запроса');
+      const formattedError = await handleError(error, { context: 'ModelCard.handleDeleteConfirm', modelId: model.id })
+      const errorMessage = getErrorMessage(formattedError)
+      alert(errorMessage)
     }
   };
 

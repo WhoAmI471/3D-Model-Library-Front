@@ -6,6 +6,7 @@ import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS } from '@/lib/roles'
 import apiClient from '@/lib/apiClient'
 import Loading from '@/components/Loading'
+import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -70,29 +71,15 @@ export default function SpheresPage() {
     }
 
     try {
-      const response = await fetch('/api/spheres', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: sphereName.trim()
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setSpheres([...spheres, { ...data, modelsCount: 0 }])
-        setSphereName('')
-        setShowAddForm(false)
-        setError('')
-      } else {
-        setError(data.error || 'Ошибка создания сферы')
-      }
+      const data = await apiClient.spheres.create({ name: sphereName.trim() })
+      setSpheres([...spheres, { ...data, modelsCount: 0 }])
+      setSphereName('')
+      setShowAddForm(false)
+      setError('')
     } catch (error) {
-      console.error('Ошибка создания сферы:', error)
-      setError('Ошибка создания сферы')
+      const formattedError = await handleError(error, { context: 'SpheresPage.handleSphereSubmit' })
+      const errorMessage = getErrorMessage(formattedError)
+      setError(errorMessage)
     }
   }
 
@@ -130,8 +117,9 @@ export default function SpheresPage() {
         alert(data.error || 'Ошибка удаления сферы')
       }
     } catch (error) {
-      console.error('Ошибка удаления сферы:', error)
-      alert('Ошибка удаления сферы')
+      const formattedError = await handleError(error, { context: 'SpheresPage.handleDelete', sphereId: id })
+      const errorMessage = getErrorMessage(formattedError)
+      alert(errorMessage)
     }
   }
 

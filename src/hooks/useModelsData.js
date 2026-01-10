@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import apiClient from '@/lib/apiClient'
+import { handleError } from '@/lib/errorHandler'
 
 /**
  * Хук для загрузки моделей, сфер и текущего пользователя
@@ -60,8 +61,8 @@ export function useModelsData(options = {}) {
           setProjects(Array.isArray(projectsData) ? projectsData : [])
         }
       } catch (err) {
-        console.error('Ошибка загрузки данных:', err)
-        setError(err)
+        const formattedError = await handleError(err, { context: 'useModelsData.fetchData', includeUsers, includeProjects })
+        setError(formattedError)
         // Устанавливаем значения по умолчанию при ошибке
         setModels([])
         setSpheres([])
@@ -120,8 +121,8 @@ export function useModelsData(options = {}) {
             setProjects(Array.isArray(projectsData) ? projectsData : [])
           }
         } catch (err) {
-          console.error('Ошибка обновления данных:', err)
-          setError(err)
+          const formattedError = await handleError(err, { context: 'useModelsData.refetch', includeUsers, includeProjects })
+          setError(formattedError)
         } finally {
           setIsLoading(false)
         }

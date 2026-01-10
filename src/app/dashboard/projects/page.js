@@ -7,6 +7,7 @@ import { formatDateTime, proxyUrl } from '@/lib/utils'
 import { checkPermission, checkAnyPermission } from '@/lib/permission'
 import { useRouter } from 'next/navigation'
 import apiClient from '@/lib/apiClient'
+import { handleError } from '@/lib/errorHandler'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -35,7 +36,7 @@ export default function ProjectsPage() {
         const userData = await apiClient.auth.me()
         setUser(userData.user || null)
       } catch (error) {
-        console.error('Ошибка загрузки проектов:', error)
+        await handleError(error, { context: 'ProjectsPage.fetchProjects' })
       } finally {
         setIsLoading(false)
       }
@@ -64,61 +65,21 @@ export default function ProjectsPage() {
   // Обработка добавления/обновления проекта
   const handleProjectSubmit = async (projectData) => {
     try {
-      const method = currentProject ? 'PUT' : 'POST'
-      const url = currentProject 
-        ? `/api/projects/${currentProject.id}`
-        : '/api/projects'
-
-      let response
-      if (projectData.imageFile || projectData.deleteImage) {
-        // Используем FormData для загрузки изображения
-        const formData = new FormData()
-        formData.append('name', projectData.name)
-        formData.append('city', projectData.city || '')
-        projectData.modelIds.forEach(id => formData.append('modelIds', id))
-        if (projectData.imageFile) {
-          formData.append('image', projectData.imageFile)
-        }
-        if (projectData.deleteImage) {
-          formData.append('deleteImage', 'true')
-        }
-
-        response = await fetch(url, {
-          method,
-          body: formData,
-        })
+      const result = currentProject
+        ? await apiClient.projects.update(currentProject.id, projectData)
+        : await apiClient.projects.create(projectData)
+      
+      if (currentProject) {
+        setProjects(projects.map(proj => 
+          proj.id === currentProject.id ? result : proj
+        ))
       } else {
-        // Используем JSON для обычных данных
-        response = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: projectData.name,
-            city: projectData.city,
-            modelIds: projectData.modelIds
-          }),
-        })
+        setProjects([...projects, result])
       }
-
-      if (response.ok) {
-        const result = await response.json()
-        if (currentProject) {
-          setProjects(projects.map(proj => 
-            proj.id === currentProject.id ? result : proj
-          ))
-        } else {
-          setProjects([...projects, result])
-        }
-        setShowAddForm(false)
-        setCurrentProject(null)
-      } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Ошибка сохранения проекта')
-      }
+      setShowAddForm(false)
+      setCurrentProject(null)
     } catch (error) {
-      console.error('Ошибка сохранения проекта:', error)
+      await handleError(error, { context: 'ProjectsPage.handleProjectSubmit', projectId: currentProject?.id })
       throw error
     }
   }
@@ -134,7 +95,8 @@ export default function ProjectsPage() {
       await apiClient.projects.delete(id)
       setProjects(projects.filter(proj => proj.id !== id))
     } catch (error) {
-      console.error('Ошибка удаления проекта:', error)
+      await handleError(error, { context: 'ProjectsPage.handleDelete', projectId: id })
+      // Ошибка логируется через handleError
     }
   }
 
