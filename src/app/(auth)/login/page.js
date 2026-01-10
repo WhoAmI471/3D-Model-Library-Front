@@ -1,7 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import apiClient, { ApiError } from '@/lib/apiClient'
+import apiClient from '@/lib/apiClient'
+import { getErrorMessage, handleError } from '@/lib/errorHandler'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -18,11 +19,9 @@ export default function LoginPage() {
       await apiClient.auth.login(email, password)
       window.location.href = '/dashboard'
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message || 'Ошибка входа')
-      } else {
-        setError('Ошибка соединения с сервером')
-      }
+      const formattedError = await handleError(err, { context: 'LoginPage.handleLogin' })
+      const errorMessage = getErrorMessage(formattedError)
+      setError(errorMessage)
     }
   }
 

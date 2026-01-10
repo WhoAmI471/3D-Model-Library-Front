@@ -3,6 +3,8 @@
  * Использует fetch API с автоматической обработкой ошибок и авторизацией
  */
 
+import { getErrorMessageByStatus, ERROR_MESSAGES } from './errorMessages'
+
 class ApiError extends Error {
   constructor(message, status, data = null) {
     super(message)
@@ -71,7 +73,8 @@ async function request(url, options = {}) {
 
     // Если ответ не успешный, выбрасываем ошибку
     if (!response.ok) {
-      const errorMessage = data?.error || data?.message || `HTTP Error: ${response.status} ${response.statusText}`
+      // Используем централизованные сообщения об ошибках
+      const errorMessage = data?.error || data?.message || getErrorMessageByStatus(response.status)
       throw new ApiError(errorMessage, response.status, data)
     }
 
@@ -84,11 +87,11 @@ async function request(url, options = {}) {
 
     // Обработка сетевых ошибок
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new ApiError('Ошибка соединения с сервером', 0, null)
+      throw new ApiError(ERROR_MESSAGES.NETWORK_ERROR, 0, null)
     }
 
     // Другие ошибки
-    throw new ApiError(error.message || 'Неизвестная ошибка', 0, null)
+    throw new ApiError(error.message || ERROR_MESSAGES.UNKNOWN_ERROR, 0, null)
   }
 }
 

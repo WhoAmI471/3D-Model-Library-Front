@@ -6,6 +6,7 @@ import { ROLES, ROLE_OPTIONS, ALL_PERMISSIONS, PERMISSION_LABELS, DEFAULT_PERMIS
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useModal } from '@/hooks/useModal'
 import { createEmployeeSchema, updateEmployeeSchema } from '@/lib/validations/employeeSchema'
+import { getErrorMessage, handleError } from '@/lib/errorHandler'
 
 export default function EmployeeForm({ employee, onSubmit, onCancel, userRole }) {
   // Загружаем сохраненное значение из localStorage или используем true по умолчанию
@@ -218,9 +219,10 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
       
       await onSubmit(submitData)
     } catch (error) {
-      // Ошибки обрабатываются через formState.errors
-      setError('root', { type: 'server', message: error.message || 'Произошла ошибка' })
-      console.error('Ошибка при сохранении сотрудника:', error)
+      // Используем централизованную обработку ошибок
+      const formattedError = await handleError(error, { context: 'EmployeeForm.onSubmit' })
+      const errorMessage = getErrorMessage(formattedError)
+      setError('root', { type: 'server', message: errorMessage })
     }
   }
 

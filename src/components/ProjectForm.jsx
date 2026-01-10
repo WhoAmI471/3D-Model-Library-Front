@@ -11,6 +11,7 @@ import { useModelsData } from '@/hooks/useModelsData'
 import { useModal } from '@/hooks/useModal'
 import { usePagination } from '@/hooks/usePagination'
 import { projectSchema } from '@/lib/validations/projectSchema'
+import { handleError } from '@/lib/errorHandler'
 
 export default function ProjectForm({ project, onSubmit, onCancel }) {
   const router = useRouter()
@@ -118,8 +119,9 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
         deleteImage: !imageFile && !imagePreview 
       })
     } catch (error) {
-      // Ошибки обрабатываются через formState.errors или можно использовать setError из react-hook-form
-      console.error('Ошибка при сохранении проекта:', error)
+      // Используем централизованную обработку ошибок
+      await handleError(error, { context: 'ProjectForm.onSubmitForm' })
+      // Ошибки также обрабатываются через formState.errors в react-hook-form
     }
   }
 

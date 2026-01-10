@@ -11,6 +11,7 @@ import { useModelsData } from '@/hooks/useModelsData'
 import apiClient, { ApiError } from '@/lib/apiClient'
 import { useToast } from '@/hooks/useToast'
 import ToastContainer from '@/components/ToastContainer'
+import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import ScreenshotsSection from '@/components/modelForm/ScreenshotsSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
 import ProjectsSection from '@/components/modelForm/ProjectsSection'
@@ -594,8 +595,8 @@ export default function ModelEditForm({ id, userRole }) {
         throw new Error(result?.error || 'Не удалось обновить модель')
       }
     } catch (err) {
-      console.error('Ошибка обновления:', err)
-      const errorMessage = err instanceof ApiError ? err.message : (err.message || 'Произошла ошибка')
+      const formattedError = await handleError(err, { context: 'ModelEditForm.onSubmitForm', modelId: id })
+      const errorMessage = getErrorMessage(formattedError)
       setError(errorMessage)
       showErrorToast(errorMessage)
     } finally {
