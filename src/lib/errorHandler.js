@@ -5,7 +5,8 @@ import { ERROR_MESSAGES, getErrorMessageByStatus, getFriendlyErrorMessage } from
  * Форматирует ошибку API в понятное сообщение
  */
 export function formatApiError(error) {
-  if (!error) {
+  // Проверяем на null, undefined и пустой объект
+  if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
     return {
       message: ERROR_MESSAGES.UNKNOWN_ERROR,
       type: 'unknown',
@@ -14,45 +15,68 @@ export function formatApiError(error) {
     }
   }
 
-  // Если это ApiError из apiClient
-  if (error instanceof ApiError) {
-    return {
-      message: error.message || getErrorMessageByStatus(error.status) || ERROR_MESSAGES.UNKNOWN_ERROR,
-      type: 'api',
-      status: error.status || 0,
-      details: error.data || null,
-      originalError: error
+  try {
+    // Если это ApiError из apiClient
+    if (error instanceof ApiError) {
+      const message = error.message || getErrorMessageByStatus(error.status) || ERROR_MESSAGES.UNKNOWN_ERROR
+      return {
+        message: String(message || ERROR_MESSAGES.UNKNOWN_ERROR),
+        type: 'api',
+        status: Number(error.status || 0),
+        details: error.data || null,
+        originalError: error
+      }
     }
-  }
 
-  // Если это обычный Error
-  if (error instanceof Error) {
+    // Если это обычный Error
+    if (error instanceof Error) {
+      const message = getFriendlyErrorMessage(error) || ERROR_MESSAGES.UNKNOWN_ERROR
+      return {
+        message: String(message),
+        type: 'error',
+        status: 0,
+        details: null,
+        originalError: error
+      }
+    }
+
+    // Если это объект с полями
+    if (typeof error === 'object') {
+      const message = getFriendlyErrorMessage(error) || ERROR_MESSAGES.UNKNOWN_ERROR
+      return {
+        message: String(message),
+        type: 'object',
+        status: Number(error.status || 0),
+        details: error,
+        originalError: error
+      }
+    }
+
+    // Если это строка
+    if (typeof error === 'string') {
+      return {
+        message: String(error || ERROR_MESSAGES.UNKNOWN_ERROR),
+        type: 'string',
+        status: 0,
+        details: null
+      }
+    }
+
+    // Для всех остальных случаев
     return {
-      message: getFriendlyErrorMessage(error),
-      type: 'error',
+      message: ERROR_MESSAGES.UNKNOWN_ERROR,
+      type: 'unknown',
       status: 0,
-      details: null,
-      originalError: error
+      details: null
     }
-  }
-
-  // Если это объект с полями
-  if (typeof error === 'object') {
+  } catch (e) {
+    // Если форматирование вызвало ошибку, возвращаем базовый объект
     return {
-      message: getFriendlyErrorMessage(error),
-      type: 'object',
-      status: error.status || 0,
-      details: error,
-      originalError: error
+      message: ERROR_MESSAGES.UNKNOWN_ERROR,
+      type: 'unknown',
+      status: 0,
+      details: null
     }
-  }
-
-  // Если это строка
-  return {
-    message: typeof error === 'string' ? error : ERROR_MESSAGES.UNKNOWN_ERROR,
-    type: 'string',
-    status: 0,
-    details: null
   }
 }
 
@@ -115,8 +139,8 @@ export function formatNetworkError(error) {
     }
   }
 
-  // Проверяем наличие интернета
-  if (!navigator.onLine) {
+  // Проверяем наличие интернета (только в браузере)
+  if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && !navigator.onLine) {
     return {
       message: ERROR_MESSAGES.NETWORK_OFFLINE,
       type: 'network',
@@ -157,27 +181,63 @@ export function formatNetworkError(error) {
  * Автоматически определяет тип ошибки и форматирует её
  */
 export function formatError(error) {
-  if (!error) {
+  try {
+    // Если ошибка null, undefined или пустая
+    if (!error) {
+      return formatApiError(null)
+    }
+
+    // Проверяем, что ApiError доступен (может быть проблема с импортом)
+    try {
+      if (error instanceof ApiError) {
+        return formatApiError(error)
+      }
+    } catch (e) {
+      // Если ApiError не доступен, продолжаем дальше
+    }
+
+    // Если это Error объект
+    if (error instanceof Error) {
+      // Сетевые ошибки
+      if (error.name === 'TypeError' && error.message?.includes('fetch')) {
+        return formatNetworkError(error)
+      }
+      // Обычные ошибки
+      return formatApiError(error)
+    }
+
+    // Если это объект
+    if (typeof error === 'object') {
+      // Ошибки валидации (Zod или объект с полями)
+      if (error.issues && Array.isArray(error.issues)) {
+        return formatValidationError(error)
+      }
+      
+      // Объекты без message и status - возможная ошибка валидации
+      if (!error.message && !error.status && !error.error) {
+        return formatValidationError(error)
+      }
+      
+      // Обычные объекты ошибок
+      return formatApiError(error)
+    }
+
+    // Если это строка
+    if (typeof error === 'string') {
+      return formatApiError(error)
+    }
+
+    // Для всех остальных случаев
     return formatApiError(null)
+  } catch (formatErr) {
+    // Если форматирование вызвало ошибку, возвращаем базовый объект
+    return {
+      message: ERROR_MESSAGES.UNKNOWN_ERROR,
+      type: 'unknown',
+      status: 0,
+      details: null
+    }
   }
-
-  // Проверяем тип ошибки
-  if (error instanceof ApiError) {
-    return formatApiError(error)
-  }
-
-  // Сетевые ошибки
-  if (error.name === 'TypeError' && error.message?.includes('fetch')) {
-    return formatNetworkError(error)
-  }
-
-  // Ошибки валидации (Zod или объект с полями)
-  if (error?.issues || (typeof error === 'object' && !error.message && !error.status)) {
-    return formatValidationError(error)
-  }
-
-  // Обычные ошибки API
-  return formatApiError(error)
 }
 
 /**
@@ -221,19 +281,80 @@ export async function logErrorToServer(error, context = {}) {
  * Обработка ошибки с логированием
  */
 export async function handleError(error, context = {}) {
-  const formatted = formatError(error)
-  
-  // Логируем в консоль в режиме разработки
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Error handled:', {
-      formatted,
-      original: error,
-      context
-    })
+  try {
+    const formatted = formatError(error)
+    
+    // Проверяем, что formatted корректный объект с message
+    if (!formatted || typeof formatted !== 'object' || !formatted.message) {
+      // Если formatted некорректен, создаем новый
+      const safeFormatted = {
+        message: ERROR_MESSAGES.UNKNOWN_ERROR,
+        type: 'unknown',
+        status: 0,
+        details: null
+      }
+      
+      // Логируем в режиме разработки
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          console.error('Error handled: Invalid formatted error, using fallback', {
+            message: safeFormatted.message,
+            originalErrorType: typeof error,
+            context: typeof context === 'object' ? JSON.stringify(context) : context
+          })
+        } catch (e) {
+          // Игнорируем ошибки логирования
+        }
+      }
+      
+      return safeFormatted
+    }
+    
+    // Логируем в консоль в режиме разработки (безопасное логирование)
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        // Создаем безопасный объект для логирования без циклических ссылок
+        const logData = {
+          message: String(formatted.message || 'Unknown error'),
+          type: String(formatted.type || 'unknown'),
+          status: Number(formatted.status || 0),
+          errorName: error && typeof error === 'object' ? String(error.name || 'N/A') : 'N/A',
+          errorMessage: error && typeof error === 'object' ? String(error.message || 'N/A') : 'N/A',
+          contextKeys: context && typeof context === 'object' ? Object.keys(context) : []
+        }
+        console.error('Error handled:', logData)
+      } catch (logErr) {
+        // Если не удалось залогировать, просто выводим базовое сообщение
+        try {
+          console.error('Error handled: Failed to log error details')
+        } catch (e) {
+          // Игнорируем даже ошибки простого логирования
+        }
+      }
+    }
+
+    // Опционально отправляем на сервер для логирования
+    try {
+      await logErrorToServer(error, context)
+    } catch (logErr) {
+      // Игнорируем ошибки логирования на сервер
+    }
+
+    return formatted
+  } catch (handlerError) {
+    // Если сама обработка ошибки вызвала ошибку, возвращаем базовый объект
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error in handleError:', handlerError?.message || 'Unknown error in error handler')
+      }
+    } catch (e) {
+      // Игнорируем ошибки логирования
+    }
+    return {
+      message: ERROR_MESSAGES.UNKNOWN_ERROR,
+      type: 'unknown',
+      status: 0,
+      details: null
+    }
   }
-
-  // Опционально отправляем на сервер для логирования
-  await logErrorToServer(error, context)
-
-  return formatted
 }

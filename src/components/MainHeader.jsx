@@ -24,10 +24,17 @@ export default function MainHeader() {
     if (modelId) {
       apiClient.models.getById(modelId)
         .then(data => {
-          setModelTitle(data.title)
+          if (data && typeof data === 'object' && data.title) {
+            setModelTitle(data.title)
+          } else {
+            setModelTitle(null)
+          }
         })
         .catch(async (error) => {
-          await handleError(error, { context: 'MainHeader.loadModelTitle', modelId })
+          // Тихая обработка ошибки - если модель не найдена, просто не показываем название
+          await handleError(error, { context: 'MainHeader.loadModelTitle', modelId }).catch(() => {
+            // Игнорируем ошибки в самой обработке ошибок
+          })
           setModelTitle(null)
         })
     } else {
