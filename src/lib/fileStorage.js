@@ -7,13 +7,30 @@ import { createFolderRecursive } from './nextcloud'
 
 
 function getNextcloudConfig() {
-  const url = process.env.NEXTCLOUD_URL;
+  let url = process.env.NEXTCLOUD_URL;
   const username = process.env.NEXTCLOUD_ADMIN_USER;
   const password = process.env.NEXTCLOUD_ADMIN_PASSWORD;
-  if (url && username && password) {
-    return { url, username, password };
+  
+  if (!url || !username || !password) {
+    return null;
   }
-  return null;
+  
+  // Нормализуем URL - убираем trailing slash
+  url = url.replace(/\/+$/, '');
+  
+  // Если URL начинается с localhost и мы в Docker-окружении, пытаемся использовать имя сервиса
+  if (process.env.NEXTCLOUD_DOCKER_SERVICE && url.includes('localhost')) {
+    try {
+      const urlObj = new URL(url);
+      if (urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1') {
+        url = `${urlObj.protocol}//${process.env.NEXTCLOUD_DOCKER_SERVICE}${urlObj.port ? `:${urlObj.port}` : ''}`;
+      }
+    } catch (e) {
+      console.warn('Не удалось разобрать NEXTCLOUD_URL:', e.message);
+    }
+  }
+  
+  return { url, username, password };
 }
 
 export function modelSubfolder(modelTitle, version, isScreenshot = false) {
@@ -51,11 +68,19 @@ export async function saveFile(file, subfolder = 'models') {
     } catch (uploadErr) {
       // Ошибка подключения при загрузке файла
       if (uploadErr.code === 'ECONNREFUSED' || uploadErr.code === 'ETIMEDOUT' || uploadErr.code === 'ENOTFOUND') {
-        throw new Error(`Не удается подключиться к Nextcloud по адресу ${url}. Убедитесь, что Nextcloud запущен и доступен.`);
+        const originalUrl = process.env.NEXTCLOUD_URL || url;
+        throw new Error(
+          `Не удается подключиться к Nextcloud по адресу ${originalUrl}.\n` +
+          `Проверьте:\n` +
+          `1. Запущен ли контейнер Nextcloud: docker ps | grep nextcloud\n` +
+          `2. Доступен ли Nextcloud: curl ${originalUrl}/status.php\n` +
+          `3. Если приложение работает в Docker, возможно нужно использовать имя сервиса вместо localhost\n` +
+          `4. Проверьте переменную окружения NEXTCLOUD_URL (текущее значение: ${originalUrl})`
+        );
       }
       // Ошибка аутентификации
       if (uploadErr.response?.status === 401 || uploadErr.response?.status === 403) {
-        throw new Error('Ошибка аутентификации в Nextcloud. Проверьте учетные данные.');
+        throw new Error('Ошибка аутентификации в Nextcloud. Проверьте учетные данные (NEXTCLOUD_ADMIN_USER, NEXTCLOUD_ADMIN_PASSWORD).');
       }
       throw uploadErr;
     }

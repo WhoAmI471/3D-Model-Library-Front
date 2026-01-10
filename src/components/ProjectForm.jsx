@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { proxyUrl } from '@/lib/utils'
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { checkPermission } from '@/lib/permission'
@@ -8,28 +10,41 @@ import { ALL_PERMISSIONS } from '@/lib/roles'
 import { useModelsData } from '@/hooks/useModelsData'
 import { useModal } from '@/hooks/useModal'
 import { usePagination } from '@/hooks/usePagination'
+import { projectSchema } from '@/lib/validations/projectSchema'
 
 export default function ProjectForm({ project, onSubmit, onCancel }) {
   const router = useRouter()
-  const [formData, setFormData] = useState({
-    name: '',
-    city: '',
-    modelIds: []
-  })
-  const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const { models, spheres, currentUser, isLoading: isLoadingModels } = useModelsData()
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+  const [imageError, setImageError] = useState('')
   const modelsPerPage = 12
 
   const modalHandlers = useModal(onCancel)
 
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+    watch,
+    reset
+  } = useForm({
+    resolver: zodResolver(projectSchema),
+    defaultValues: {
+      name: '',
+      city: '',
+      modelIds: []
+    }
+  })
+
+  const watchedModelIds = watch('modelIds')
+
   useEffect(() => {
     if (project) {
-      setFormData({
+      reset({
         name: project.name,
         city: project.city || '',
         modelIds: project.models?.map(model => model.id) || []
@@ -41,7 +56,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
       }
       setImageFile(null)
     } else {
-      setFormData({
+      reset({
         name: '',
         city: '',
         modelIds: []
@@ -49,8 +64,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
       setImagePreview(null)
       setImageFile(null)
     }
-  }, [project])
-
+  }, [project, reset])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -58,53 +72,32 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
       .replace(/[^а-яА-ЯёЁa-zA-Z0-9\s]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
-      
-    setFormData(prev => ({
-      ...prev,
-      [name]: filteredValue
-    }))
-  
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
-    }
+    
+    setValue(name, filteredValue, { shouldValidate: true })
   }
 
   const handleModelSelect = (modelId) => {
-    setFormData(prev => {
-      const newModelIds = prev.modelIds.includes(modelId)
-        ? prev.modelIds.filter(id => id !== modelId)
-        : [...prev.modelIds, modelId]
-      
-      return {
-        ...prev,
-        modelIds: newModelIds
-      }
-    })
-  }
-
-  const validate = () => {
-    const newErrors = {}
+    const currentIds = watchedModelIds || []
+    const newModelIds = currentIds.includes(modelId)
+      ? currentIds.filter(id => id !== modelId)
+      : [...currentIds, modelId]
     
-    if (!formData.name.trim()) newErrors.name = 'Введите название проекта'
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    setValue('modelIds', newModelIds, { shouldValidate: true })
   }
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0]
+    setImageError('')
+    
     if (file) {
       const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
       if (!validMimeTypes.includes(file.type?.toLowerCase())) {
-        setErrors(prev => ({ ...prev, image: 'Разрешены только изображения: JPG, PNG, GIF, WEBP, BMP' }))
+        setImageError('Разрешены только изображения: JPG, PNG, GIF, WEBP, BMP')
         return
       }
       
       setImageFile(file)
       setImagePreview(URL.createObjectURL(file))
-      if (errors.image) {
-        setErrors(prev => ({ ...prev, image: '' }))
-      }
     }
   }
 
@@ -114,21 +107,19 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     }
     setImageFile(null)
     setImagePreview(null)
+    setImageError('')
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!validate()) return
-    
-    setIsSubmitting(true)
+  const onSubmitForm = async (data) => {
     try {
-      await onSubmit({ ...formData, imageFile, deleteImage: !imageFile && !imagePreview })
-    } catch (error) {
-      setErrors({
-        form: error.message || 'Произошла ошибка при сохранении'
+      await onSubmit({ 
+        ...data, 
+        imageFile, 
+        deleteImage: !imageFile && !imagePreview 
       })
-    } finally {
-      setIsSubmitting(false)
+    } catch (error) {
+      // Ошибки обрабатываются через formState.errors или можно использовать setError из react-hook-form
+      console.error('Ошибка при сохранении проекта:', error)
     }
   }
 
@@ -171,7 +162,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
           onMouseDown={modalHandlers.handleContentMouseDown}
           onClick={modalHandlers.handleContentClick}
         >
-          <div className="p-6 border-b border-gray-200">
+          <div className="p-6 border-b border-gray-200 flex-shrink-0">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-800">
                 {project ? 'Редактировать проект' : 'Создать новый проект'}
@@ -185,7 +176,8 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             </div>
           </div>
 
-          <div className="p-6 overflow-y-auto flex-1">
+          <form onSubmit={handleFormSubmit(onSubmitForm)} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="p-6 overflow-y-auto flex-1 min-h-0">
             {/* Поля проекта */}
             <div className="mb-6 space-y-4">
               <div>
@@ -194,8 +186,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  {...register('name')}
                   onChange={handleChange}
                   className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                     errors.name ? 'border-red-500' : 'border-gray-300'
@@ -205,7 +196,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                   maxLength={50}
                 />
                 {errors.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
                 )}
               </div>
 
@@ -215,8 +206,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                 </label>
                 <input
                   type="text"
-                  name="city"
-                  value={formData.city}
+                  {...register('city')}
                   onChange={handleChange}
                   className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                     errors.city ? 'border-red-500' : 'border-gray-300'
@@ -226,7 +216,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                   maxLength={50}
                 />
                 {errors.city && (
-                  <p className="mt-1 text-sm text-red-600">{errors.city}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.city.message}</p>
                 )}
               </div>
 
@@ -271,8 +261,8 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                     </div>
                   </label>
                 )}
-                {errors.image && (
-                  <p className="mt-1 text-sm text-red-600">{errors.image}</p>
+                {imageError && (
+                  <p className="mt-1 text-sm text-red-600">{imageError}</p>
                 )}
               </div>
             </div>
@@ -377,7 +367,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                         <div 
                           key={model.id} 
                           className={`relative bg-white border-2 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 ${
-                            formData.modelIds.includes(model.id) 
+                            watchedModelIds?.includes(model.id) 
                               ? 'border-blue-500 shadow-md' 
                               : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                           }`}
@@ -388,7 +378,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                             <input
                               type="checkbox"
                               id={`project-model-${model.id}`}
-                              checked={formData.modelIds.includes(model.id)}
+                              checked={watchedModelIds?.includes(model.id)}
                               onChange={() => handleModelSelect(model.id)}
                               className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                               onClick={(e) => e.stopPropagation()}
@@ -458,14 +448,14 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
               )}
             </div>
 
-            {errors.form && (
+            {errors.root && (
               <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm text-red-600">{errors.form}</p>
+                <p className="text-sm text-red-600">{errors.root.message}</p>
               </div>
             )}
           </div>
 
-          <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+          <div className="p-6 border-t border-gray-200 flex justify-end space-x-3 flex-shrink-0">
             <button
               type="button"
               onClick={onCancel}
@@ -476,7 +466,6 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             </button>
             <button
               type="submit"
-              onClick={handleSubmit}
               className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
                 isSubmitting
                   ? 'bg-gray-400 cursor-not-allowed'
@@ -495,6 +484,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
               ) : project ? 'Сохранить изменения' : 'Создать проект'}
             </button>
           </div>
+          </form>
         </div>
       </div>
     </>

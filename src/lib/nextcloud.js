@@ -1,13 +1,33 @@
 import axios from 'axios'
 
 function getConfig() {
-  const url = process.env.NEXTCLOUD_URL
+  let url = process.env.NEXTCLOUD_URL
   const username = process.env.NEXTCLOUD_ADMIN_USER
   const password = process.env.NEXTCLOUD_ADMIN_PASSWORD
-  if (url && username && password) {
-    return { url, username, password }
+  
+  if (!url || !username || !password) {
+    return null
   }
-  return null
+  
+  // Нормализуем URL - убираем trailing slash
+  url = url.replace(/\/+$/, '')
+  
+  // Если URL начинается с localhost и мы в Docker-окружении, пытаемся использовать имя сервиса
+  // Но только если NEXTCLOUD_DOCKER_SERVICE задан явно
+  if (process.env.NEXTCLOUD_DOCKER_SERVICE && url.includes('localhost')) {
+    // В Docker-сети используем имя сервиса вместо localhost
+    try {
+      const urlObj = new URL(url)
+      if (urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1') {
+        url = `${urlObj.protocol}//${process.env.NEXTCLOUD_DOCKER_SERVICE}${urlObj.port ? `:${urlObj.port}` : ''}`
+      }
+    } catch (e) {
+      // Если URL некорректный, используем как есть
+      console.warn('Не удалось разобрать NEXTCLOUD_URL:', e.message)
+    }
+  }
+  
+  return { url, username, password }
 }
 
 export function sanitizeName(name) {
@@ -20,7 +40,30 @@ export async function createFolderRecursive(folder) {
     throw new Error('Конфигурация Nextcloud не найдена. Проверьте переменные окружения NEXTCLOUD_URL, NEXTCLOUD_ADMIN_USER, NEXTCLOUD_ADMIN_PASSWORD')
   }
   const { url, username, password } = cfg
-  const parts = folder.split('/')
+  
+  // Проверяем доступность Nextcloud перед началом работы
+  try {
+    await axios.get(`${url}/status.php`, {
+      timeout: 5000,
+      validateStatus: (status) => status < 500 // Принимаем любые статусы < 500
+    })
+  } catch (err) {
+    if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND') {
+      const originalUrl = process.env.NEXTCLOUD_URL || url
+      throw new Error(
+        `Не удается подключиться к Nextcloud по адресу ${originalUrl}.\n` +
+        `Проверьте:\n` +
+        `1. Запущен ли контейнер Nextcloud: docker ps | grep nextcloud\n` +
+        `2. Доступен ли Nextcloud: curl ${originalUrl}/status.php\n` +
+        `3. Если приложение работает в Docker, возможно нужно использовать имя сервиса вместо localhost\n` +
+        `4. Проверьте переменную окружения NEXTCLOUD_URL (текущее значение: ${originalUrl})`
+      )
+    }
+    // Другие ошибки пробрасываем дальше
+    throw err
+  }
+  
+  const parts = folder.split('/').filter(p => p) // Фильтруем пустые части
   let current = ''
   for (const part of parts) {
     current = current ? `${current}/${part}` : part
@@ -41,7 +84,11 @@ export async function createFolderRecursive(folder) {
       }
       // Ошибка подключения
       if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND') {
-        throw new Error(`Не удается подключиться к Nextcloud по адресу ${url}. Убедитесь, что Nextcloud запущен и доступен.`)
+        const originalUrl = process.env.NEXTCLOUD_URL || url
+        throw new Error(
+          `Не удается подключиться к Nextcloud по адресу ${originalUrl}.\n` +
+          `Проверьте, что Nextcloud запущен и доступен.`
+        )
       }
       throw err
     }

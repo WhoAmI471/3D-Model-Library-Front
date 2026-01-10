@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useModelsData } from '@/hooks/useModelsData'
 import { useDragAndDrop } from '@/hooks/useDragAndDrop'
@@ -8,6 +10,7 @@ import ScreenshotsUploadSection from '@/components/modelForm/ScreenshotsUploadSe
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
 import ProjectsSection from '@/components/modelForm/ProjectsSection'
 import FileUploadSection from '@/components/modelForm/FileUploadSection'
+import { createModelSchema } from '@/lib/validations/modelSchema'
 
 export default function ModelUploadForm({ initialProjectId = null }) {
   const router = useRouter()
@@ -17,82 +20,71 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   const [uploadComplete, setUploadComplete] = useState(false)
   const { users, projects, spheres, models: allModels, currentUser } = useModelsData({ includeUsers: true, includeProjects: true })
   const [selectedProjects, setSelectedProjects] = useState([])
-  const [formState, setFormState] = useState({
-    title: '',
-    description: '',
-    projectId: '',
-    authorId: '',
-    version: '1.0',
-    sphereId: '',
-    zipFile: null,
-    screenshots: []
-  })
+  const [zipFile, setZipFile] = useState(null)
+  const [screenshots, setScreenshots] = useState([])
   const [projectSearchTerm, setProjectSearchTerm] = useState('')
-
-  const toggleProject = (projectId) => {
-    setSelectedProjects(prev => 
-      prev.includes(projectId)
-        ? prev.filter(id => id !== projectId)
-        : [...prev, projectId]
-    )
-  }
+  
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+    setValue,
+    reset,
+    setError
+  } = useForm({
+    resolver: zodResolver(createModelSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      authorId: '',
+      version: '1.0',
+      sphereId: '',
+      projectIds: []
+    },
+    mode: 'onChange'
+  })
+  
+  const formData = watch()
 
   // Устанавливаем текущего пользователя по умолчанию, если автор еще не выбран
   useEffect(() => {
-    if (currentUser && !formState.authorId) {
-      setFormState(prev => ({
-        ...prev,
-        authorId: currentUser.id
-      }))
+    if (currentUser && !formData.authorId) {
+      setValue('authorId', currentUser.id)
     }
-  }, [currentUser, formState.authorId])
+  }, [currentUser, formData.authorId, setValue])
   
   // Автоматически выбираем проект, если передан initialProjectId
   useEffect(() => {
     if (initialProjectId && projects.length > 0) {
       setSelectedProjects([initialProjectId])
+      setValue('projectIds', [initialProjectId])
     }
-  }, [initialProjectId, projects])
+  }, [initialProjectId, projects, setValue])
 
   // Получаем информацию о выбранном проекте для отображения города
   const selectedProject = projects.find(p => selectedProjects.includes(p.id))
   
   // Функция для фильтрации символов - разрешает только латиницу, кириллицу, цифры, пробелы и основные знаки препинания
   const filterAllowedCharacters = (text) => {
-    // Регулярное выражение: латиница, кириллица, цифры, пробелы, точка, запятая, дефис, подчеркивание, скобки, двоеточие, точка с запятой
     const allowedPattern = /[a-zA-Zа-яА-ЯёЁ0-9\s.,\-_():;]/g
     const matches = text.match(allowedPattern)
     return matches ? matches.join('') : ''
-  }
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    
-    // Применяем фильтрацию только для полей "title" и "description"
-    if (name === 'title' || name === 'description') {
-      const filteredValue = filterAllowedCharacters(value)
-      setFormState(prev => ({ ...prev, [name]: filteredValue }))
-    } else {
-      setFormState(prev => ({ ...prev, [name]: value }))
-    }
   }
 
   // Обработчик для предотвращения ввода недопустимых символов с клавиатуры
   const handleKeyDown = (e) => {
     const { name } = e.target
     if (name === 'title' || name === 'description') {
-      // Разрешаем служебные клавиши (Backspace, Delete, стрелки, Tab, Enter и т.д.)
       const allowedKeys = [
         'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
         'Home', 'End', 'Tab', 'Enter', 'Escape'
       ]
       
-      // Разрешаем комбинации с Ctrl/Cmd (копирование, вставка и т.д.)
       if (e.ctrlKey || e.metaKey || allowedKeys.includes(e.key)) {
         return
       }
       
-      // Проверяем вводимый символ
       const char = e.key
       if (char && char.length === 1 && !/[a-zA-Zа-яА-ЯёЁ0-9\s.,\-_():;]/.test(char)) {
         e.preventDefault()
@@ -107,10 +99,9 @@ export default function ModelUploadForm({ initialProjectId = null }) {
       e.preventDefault()
       const pastedText = (e.clipboardData || window.clipboardData).getData('text')
       const filteredText = filterAllowedCharacters(pastedText)
-      // Вставляем отфильтрованный текст в позицию курсора
       const newValue = value.substring(0, selectionStart) + filteredText + value.substring(selectionEnd)
-      setFormState(prev => ({ ...prev, [name]: newValue }))
-      // Восстанавливаем позицию курсора после обновления состояния
+      setValue(name, newValue, { shouldValidate: true })
+      
       setTimeout(() => {
         const input = e.target
         const newCursorPos = selectionStart + filteredText.length
@@ -119,24 +110,22 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     }
   }
 
-  const handleZipFileChange = (e) => {
-    const file = e.target.files[0]
+  const handleZipFileChange = (file) => {
     if (file) {
-      // Проверка расширения файла
       const fileName = file.name.toLowerCase()
       const isZip = fileName.endsWith('.zip')
       
       if (!isZip) {
-        alert('Можно загружать только .zip файлы!')
-        // Очищаем input
+        setError('root', { type: 'validation', message: 'Можно загружать только .zip файлы!' })
         if (zipFileInputRef.current) {
           zipFileInputRef.current.value = ''
         }
-        setFormState(prev => ({ ...prev, zipFile: null }))
+        setZipFile(null)
         return
       }
       
-      setFormState(prev => ({ ...prev, zipFile: file }))
+      setZipFile(file)
+      setError('root', {}) // Очищаем ошибку
     }
   }
 
@@ -156,27 +145,21 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   }
 
   const handleScreenshotAdd = (newScreenshots) => {
-    setFormState(prev => ({
-      ...prev,
-      screenshots: [...prev.screenshots, ...newScreenshots]
-    }))
+    setScreenshots(prev => [...prev, ...newScreenshots])
   }
 
   const removeScreenshot = (index) => {
-    setFormState(prev => {
-      const newScreenshots = [...prev.screenshots]
+    setScreenshots(prev => {
+      const newScreenshots = [...prev]
       URL.revokeObjectURL(newScreenshots[index].preview)
       newScreenshots.splice(index, 1)
-      return { ...prev, screenshots: newScreenshots }
+      return newScreenshots
     })
   }
 
   // Drag and drop для скриншотов
   const handleScreenshotsReorder = (newScreenshots) => {
-    setFormState(prev => ({
-      ...prev,
-      screenshots: newScreenshots
-    }))
+    setScreenshots(newScreenshots)
   }
 
   const {
@@ -186,48 +169,60 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     handleDragOver,
     handleDragLeave,
     handleDrop
-  } = useDragAndDrop(formState.screenshots, handleScreenshotsReorder)
+  } = useDragAndDrop(screenshots, handleScreenshotsReorder)
 
   const removeZipFile = () => {
-    setFormState(prev => ({ ...prev, zipFile: null }))
-    // Очищаем input
+    setZipFile(null)
     if (zipFileInputRef.current) {
       zipFileInputRef.current.value = ''
     }
   }
 
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const toggleProject = (projectId) => {
+    const currentIds = formData.projectIds || []
+    const newIds = currentIds.includes(projectId)
+      ? currentIds.filter(id => id !== projectId)
+      : [...currentIds, projectId]
     
-    // Проверка обязательных полей
-    if (!formState.title || !formState.sphereId || !formState.zipFile || formState.screenshots.length < 2) {
-      alert('Пожалуйста, заполните все обязательные поля и добавьте минимум 2 скриншота');
-      return;
+    setSelectedProjects(newIds)
+    setValue('projectIds', newIds, { shouldValidate: false })
+  }
+
+
+  const onSubmitForm = async (data) => {
+    // Валидация файлов
+    if (!zipFile) {
+      setError('root', { type: 'validation', message: 'Загрузите ZIP-архив модели' })
+      return
+    }
+    
+    if (!screenshots || screenshots.length < 2) {
+      setError('root', { type: 'validation', message: 'Добавьте минимум 2 скриншота' })
+      return
     }
 
-    // Если загрузка уже идет, не отправляем повторно
     if (loading) {
-      return;
+      return
     }
   
-    setLoading(true);
-    setUploadProgress(0);
-    setUploadComplete(false);
+    setLoading(true)
+    setUploadProgress(0)
+    setUploadComplete(false)
 
-    const xhr = new XMLHttpRequest();
-    const formData = new FormData();
+    const xhr = new XMLHttpRequest()
+    const formDataToSend = new FormData()
     
-    formData.append('title', formState.title);
-    formData.append('description', formState.description);
-    formData.append('authorId', formState.authorId);
-    formData.append('sphereId', formState.sphereId);
-    formData.append('version', formState.version);
+    formDataToSend.append('title', data.title)
+    formDataToSend.append('description', data.description || '')
+    formDataToSend.append('authorId', data.authorId || '')
+    formDataToSend.append('sphereId', data.sphereId)
+    formDataToSend.append('version', data.version || '1.0')
 
-    selectedProjects.forEach(id => formData.append('projectIds', id));
+    const projectIds = data.projectIds || selectedProjects
+    projectIds.forEach(id => formDataToSend.append('projectIds', id))
 
-    formData.append('zipFile', formState.zipFile);
-    formState.screenshots.forEach(sc => formData.append('screenshots', sc.file));
+    formDataToSend.append('zipFile', zipFile)
+    screenshots.forEach(sc => formDataToSend.append('screenshots', sc.file))
 
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) {
@@ -282,9 +277,9 @@ export default function ModelUploadForm({ initialProjectId = null }) {
       setLoading(false);
     });
 
-    xhr.open('POST', '/api/models/upload');
-    xhr.send(formData);
-  };
+    xhr.open('POST', '/api/models/upload')
+    xhr.send(formDataToSend)
+  }
 
 
   // Сортировка сфер: по количеству моделей, "Другое" в конце
@@ -317,22 +312,26 @@ export default function ModelUploadForm({ initialProjectId = null }) {
             <ArrowLeftIcon className="h-5 w-5" />
           </button>
           <input
-            name="title"
-            value={formState.title}
-            onChange={handleChange}
+            {...register('title')}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            className="text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0"
+            className={`text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0 ${
+              errors.title ? 'border-b border-red-500' : ''
+            }`}
             placeholder="Название модели"
-            required
             maxLength={50}
           />
         </div>
       
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleFormSubmit(onSubmitForm)} className="space-y-8">
+        {errors.root && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-600">{errors.root.message}</p>
+          </div>
+        )}
         {/* Галерея скриншотов */}
         <ScreenshotsUploadSection
-          screenshots={formState.screenshots}
+          screenshots={screenshots}
           onAdd={handleScreenshotAdd}
           onRemove={removeScreenshot}
           draggedIndex={draggedIndex}
@@ -346,8 +345,16 @@ export default function ModelUploadForm({ initialProjectId = null }) {
 
         {/* Информация о модели */}
         <ModelInfoSection
-          form={formState}
-          handleChange={handleChange}
+          form={formData}
+          handleChange={(e) => {
+            const { name, value } = e.target
+            if (name === 'title' || name === 'description') {
+              const filteredValue = filterAllowedCharacters(value)
+              setValue(name, filteredValue, { shouldValidate: true })
+            } else {
+              setValue(name, value, { shouldValidate: true })
+            }
+          }}
           users={users}
           currentUser={currentUser}
           sortedSpheres={sortedSpheres}
@@ -386,10 +393,11 @@ export default function ModelUploadForm({ initialProjectId = null }) {
 
         {/* ZIP-архив модели */}
         <FileUploadSection
-          newFile={formState.zipFile}
-          onFileChange={(file) => setFormState(prev => ({ ...prev, zipFile: file }))}
+          newFile={zipFile}
+          onFileChange={handleZipFileChange}
           disabled={loading}
           label="ZIP-архив модели *"
+          inputRef={zipFileInputRef}
         />
 
         {/* Кнопки действий */}

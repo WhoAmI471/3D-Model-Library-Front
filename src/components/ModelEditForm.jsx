@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { formatFileSize, proxyUrl } from '@/lib/utils'
 import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
@@ -13,18 +15,13 @@ import ScreenshotsSection from '@/components/modelForm/ScreenshotsSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
 import ProjectsSection from '@/components/modelForm/ProjectsSection'
 import FileUploadSection from '@/components/modelForm/FileUploadSection'
+import { updateModelSchema } from '@/lib/validations/modelSchema'
 
 export default function ModelEditForm({ id, userRole }) {
   const router = useRouter()
   const { users, projects, spheres, models: allModels, currentUser, isLoading: isLoadingData } = useModelsData({ includeUsers: true, includeProjects: true })
   const { toasts, success, error: showErrorToast, removeToast } = useToast()
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    authorId: '',
-    version: '',
-    sphereId: '',
-  })
+  
   const [selectedProjects, setSelectedProjects] = useState([])
   const [zipFile, setZipFile] = useState(null)
   const [screenshots, setScreenshots] = useState([])
@@ -40,6 +37,28 @@ export default function ModelEditForm({ id, userRole }) {
   const [draggedIndex, setDraggedIndex] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
   const [draggedType, setDraggedType] = useState(null) // 'current' или 'new'
+  
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+    setValue,
+    reset
+  } = useForm({
+    resolver: zodResolver(updateModelSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      authorId: '',
+      version: '1.0',
+      sphereId: '',
+      projectIds: []
+    },
+    mode: 'onChange'
+  })
+  
+  const formData = watch()
 
   
   const [canEditModel, setCanEditModel] = useState(null);
@@ -108,12 +127,13 @@ export default function ModelEditForm({ id, userRole }) {
           currentVersion = sortedVersions[0].version
         }
         
-        setForm({
+        reset({
           title: data.title || '',
           description: data.description || '',
           authorId: authorIdValue,
           version: currentVersion,
           sphereId: data.sphere?.id || '',
+          projectIds: data.projects?.map(p => p.id) || []
         })
         
         setSelectedProjects(data.projects?.map(p => p.id) || [])
@@ -134,6 +154,7 @@ export default function ModelEditForm({ id, userRole }) {
     }
 
     if (id && currentUser !== null) loadModel()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, currentUser])
 
   // Очистка blob URL при размонтировании
@@ -152,17 +173,71 @@ export default function ModelEditForm({ id, userRole }) {
     }
   }, [])
 
+  // Функция для фильтрации символов - разрешает только латиницу, кириллицу, цифры, пробелы и основные знаки препинания
+  const filterAllowedCharacters = (text) => {
+    const allowedPattern = /[a-zA-Zа-яА-ЯёЁ0-9\s.,\-_():;]/g
+    const matches = text.match(allowedPattern)
+    return matches ? matches.join('') : ''
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
+    
+    // Применяем фильтрацию только для полей "title" и "description"
+    if (name === 'title' || name === 'description') {
+      const filteredValue = filterAllowedCharacters(value)
+      setValue(name, filteredValue, { shouldValidate: true })
+    } else {
+      setValue(name, value, { shouldValidate: true })
+    }
+  }
+
+  // Обработчик для предотвращения ввода недопустимых символов с клавиатуры
+  const handleKeyDown = (e) => {
+    const { name } = e.target
+    if (name === 'title' || name === 'description') {
+      const allowedKeys = [
+        'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+        'Home', 'End', 'Tab', 'Enter', 'Escape'
+      ]
+      
+      if (e.ctrlKey || e.metaKey || allowedKeys.includes(e.key)) {
+        return
+      }
+      
+      const char = e.key
+      if (char && char.length === 1 && !/[a-zA-Zа-яА-ЯёЁ0-9\s.,\-_():;]/.test(char)) {
+        e.preventDefault()
+      }
+    }
+  }
+
+  // Обработчик для предотвращения вставки недопустимых символов
+  const handlePaste = (e) => {
+    const { name, selectionStart, selectionEnd, value } = e.target
+    if (name === 'title' || name === 'description') {
+      e.preventDefault()
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+      const filteredText = filterAllowedCharacters(pastedText)
+      const newValue = value.substring(0, selectionStart) + filteredText + value.substring(selectionEnd)
+      setValue(name, newValue, { shouldValidate: true })
+      
+      setTimeout(() => {
+        const input = e.target
+        const newCursorPos = selectionStart + filteredText.length
+        input.setSelectionRange(newCursorPos, newCursorPos)
+      }, 0)
+    }
   }
 
   const toggleProject = (projectId) => {
-    setSelectedProjects(prev => 
-      prev.includes(projectId)
-        ? prev.filter(id => id !== projectId)
-        : [...prev, projectId]
-    )
+    const currentIds = formData.projectIds || []
+    const newIds = currentIds.includes(projectId)
+      ? currentIds.filter(id => id !== projectId)
+      : [...currentIds, projectId]
+    
+    setSelectedProjects(newIds)
+    setValue('projectIds', newIds, { shouldValidate: false })
   }
 
   const isValidImageFile = (file) => {
@@ -180,36 +255,21 @@ export default function ModelEditForm({ id, userRole }) {
     return hasValidExtension
   }
 
-  const handleScreenshotAdd = (e) => {
-    const files = Array.from(e.target.files)
-    if (files.length > 0) {
-      const validFiles = []
-      const invalidFiles = []
-      
-      files.forEach(file => {
-        if (isValidImageFile(file)) {
-          validFiles.push(file)
-        } else {
-          invalidFiles.push(file.name)
-        }
-      })
-      
-      if (invalidFiles.length > 0) {
-        alert(`Следующие файлы не являются изображениями и не будут добавлены:\n${invalidFiles.join('\n')}\n\nРазрешены только изображения: JPG, PNG, GIF, WEBP, BMP`)
-      }
-      
-      if (validFiles.length > 0) {
-        setScreenshots(prev => [...prev, ...validFiles])
-      }
-      
-      // Очищаем input, чтобы можно было выбрать тот же файл снова
-      e.target.value = ''
-    }
+  const handleScreenshotAdd = (files) => {
+    // files - массив File объектов из ScreenshotsSection, нужно создать объекты с preview
+    const newScreenshots = files.map(file => ({
+      preview: URL.createObjectURL(file),
+      file: file
+    }))
+    setScreenshots(prev => [...prev, ...newScreenshots])
   }
 
   const removeScreenshot = (index) => {
     setScreenshots(prev => {
       const newScreenshots = [...prev]
+      if (newScreenshots[index]?.preview && newScreenshots[index].preview.startsWith('blob:')) {
+        URL.revokeObjectURL(newScreenshots[index].preview)
+      }
       newScreenshots.splice(index, 1)
       return newScreenshots
     })
@@ -421,7 +481,10 @@ export default function ModelEditForm({ id, userRole }) {
     
     // Проверяем количество скриншотов
     const remainingCurrentScreenshots = currentFiles.screenshots.filter(
-      screenshot => !deletedScreenshots.includes(screenshot)
+      screenshot => {
+        const url = typeof screenshot === 'string' ? screenshot : (screenshot?.originalUrl || screenshot)
+        return !deletedScreenshots.includes(url)
+      }
     )
     const newScreenshotsCount = screenshots.length
     const totalScreenshots = remainingCurrentScreenshots.length + newScreenshotsCount
@@ -429,96 +492,107 @@ export default function ModelEditForm({ id, userRole }) {
     return totalScreenshots >= 2
   }
 
-  const handleSubmit = async (e) => {
-  e.preventDefault()
-  setIsLoading(true)
-  setError(null)
+  const onSubmitForm = async (data) => {
+    setIsLoading(true)
+    setError(null)
 
-  try {
-    // Проверка количества скриншотов перед сохранением (только если редактируются скриншоты)
-    if ((canEditModel || canEditScreenshots) && !isValidScreenshotsCount()) {
-      setIsLoading(false)
-      return
-    }
+    try {
+      // Проверка количества скриншотов перед сохранением (только если редактируются скриншоты)
+      if ((canEditModel || canEditScreenshots) && !isValidScreenshotsCount()) {
+        setIsLoading(false)
+        return
+      }
 
-    const formData = new FormData()
-    formData.append('id', id)
-    
-    // Если можно редактировать только описание, сферу или скриншоты (но не полную модель), отправляем соответствующие поля
-    if (!canEditModel && (canEditDescription || canEditSphere || canEditScreenshots)) {
-      if (canEditDescription) {
-        formData.append('description', form.description)
-      }
-      if (canEditSphere) {
-        formData.append('sphereId', form.sphereId || '')
-      }
-      if (canEditScreenshots) {
+      const formDataToSend = new FormData()
+      formDataToSend.append('id', id)
+      
+      // Если можно редактировать только описание, сферу или скриншоты (но не полную модель), отправляем соответствующие поля
+      if (!canEditModel && (canEditDescription || canEditSphere || canEditScreenshots)) {
+        if (canEditDescription) {
+          formDataToSend.append('description', data.description || '')
+        }
+        if (canEditSphere) {
+          formDataToSend.append('sphereId', data.sphereId || '')
+        }
+        if (canEditScreenshots) {
+          // Добавляем информацию об удаленных скриншотах
+          deletedScreenshots.forEach(url => {
+            formDataToSend.append('deletedScreenshots', url)
+          })
+          // Отправляем порядок существующих скриншотов (после удаления удаленных)
+          currentFiles.screenshots
+            .map(screenshot => typeof screenshot === 'string' ? screenshot : (screenshot?.originalUrl || screenshot))
+            .filter(url => url && !deletedScreenshots.includes(url))
+            .forEach(url => {
+              formDataToSend.append('currentScreenshotUrls', url)
+            })
+          // Добавляем новые скриншоты
+          screenshots.forEach(screenshot => {
+            if (screenshot && screenshot.file) {
+              formDataToSend.append('screenshots', screenshot.file)
+            }
+          })
+        }
+      } else {
+        // Добавляем все поля формы
+        if (data.title) formDataToSend.append('title', data.title)
+        if (data.description !== undefined) formDataToSend.append('description', data.description || '')
+        if (data.authorId) formDataToSend.append('authorId', data.authorId)
+        if (data.version) formDataToSend.append('version', data.version)
+        if (data.sphereId) formDataToSend.append('sphereId', data.sphereId)
+        
+        // Добавляем выбранные проекты
+        const projectIds = data.projectIds || selectedProjects
+        projectIds.forEach(projectId => {
+          formDataToSend.append('projectIds', projectId)
+        })
+        
         // Добавляем информацию об удаленных скриншотах
         deletedScreenshots.forEach(url => {
-          formData.append('deletedScreenshots', url)
+          formDataToSend.append('deletedScreenshots', url)
         })
+        
         // Отправляем порядок существующих скриншотов (после удаления удаленных)
         currentFiles.screenshots
           .filter(url => !deletedScreenshots.includes(url))
           .forEach(url => {
-            formData.append('currentScreenshotUrls', url)
+            formDataToSend.append('currentScreenshotUrls', url)
           })
-        // Добавляем новые скриншоты
-        screenshots.forEach(screenshot => formData.append('screenshots', screenshot))
-      }
-    } else {
-      // Добавляем все поля формы
-      for (const key in form) {
-        formData.append(key, form[key])
-      }
-      
-      // Добавляем выбранные проекты
-      selectedProjects.forEach(projectId => {
-        formData.append('projectIds', projectId)
-      })
-      
-      // Добавляем информацию об удаленных скриншотах
-      deletedScreenshots.forEach(url => {
-        formData.append('deletedScreenshots', url)
-      })
-      
-      // Отправляем порядок существующих скриншотов (после удаления удаленных)
-      currentFiles.screenshots
-        .filter(url => !deletedScreenshots.includes(url))
-        .forEach(url => {
-          formData.append('currentScreenshotUrls', url)
+        
+        // Добавляем информацию об удалении ZIP-файла, если он был удален
+        if (!currentFiles.zip && !zipFile && existingModel?.fileUrl) {
+          formDataToSend.append('deleteZipFile', 'true')
+        }
+        
+        // Добавляем новые файлы, если они были выбраны
+        if (zipFile) formDataToSend.append('zipFile', zipFile)
+        screenshots.forEach(screenshot => {
+          if (screenshot && screenshot.file) {
+            formDataToSend.append('screenshots', screenshot.file)
+          }
         })
-      
-      // Добавляем информацию об удалении ZIP-файла, если он был удален
-      if (!currentFiles.zip && !zipFile && existingModel?.fileUrl) {
-        formData.append('deleteZipFile', 'true')
       }
-      
-      // Добавляем новые файлы, если они были выбраны
-      if (zipFile) formData.append('zipFile', zipFile)
-      screenshots.forEach(screenshot => formData.append('screenshots', screenshot))
-    }
 
-    const result = await apiClient.models.update(id, formData)
+      const result = await apiClient.models.update(id, formDataToSend)
 
-    if (result && result.success) {
-      success('Модель успешно обновлена')
-      // Возвращаемся на предыдущую страницу после успешного сохранения
-      setTimeout(() => {
-        router.back()
-      }, 500)
-    } else {
-      throw new Error(result?.error || 'Не удалось обновить модель')
+      if (result && result.success) {
+        success('Модель успешно обновлена')
+        // Возвращаемся на предыдущую страницу после успешного сохранения
+        setTimeout(() => {
+          router.back()
+        }, 500)
+      } else {
+        throw new Error(result?.error || 'Не удалось обновить модель')
+      }
+    } catch (err) {
+      console.error('Ошибка обновления:', err)
+      const errorMessage = err instanceof ApiError ? err.message : (err.message || 'Произошла ошибка')
+      setError(errorMessage)
+      showErrorToast(errorMessage)
+    } finally {
+      setIsLoading(false)
     }
-  } catch (err) {
-    console.error('Ошибка обновления:', err)
-    const errorMessage = err instanceof ApiError ? err.message : (err.message || 'Произошла ошибка')
-    setError(errorMessage)
-    showErrorToast(errorMessage)
-  } finally {
-    setIsLoading(false)
   }
-}
 
   if (isLoading && !error) {
     return (
@@ -560,22 +634,32 @@ export default function ModelEditForm({ id, userRole }) {
                 </button>
           {canEditModel ? (
             <input
-              name="title"
-              value={form.title}
+              {...register('title')}
               onChange={handleChange}
-              className="text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0"
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              className={`text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0 ${
+                errors.title ? 'border-b border-red-500' : ''
+              }`}
               placeholder="Название модели"
-              required
               maxLength={50}
             />
           ) : (
             <h1 className="text-2xl font-semibold text-gray-900 leading-none pb-0">
-              {form.title || 'Редактирование модели'}
+              {formData.title || 'Редактирование модели'}
             </h1>
+          )}
+          {errors.title && canEditModel && (
+            <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
           )}
         </div>
       
-      <form id="model-edit-form" onSubmit={handleSubmit} className="space-y-8">
+      <form id="model-edit-form" onSubmit={handleFormSubmit(onSubmitForm)} className="space-y-8">
+        {errors.root && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-600">{errors.root.message}</p>
+          </div>
+        )}
         {canEditModel === true ? (
           <>
             {/* Галерея скриншотов */}
@@ -600,12 +684,12 @@ export default function ModelEditForm({ id, userRole }) {
               onNewDrop={handleNewDrop}
               canEditModel={canEditModel}
               canEditScreenshots={canEditScreenshots}
-              disabled={isLoading}
+              disabled={isLoading || isSubmitting}
             />
             
             {/* Информация о модели */}
             <ModelInfoSection
-              form={form}
+              form={formData}
               handleChange={handleChange}
               users={users}
               currentUser={currentUser}
@@ -614,6 +698,8 @@ export default function ModelEditForm({ id, userRole }) {
               canEditDescription={canEditDescription}
               canEditSphere={canEditSphere}
               showTitle={false}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
             />
 
             {/* ZIP-архив модели */}
@@ -626,7 +712,7 @@ export default function ModelEditForm({ id, userRole }) {
                   setCurrentFiles(prev => ({ ...prev, zip: null }))
                 }
               }}
-              disabled={!canEditModel || isLoading}
+              disabled={!canEditModel || isLoading || isSubmitting}
               label="ZIP-архив модели"
             />
 
@@ -637,7 +723,7 @@ export default function ModelEditForm({ id, userRole }) {
               onToggleProject={toggleProject}
               searchTerm={projectSearchTerm}
               onSearchChange={setProjectSearchTerm}
-              disabled={isLoading}
+              disabled={isLoading || isSubmitting}
             />
           </>
         ) : (canEditDescription === true || canEditSphere === true || canEditScreenshots === true) ? (
@@ -650,13 +736,19 @@ export default function ModelEditForm({ id, userRole }) {
                   Описание
                 </label>
                 <textarea
-                  name="description"
-                  value={form.description}
+                  {...register('description')}
                   onChange={handleChange}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   rows={4}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  maxLength={1000}
+                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.description ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  maxLength={5000}
                 />
+                {errors.description && (
+                  <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+                )}
               </div>
             )}
             
@@ -667,12 +759,12 @@ export default function ModelEditForm({ id, userRole }) {
                   Сфера <span className="text-red-500">*</span>
                 </label>
                 <select
-                  name="sphereId"
-                  value={form.sphereId || ''}
+                  {...register('sphereId')}
                   onChange={handleChange}
-                  required
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-                  style={!form.sphereId ? { color: 'rgba(156, 163, 175, 0.7)' } : { color: 'rgba(17, 24, 39, 1)' }}
+                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 cursor-pointer ${
+                    errors.sphereId ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  style={!formData.sphereId ? { color: 'rgba(156, 163, 175, 0.7)' } : { color: 'rgba(17, 24, 39, 1)' }}
                 >
                   <option value="" disabled hidden>
                     Выберите сферу
@@ -683,6 +775,9 @@ export default function ModelEditForm({ id, userRole }) {
                     </option>
                   ))}
                 </select>
+                {errors.sphereId && (
+                  <p className="mt-1 text-sm text-red-600">{errors.sphereId.message}</p>
+                )}
               </div>
             )}
             
@@ -702,7 +797,9 @@ export default function ModelEditForm({ id, userRole }) {
                     </div>
                   )}
                   <div className="flex gap-4 overflow-x-auto pb-2">
-                    {currentFiles.screenshots.map((file, index) => (
+                    {currentFiles.screenshots.map((file, index) => {
+                      const fileUrl = typeof file === 'string' ? file : (file?.originalUrl || file)
+                      return (
                       <div
                         key={index}
                         draggable
@@ -717,7 +814,7 @@ export default function ModelEditForm({ id, userRole }) {
                         } ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}
                       >
                         <img
-                          src={proxyUrl(file)}
+                          src={proxyUrl(fileUrl)}
                           alt={`Скриншот ${index + 1}`}
                           className="object-cover w-full h-full pointer-events-none"
                           draggable={false}
@@ -741,7 +838,8 @@ export default function ModelEditForm({ id, userRole }) {
                           {index + 1} / {currentFiles.screenshots.length}
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                   
                   {/* Удаленные скриншоты (можно восстановить) */}
@@ -809,7 +907,7 @@ export default function ModelEditForm({ id, userRole }) {
                         Перетаскивайте скриншоты для изменения порядка.
                       </div>
                       <div className="flex gap-4 overflow-x-auto pb-2">
-                        {screenshots.map((file, index) => (
+                        {screenshots.map((screenshot, index) => (
                           <div
                             key={index}
                             draggable
@@ -824,7 +922,7 @@ export default function ModelEditForm({ id, userRole }) {
                             } ${index === 0 && currentFiles.screenshots.length === 0 ? 'ring-2 ring-blue-500' : ''}`}
                           >
                             <img
-                              src={URL.createObjectURL(file)}
+                              src={screenshot.preview || URL.createObjectURL(screenshot.file)}
                               alt={`Новый скриншот ${index + 1}`}
                               className="object-cover w-full h-full pointer-events-none"
                               draggable={false}
@@ -885,7 +983,7 @@ export default function ModelEditForm({ id, userRole }) {
               <button
                 type="button"
                 onClick={() => router.back()}
-                disabled={isLoading || !isValidScreenshotsCount()}
+                disabled={isLoading || isSubmitting || !isValidScreenshotsCount()}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Отмена
@@ -893,12 +991,12 @@ export default function ModelEditForm({ id, userRole }) {
               <button
                 type="submit"
                 form="model-edit-form"
-                disabled={isLoading || !isValidScreenshotsCount()}
+                disabled={isLoading || isSubmitting || !isValidScreenshotsCount()}
                 className={`inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                  (isLoading || !isValidScreenshotsCount()) ? 'opacity-70 cursor-not-allowed' : ''
+                  (isLoading || isSubmitting || !isValidScreenshotsCount()) ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
               >
-                {isLoading ? (
+                {(isLoading || isSubmitting) ? (
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

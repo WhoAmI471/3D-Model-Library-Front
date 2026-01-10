@@ -9,7 +9,8 @@ export default function FileUploadSection({
   newFile = null,
   onFileChange,
   disabled = false,
-  label = 'ZIP-архив модели'
+  label = 'ZIP-архив модели',
+  inputRef = null
 }) {
   return (
     <div className="mb-8">
@@ -41,6 +42,7 @@ export default function FileUploadSection({
           </svg>
           {currentFile ? 'Заменить ZIP-файл' : 'Выберите ZIP-файл'}
           <input
+            ref={inputRef}
             type="file"
             accept=".zip"
             onChange={(e) => {
@@ -49,7 +51,11 @@ export default function FileUploadSection({
                 const fileName = file.name.toLowerCase()
                 if (!fileName.endsWith('.zip')) {
                   alert('Можно загружать только .zip файлы!')
-                  e.target.value = ''
+                  if (inputRef?.current) {
+                    inputRef.current.value = ''
+                  } else {
+                    e.target.value = ''
+                  }
                   return
                 }
                 onFileChange(file)
