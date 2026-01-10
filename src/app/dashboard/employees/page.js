@@ -178,6 +178,25 @@ export default function EmployeesPage() {
     )
   }
 
+  // Проверка доступа: только администраторы и менеджеры могут видеть страницу сотрудников
+  if (user && user.role !== 'ADMIN' && user.role !== 'MANAGER') {
+    return (
+      <div className="min-h-full bg-white">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="text-center py-16">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Доступ запрещен</h1>
+            <p className="text-gray-600 mb-6">
+              У вас нет прав для просмотра страницы сотрудников.
+            </p>
+            <p className="text-sm text-gray-500">
+              Доступ к этой странице имеют только администраторы и менеджеры.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">

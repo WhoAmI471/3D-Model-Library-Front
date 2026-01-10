@@ -32,12 +32,12 @@ export default function Navigation({ userRole }) {
       icon: Squares2X2Icon,
       current: pathname === '/dashboard/spheres'
     },
-    {
+    ...(userRole === 'ADMIN' || userRole === 'MANAGER' ? [{
       name: 'Сотрудники',
       href: '/dashboard/employees',
       icon: UsersIcon,
       current: pathname === '/dashboard/employees'
-    },
+    }] : []),
     ...(userRole === 'ADMIN' ? [{
       name: 'Логи',
       href: '/dashboard/logs',

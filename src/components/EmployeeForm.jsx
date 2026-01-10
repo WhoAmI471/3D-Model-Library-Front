@@ -50,37 +50,47 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
       password: '',
       confirmPassword: ''
     },
-    mode: 'onChange'
+    mode: 'onBlur' // Изменено на onBlur, чтобы не показывать ошибки до начала ввода
   })
 
   // Условная валидация пароля при изменении requirePassword
+  // Используем watch для отслеживания значений, но валидацию запускаем только при реальных изменениях
+  const password = watch('password')
+  const confirmPassword = watch('confirmPassword')
+  
   useEffect(() => {
     if (!isInitialized) return
+    if (!requirePassword) {
+      // Пароль не требуется - очищаем ошибки
+      clearErrors('password')
+      clearErrors('confirmPassword')
+      return
+    }
     
-    const password = watch('password')
-    const confirmPassword = watch('confirmPassword')
+    // Валидация только если поля не пустые (пользователь начал заполнять)
+    const passwordTouched = password && password.length > 0
+    const confirmPasswordTouched = confirmPassword && confirmPassword.length > 0
     
-    if (requirePassword) {
-      // Требуется пароль - валидируем
-      if (!password || password.length === 0) {
-        setError('password', { type: 'required', message: 'Введите пароль' })
-      } else if (password.length < 6) {
+    if (passwordTouched) {
+      if (password.length < 6) {
         setError('password', { type: 'minLength', message: 'Пароль должен быть не менее 6 символов' })
       } else {
         clearErrors('password')
       }
-      
+    } else {
+      clearErrors('password')
+    }
+    
+    if (confirmPasswordTouched) {
       if (password !== confirmPassword) {
         setError('confirmPassword', { type: 'match', message: 'Пароли не совпадают' })
-      } else if (confirmPassword) {
+      } else {
         clearErrors('confirmPassword')
       }
     } else {
-      // Пароль не требуется - очищаем ошибки
-      clearErrors('password')
       clearErrors('confirmPassword')
     }
-  }, [requirePassword, watch, setError, clearErrors, isInitialized])
+  }, [password, confirmPassword, requirePassword, setError, clearErrors, isInitialized])
 
   const watchedRole = watch('role')
   const watchedPermissions = watch('permissions')
@@ -345,7 +355,12 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                     </label>
                     <input
                       type={showPassword ? "text" : "password"}
-                      {...register('password')}
+                      value={password || ''}
+                      onChange={(e) => {
+                        setValue('password', e.target.value, { shouldValidate: true })
+                        trigger('password')
+                      }}
+                      onBlur={() => trigger('password')}
                       className={`block w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
                         errors.password ? 'border-red-500' : 'border-gray-300'
                       }`}
@@ -364,7 +379,12 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                     </label>
                     <input
                       type={showPassword ? "text" : "password"}
-                      {...register('confirmPassword')}
+                      value={confirmPassword || ''}
+                      onChange={(e) => {
+                        setValue('confirmPassword', e.target.value, { shouldValidate: true })
+                        trigger('confirmPassword')
+                      }}
+                      onBlur={() => trigger('confirmPassword')}
                       className={`block w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
                         errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                       }`}
