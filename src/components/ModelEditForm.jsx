@@ -256,12 +256,21 @@ export default function ModelEditForm({ id, userRole }) {
   }
 
   const handleScreenshotAdd = (files) => {
-    // files - массив File объектов из ScreenshotsSection, нужно создать объекты с preview
+    // files - массив File объектов, нужно создать объекты с preview
     const newScreenshots = files.map(file => ({
       preview: URL.createObjectURL(file),
       file: file
     }))
     setScreenshots(prev => [...prev, ...newScreenshots])
+  }
+
+  // Обработчик для прямого использования в onChange
+  const handleFileInputChange = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      handleScreenshotAdd(files)
+      e.target.value = '' // Сбрасываем input для возможности повторной загрузки того же файла
+    }
   }
 
   const removeScreenshot = (index) => {
@@ -894,7 +903,7 @@ export default function ModelEditForm({ id, userRole }) {
                         type="file"
                         multiple
                         accept="image/*"
-                        onChange={handleScreenshotAdd}
+                        onChange={handleFileInputChange}
                         className="sr-only"
                       />
                     </label>

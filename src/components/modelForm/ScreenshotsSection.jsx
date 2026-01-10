@@ -29,7 +29,11 @@ export default function ScreenshotsSection({
   canEditScreenshots = false,
   disabled = false
 }) {
-  const totalLength = currentScreenshots.length + newScreenshots.length
+  // Убеждаемся, что массивы существуют
+  const currentScreenshotsArray = Array.isArray(currentScreenshots) ? currentScreenshots : []
+  const newScreenshotsArray = Array.isArray(newScreenshots) ? newScreenshots : []
+  const totalLength = currentScreenshotsArray.length + newScreenshotsArray.length
+  
   const isValidImageFile = (file) => {
     const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
     if (!validMimeTypes.includes(file.type.toLowerCase())) {
@@ -76,7 +80,7 @@ export default function ScreenshotsSection({
       <label className="block text-sm font-medium text-gray-700 mb-1">
         Текущие скриншоты
       </label>
-      {(currentScreenshots.length > 0 || newScreenshots.length > 0) && (
+      {(currentScreenshotsArray.length > 0 || newScreenshotsArray.length > 0) && (
         <div className="mb-2">
           <div className="text-xs text-gray-500 mb-2">
             Первый скриншот будет отображаться в карточке модели. Перетаскивайте скриншоты для изменения порядка.
@@ -86,8 +90,10 @@ export default function ScreenshotsSection({
       
       <div className="flex gap-4 overflow-x-auto pb-2">
         {/* Существующие скриншоты */}
-        {currentScreenshots.map((file, index) => {
+        {currentScreenshotsArray.map((file, index) => {
           const totalIndex = index
+          // Обеспечиваем, что file - это строка (URL)
+          const fileUrl = typeof file === 'string' ? file : (file?.originalUrl || file?.url || file || '')
           return (
             <div
               key={index}
@@ -103,7 +109,7 @@ export default function ScreenshotsSection({
               } ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}
             >
               <img
-                src={proxyUrl(file)}
+                src={proxyUrl(fileUrl)}
                 alt={`Скриншот ${index + 1}`}
                 className="object-cover w-full h-full pointer-events-none"
                 draggable={false}
@@ -132,9 +138,13 @@ export default function ScreenshotsSection({
         })}
         
         {/* Новые скриншоты */}
-        {newScreenshots.map((file, index) => {
-          const totalIndex = currentScreenshots.length + index
-          const isFirst = currentScreenshots.length === 0 && index === 0
+        {newScreenshotsArray.map((file, index) => {
+          const totalIndex = currentScreenshotsArray.length + index
+          const isFirst = currentScreenshotsArray.length === 0 && index === 0
+          // Поддержка как File объектов, так и объектов с {preview, file}
+          const previewUrl = file instanceof File 
+            ? URL.createObjectURL(file)
+            : (file?.preview || (file?.file ? URL.createObjectURL(file.file) : ''))
           return (
             <div
               key={`new-${index}`}
@@ -150,7 +160,7 @@ export default function ScreenshotsSection({
               } ${isFirst ? 'ring-2 ring-blue-500' : ''}`}
             >
               <img
-                src={URL.createObjectURL(file)}
+                src={previewUrl}
                 alt={`Новый скриншот ${index + 1}`}
                 className="object-cover w-full h-full pointer-events-none"
                 draggable={false}
@@ -200,20 +210,22 @@ export default function ScreenshotsSection({
       </div>
       
       {/* Удаленные скриншоты (можно восстановить) */}
-      {deletedScreenshots.length > 0 && (
+      {Array.isArray(deletedScreenshots) && deletedScreenshots.length > 0 && (
         <div className="mt-8">
           <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Удаленные скриншоты (можно восстановить)</div>
           <div className="flex gap-4 overflow-x-auto pb-2">
-            {deletedScreenshots.map((deletedUrl, index) => (
-              <div key={`deleted-${deletedUrl}`} className="relative flex-shrink-0 w-64 h-48 bg-gray-100 rounded-lg overflow-hidden opacity-60 border-2 border-red-300">
+            {deletedScreenshots.map((deletedUrl, index) => {
+              const url = typeof deletedUrl === 'string' ? deletedUrl : (deletedUrl?.originalUrl || deletedUrl?.url || deletedUrl || '')
+              return (
+              <div key={`deleted-${url || index}`} className="relative flex-shrink-0 w-64 h-48 bg-gray-100 rounded-lg overflow-hidden opacity-60 border-2 border-red-300">
                 <img
-                  src={proxyUrl(deletedUrl)}
+                  src={proxyUrl(url)}
                   alt={`Удаленный скриншот ${index + 1}`}
                   className="object-cover w-full h-full"
                 />
                 <button
                   type="button"
-                  onClick={() => onRestoreDeleted(deletedUrl)}
+                  onClick={() => onRestoreDeleted && onRestoreDeleted(url)}
                   className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   title="Восстановить скриншот"
                   disabled={disabled}
@@ -223,7 +235,8 @@ export default function ScreenshotsSection({
                   </svg>
                 </button>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
