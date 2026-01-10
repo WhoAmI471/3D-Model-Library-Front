@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline'
 import apiClient from '@/lib/apiClient'
 import { handleError } from '@/lib/errorHandler'
+import NotificationContainer from '@/components/NotificationContainer'
 
 export default function MainHeader() {
   const router = useRouter()
@@ -14,14 +15,21 @@ export default function MainHeader() {
 
   // Получаем название модели, если мы на странице конкретной модели или редактирования
   useEffect(() => {
-    // Проверяем страницу просмотра модели: /dashboard/models/[id]
+    // Пропускаем специальные страницы
+    if (pathname === '/dashboard/models/upload') {
+      setModelTitle(null)
+      return
+    }
+    
+    // Проверяем страницу просмотра модели: /dashboard/models/[id] (но не upload, update и т.д.)
     const modelIdMatch = pathname?.match(/^\/dashboard\/models\/([^\/]+)$/)
     // Проверяем страницу редактирования: /dashboard/models/update/[id]
     const updateIdMatch = pathname?.match(/^\/dashboard\/models\/update\/([^\/]+)$/)
     
     const modelId = modelIdMatch?.[1] || updateIdMatch?.[1]
     
-    if (modelId) {
+    // Проверяем, что это не специальные маршруты
+    if (modelId && modelId !== 'upload' && modelId !== 'update') {
       apiClient.models.getById(modelId)
         .then(data => {
           if (data && typeof data === 'object' && data.title) {
@@ -30,11 +38,13 @@ export default function MainHeader() {
             setModelTitle(null)
           }
         })
-        .catch(async (error) => {
+        .catch((error) => {
           // Тихая обработка ошибки - если модель не найдена, просто не показываем название
-          await handleError(error, { context: 'MainHeader.loadModelTitle', modelId }).catch(() => {
-            // Игнорируем ошибки в самой обработке ошибок
-          })
+          // Не логируем ошибки 404 и другие некритичные ошибки в консоль
+          if (error?.status && error.status !== 404) {
+            // Только логируем критичные ошибки (не 404)
+            console.warn('Ошибка загрузки названия модели:', error?.message || 'Unknown error')
+          }
           setModelTitle(null)
         })
     } else {
@@ -110,7 +120,10 @@ export default function MainHeader() {
 
         {/* Пользователь и выход */}
         {user && (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 relative">
+            {/* Контейнер уведомлений - слева от имени пользователя, сверху */}
+            <NotificationContainer position="header" />
+            
             <div className="hidden sm:block text-right">
               <p className="text-sm font-medium text-gray-900">{user.name}</p>
               <p className="text-xs text-gray-500 capitalize">{user.role?.toLowerCase()}</p>

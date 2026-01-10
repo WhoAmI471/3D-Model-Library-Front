@@ -9,8 +9,11 @@ import apiClient from '@/lib/apiClient'
 import Loading from '@/components/Loading'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
+import { useNotification } from '@/hooks/useNotification'
+import { useConfirm } from '@/hooks/useConfirm'
 import AddModelsToProjectModal from "@/components/AddModelsToProjectModal"
 import DeleteReasonModal from "@/components/DeleteReasonModal"
+import ConfirmModal from "@/components/ConfirmModal"
 import { 
   ArrowLeftIcon,
   PlusIcon,
@@ -33,6 +36,8 @@ export default function ProjectPage({ params }) {
   const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false)
   const [selectedModelForDeletion, setSelectedModelForDeletion] = useState(null)
   const [isDownloading, setIsDownloading] = useState({})
+  const { success, error: showError } = useNotification()
+  const { isOpen, message, title, confirmText, cancelText, variant, showConfirm, handleConfirm, handleCancel } = useConfirm()
   
   useEffect(() => {
     const load = async () => {
@@ -106,16 +111,16 @@ export default function ProjectPage({ params }) {
 
     try {
       const data = await apiClient.models.requestDeletion(selectedModelForDeletion.id, reason)
-      alert(data.message || 'Запрос на удаление отправлен');
-      setShowDeleteReasonModal(false);
-      setSelectedModelForDeletion(null);
+      success(data.message || 'Запрос на удаление отправлен')
+      setShowDeleteReasonModal(false)
+      setSelectedModelForDeletion(null)
       // Обновляем список моделей
       const modelsData = await apiClient.models.getAll({ projectId: id })
       setModels(modelsData)
     } catch (error) {
       const formattedError = await handleError(error, { context: 'ProjectPage.handleDeleteConfirm', modelId: selectedModelForDeletion.id, projectId: id })
       const errorMessage = getErrorMessage(formattedError)
-      alert(errorMessage)
+      showError(errorMessage)
     }
   }
 
@@ -125,25 +130,31 @@ export default function ProjectPage({ params }) {
       e.stopPropagation()
     }
     if (userRole === 'ADMIN') {
-      if (confirm('Вы уверены, что хотите удалить эту модель?')) {
+      const confirmed = await showConfirm({
+        message: `Вы уверены, что хотите удалить модель "${model.title}"?`,
+        variant: 'danger',
+        confirmText: 'Удалить'
+      })
+      
+      if (confirmed) {
         try {
           const data = await apiClient.models.delete(model.id, true)
           if (data.success || data.message) {
-            setModels(prev => prev.filter(m => m.id !== model.id));
-            alert('Модель успешно удалена');
+            setModels(prev => prev.filter(m => m.id !== model.id))
+            success('Модель успешно удалена')
           } else {
-            throw new Error(data.error || 'Ошибка при удалении');
+            throw new Error(data.error || 'Ошибка при удалении')
           }
         } catch (error) {
           const formattedError = await handleError(error, { context: 'ProjectPage.handleDeleteRequest', modelId: model.id, projectId: id })
           const errorMessage = getErrorMessage(formattedError)
-          alert(errorMessage)
+          showError(errorMessage)
         }
       }
     } else {
       // Для не-админов показываем модальное окно с формой
-      setSelectedModelForDeletion(model);
-      setShowDeleteReasonModal(true);
+      setSelectedModelForDeletion(model)
+      setShowDeleteReasonModal(true)
     }
   }
 
@@ -379,7 +390,7 @@ export default function ProjectPage({ params }) {
               } catch (error) {
                 const formattedError = await handleError(error, { context: 'ProjectPage.onAdd', projectId: id, modelIds: selectedModelIds })
                 const errorMessage = getErrorMessage(formattedError)
-                alert(errorMessage)
+                showError(errorMessage)
               }
             }}
           />
@@ -392,6 +403,17 @@ export default function ProjectPage({ params }) {
             setSelectedModelForDeletion(null)
           }}
           onConfirm={handleDeleteConfirm}
+        />
+
+        <ConfirmModal
+          isOpen={isOpen}
+          title={title}
+          message={message}
+          confirmText={confirmText}
+          cancelText={cancelText}
+          variant={variant}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
         />
       </div>
     </div>

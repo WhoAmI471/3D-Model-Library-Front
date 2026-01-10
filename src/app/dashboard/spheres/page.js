@@ -7,6 +7,9 @@ import { ALL_PERMISSIONS } from '@/lib/roles'
 import apiClient from '@/lib/apiClient'
 import Loading from '@/components/Loading'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
+import { useNotification } from '@/hooks/useNotification'
+import { useConfirm } from '@/hooks/useConfirm'
+import ConfirmModal from '@/components/ConfirmModal'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -21,6 +24,8 @@ export default function SpheresPage() {
   const [sphereName, setSphereName] = useState('')
   const [user, setUser] = useState(null)
   const [error, setError] = useState('')
+  const { success, error: showError } = useNotification()
+  const { isOpen, message, title, confirmText, cancelText, variant, showConfirm, handleConfirm, handleCancel: handleConfirmCancel } = useConfirm()
 
   // Загрузка сфер
   useEffect(() => {
@@ -76,10 +81,12 @@ export default function SpheresPage() {
       setSphereName('')
       setShowAddForm(false)
       setError('')
+      success('Сфера успешно создана')
     } catch (error) {
       const formattedError = await handleError(error, { context: 'SpheresPage.handleSphereSubmit' })
       const errorMessage = getErrorMessage(formattedError)
       setError(errorMessage)
+      showError(errorMessage)
     }
   }
 
@@ -100,11 +107,17 @@ export default function SpheresPage() {
     e.stopPropagation()
     
     if (sphere.modelsCount > 0) {
-      alert(`Невозможно удалить сферу "${sphere.name}". К ней привязано ${sphere.modelsCount} моделей. Сначала измените сферу у всех связанных моделей.`)
+      showError(`Невозможно удалить сферу "${sphere.name}". К ней привязано ${sphere.modelsCount} моделей. Сначала измените сферу у всех связанных моделей.`)
       return
     }
 
-    if (!confirm(`Вы уверены, что хотите удалить сферу "${sphere.name}"?`)) return
+    const confirmed = await showConfirm({
+      message: `Вы уверены, что хотите удалить сферу "${sphere.name}"?`,
+      variant: 'danger',
+      confirmText: 'Удалить'
+    })
+    
+    if (!confirmed) return
     
     const id = sphere.id
 
@@ -113,13 +126,14 @@ export default function SpheresPage() {
 
       if (data) {
         setSpheres(spheres.filter(s => s.id !== id))
+        success('Сфера успешно удалена')
       } else {
-        alert(data.error || 'Ошибка удаления сферы')
+        showError(data.error || 'Ошибка удаления сферы')
       }
     } catch (error) {
       const formattedError = await handleError(error, { context: 'SpheresPage.handleDelete', sphereId: id })
       const errorMessage = getErrorMessage(formattedError)
-      alert(errorMessage)
+      showError(errorMessage)
     }
   }
 
@@ -289,6 +303,17 @@ export default function SpheresPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={isOpen}
+        title={title}
+        message={message}
+        confirmText={confirmText}
+        cancelText={cancelText}
+        variant={variant}
+        onConfirm={handleConfirm}
+        onCancel={handleConfirmCancel}
+      />
     </div>
   )
 }

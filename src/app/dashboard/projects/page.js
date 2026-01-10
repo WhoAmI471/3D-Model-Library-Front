@@ -7,7 +7,10 @@ import { formatDateTime, proxyUrl } from '@/lib/utils'
 import { checkPermission, checkAnyPermission } from '@/lib/permission'
 import { useRouter } from 'next/navigation'
 import apiClient from '@/lib/apiClient'
-import { handleError } from '@/lib/errorHandler'
+import { handleError, getErrorMessage } from '@/lib/errorHandler'
+import { useNotification } from '@/hooks/useNotification'
+import { useConfirm } from '@/hooks/useConfirm'
+import ConfirmModal from '@/components/ConfirmModal'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -26,6 +29,8 @@ export default function ProjectsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 16 
   const router = useRouter()
+  const { success, error: showError } = useNotification()
+  const { isOpen, message, title, confirmText, cancelText, variant, showConfirm, handleConfirm, handleCancel } = useConfirm()
 
   // Загрузка проектов
   useEffect(() => {
@@ -73,13 +78,17 @@ export default function ProjectsPage() {
         setProjects(projects.map(proj => 
           proj.id === currentProject.id ? result : proj
         ))
+        success('Проект успешно обновлен')
       } else {
         setProjects([...projects, result])
+        success('Проект успешно создан')
       }
       setShowAddForm(false)
       setCurrentProject(null)
     } catch (error) {
-      await handleError(error, { context: 'ProjectsPage.handleProjectSubmit', projectId: currentProject?.id })
+      const formattedError = await handleError(error, { context: 'ProjectsPage.handleProjectSubmit', projectId: currentProject?.id })
+      const errorMessage = getErrorMessage(formattedError)
+      showError(errorMessage)
       throw error
     }
   }
@@ -87,16 +96,25 @@ export default function ProjectsPage() {
   // Обработка удаления проекта
   const handleDelete = async (project, e) => {
     e.stopPropagation()
-    if (!confirm('Вы уверены, что хотите удалить этот проект?')) return
+    
+    const confirmed = await showConfirm({
+      message: `Вы уверены, что хотите удалить проект "${project.name}"?`,
+      variant: 'danger',
+      confirmText: 'Удалить'
+    })
+    
+    if (!confirmed) return
     
     const id = project.id
 
     try {
       await apiClient.projects.delete(id)
       setProjects(projects.filter(proj => proj.id !== id))
+      success('Проект успешно удален')
     } catch (error) {
-      await handleError(error, { context: 'ProjectsPage.handleDelete', projectId: id })
-      // Ошибка логируется через handleError
+      const formattedError = await handleError(error, { context: 'ProjectsPage.handleDelete', projectId: id })
+      const errorMessage = getErrorMessage(formattedError)
+      showError(errorMessage)
     }
   }
 
@@ -307,6 +325,17 @@ export default function ProjectsPage() {
           </>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={isOpen}
+        title={title}
+        message={message}
+        confirmText={confirmText}
+        cancelText={cancelText}
+        variant={variant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   )
 }

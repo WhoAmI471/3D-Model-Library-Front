@@ -1,5 +1,6 @@
 'use client'
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import { useNotification } from '@/hooks/useNotification'
 
 /**
  * Компонент для загрузки и управления скриншотами при создании модели
@@ -16,6 +17,7 @@ export default function ScreenshotsUploadSection({
   onDrop,
   disabled = false
 }) {
+  const { error: showError } = useNotification()
   const isValidImageFile = (file) => {
     const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
     if (!validMimeTypes.includes(file.type.toLowerCase())) {
@@ -44,7 +46,7 @@ export default function ScreenshotsUploadSection({
       })
       
       if (invalidFiles.length > 0) {
-        alert(`Следующие файлы не являются изображениями и не будут добавлены:\n${invalidFiles.join('\n')}\n\nРазрешены только изображения: JPG, PNG, GIF, WEBP, BMP`)
+        showError(`Следующие файлы не являются изображениями и не будут добавлены: ${invalidFiles.join(', ')}. Разрешены только изображения: JPG, PNG, GIF, WEBP, BMP`)
       }
       
       if (validFiles.length > 0) {

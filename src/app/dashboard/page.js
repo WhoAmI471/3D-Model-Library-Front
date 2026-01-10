@@ -5,8 +5,11 @@ import { checkAnyPermission, checkPermission } from '@/lib/permission'
 import apiClient from '@/lib/apiClient'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
+import { useNotification } from '@/hooks/useNotification'
+import { useConfirm } from '@/hooks/useConfirm'
 import Link from 'next/link'
 import DeleteReasonModal from "@/components/DeleteReasonModal"
+import ConfirmModal from "@/components/ConfirmModal"
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -28,6 +31,8 @@ export default function DashboardPage() {
   const itemsPerPage = 16
 
   const router = useRouter()
+  const { success, error: showError } = useNotification()
+  const { isOpen, message, title, confirmText, cancelText, variant, showConfirm, handleConfirm, handleCancel } = useConfirm()
 
   useEffect(() => {
     const load = async () => {
@@ -72,19 +77,25 @@ export default function DashboardPage() {
   const handleDeleteRequest = async (model, e) => {
     e.stopPropagation()
     if (user?.role === 'ADMIN') {
-      if (confirm('Вы уверены, что хотите удалить эту модель?')) {
+      const confirmed = await showConfirm({
+        message: `Вы уверены, что хотите удалить модель "${model.title}"?`,
+        variant: 'danger',
+        confirmText: 'Удалить'
+      })
+      
+      if (confirmed) {
         try {
           const data = await apiClient.models.delete(model.id, true)
           if (data.success || data.message) {
             setModels(prev => prev.filter(m => m.id !== model.id))
-            alert('Модель успешно удалена')
+            success('Модель успешно удалена')
           } else {
             throw new Error(data.error || 'Ошибка при удалении')
           }
         } catch (error) {
           const formattedError = await handleError(error, { context: 'DashboardPage.handleDeleteRequest', modelId: model.id })
           const errorMessage = getErrorMessage(formattedError)
-          alert(errorMessage)
+          showError(errorMessage)
         }
       }
     } else {
@@ -98,14 +109,14 @@ export default function DashboardPage() {
 
     try {
       const data = await apiClient.models.requestDeletion(selectedModelForDeletion.id, reason)
-      alert(data.message || 'Запрос на удаление отправлен')
+      success(data.message || 'Запрос на удаление отправлен')
       setShowDeleteReasonModal(false)
       setSelectedModelForDeletion(null)
       setModels(prev => prev.filter(m => m.id !== selectedModelForDeletion.id))
     } catch (error) {
       const formattedError = await handleError(error, { context: 'DashboardPage.handleDeleteConfirm', modelId: selectedModelForDeletion.id })
       const errorMessage = getErrorMessage(formattedError)
-      alert(errorMessage)
+      showError(errorMessage)
     }
   }
 
@@ -408,6 +419,17 @@ export default function DashboardPage() {
           setSelectedModelForDeletion(null)
         }}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <ConfirmModal
+        isOpen={isOpen}
+        title={title}
+        message={message}
+        confirmText={confirmText}
+        cancelText={cancelText}
+        variant={variant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
       />
     </div>
   )

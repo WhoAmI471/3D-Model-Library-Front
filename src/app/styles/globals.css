@@ -52,3 +52,25 @@ body {
   animation: loading-dots 1.5s ease-in-out infinite 0.4s;
 }
 
+/* Анимация появления уведомления сверху */
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}

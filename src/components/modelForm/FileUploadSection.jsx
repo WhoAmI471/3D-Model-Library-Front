@@ -48,17 +48,9 @@ export default function FileUploadSection({
             onChange={(e) => {
               const file = e.target.files?.[0]
               if (file) {
-                const fileName = file.name.toLowerCase()
-                if (!fileName.endsWith('.zip')) {
-                  alert('Можно загружать только .zip файлы!')
-                  if (inputRef?.current) {
-                    inputRef.current.value = ''
-                  } else {
-                    e.target.value = ''
-                  }
-                  return
-                }
                 onFileChange(file)
+              } else {
+                onFileChange(null)
               }
             }}
             className="sr-only"

@@ -5,6 +5,9 @@ import Loading from '@/components/Loading'
 import { checkPermission } from '@/lib/permission'
 import apiClient from '@/lib/apiClient'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
+import { useNotification } from '@/hooks/useNotification'
+import { useConfirm } from '@/hooks/useConfirm'
+import ConfirmModal from '@/components/ConfirmModal'
 import { 
   MagnifyingGlassIcon, 
   PlusIcon,
@@ -18,7 +21,9 @@ export default function EmployeesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [currentEmployee, setCurrentEmployee] = useState(null)
-  const [user, setUser] = useState(null) 
+  const [user, setUser] = useState(null)
+  const { success, error: showError } = useNotification()
+  const { isOpen, message, title, confirmText, cancelText, variant, showConfirm, handleConfirm, handleCancel } = useConfirm() 
 
   // Загрузка сотрудников
   useEffect(() => {
@@ -103,29 +108,40 @@ export default function EmployeesPage() {
         setEmployees(employees.map(emp => 
           emp.id === currentEmployee.id ? result : emp
         ))
+        success('Сотрудник успешно обновлен')
       } else {
         setEmployees([...employees, result])
+        success('Сотрудник успешно создан')
       }
       setShowAddForm(false)
       setCurrentEmployee(null)
     } catch (error) {
       const formattedError = await handleError(error, { context: 'EmployeesPage.handleEmployeeSubmit', employeeId: currentEmployee?.id })
       const errorMessage = getErrorMessage(formattedError)
-      alert(errorMessage)
+      showError(errorMessage)
     }
   }
 
   // Обработка удаления сотрудника
   const handleDelete = async (employee, e) => {
     e.stopPropagation()
-    if (!confirm('Вы уверены, что хотите удалить этого сотрудника?')) return
+    
+    const confirmed = await showConfirm({
+      message: `Вы уверены, что хотите удалить сотрудника "${employee.name}"?`,
+      variant: 'danger',
+      confirmText: 'Удалить'
+    })
+    
+    if (!confirmed) return
     
     try {
       await apiClient.employees.delete(employee.id)
       setEmployees(employees.filter(emp => emp.id !== employee.id))
+      success('Сотрудник успешно удален')
     } catch (error) {
-      await handleError(error, { context: 'EmployeesPage.handleDelete', employeeId: employee.id })
-      // Ошибка логируется через handleError, можно показать alert если нужно
+      const formattedError = await handleError(error, { context: 'EmployeesPage.handleDelete', employeeId: employee.id })
+      const errorMessage = getErrorMessage(formattedError)
+      showError(errorMessage)
     }
   }
 
@@ -302,6 +318,17 @@ export default function EmployeesPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={isOpen}
+        title={title}
+        message={message}
+        confirmText={confirmText}
+        cancelText={cancelText}
+        variant={variant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion'
 import { ModelPreview } from "@/components/ModelPreview"
 import apiClient from '@/lib/apiClient'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
+import { useNotification } from '@/hooks/useNotification'
 
 export default function AdminDeletionPanel({ userRole }) {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function AdminDeletionPanel({ userRole }) {
   const [error, setError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'markedAt', direction: 'desc' });
   const [expandedReasonId, setExpandedReasonId] = useState(null);
+  const { success, error: showError } = useNotification()
   
   const [previewModel, setPreviewModel] = useState(null)
   const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
@@ -156,19 +158,18 @@ export default function AdminDeletionPanel({ userRole }) {
 
   const handleDecision = async (modelId, approve) => {
     try {
-      const res = await fetch(`/api/models/${modelId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approve })
-      });
-      
-      if (!res.ok) throw new Error(await res.text());
-      
-      setModelsForDeletion(prev => prev.filter(m => m.id !== modelId));
+      await apiClient.models.delete(modelId, approve)
+      setModelsForDeletion(prev => prev.filter(m => m.id !== modelId))
+      if (approve) {
+        success('Модель успешно удалена')
+      } else {
+        success('Запрос на удаление отклонен')
+      }
     } catch (err) {
       const formattedError = await handleError(err, { context: 'AdminDeletionPanel.handleDecision', modelId, approve })
       const errorMessage = getErrorMessage(formattedError)
       setError(errorMessage)
+      showError(errorMessage)
     }
   };
 

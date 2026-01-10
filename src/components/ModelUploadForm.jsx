@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useModelsData } from '@/hooks/useModelsData'
 import { useDragAndDrop } from '@/hooks/useDragAndDrop'
+import { useNotification } from '@/hooks/useNotification'
 import ScreenshotsUploadSection from '@/components/modelForm/ScreenshotsUploadSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
 import ProjectsSection from '@/components/modelForm/ProjectsSection'
@@ -19,6 +20,7 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadComplete, setUploadComplete] = useState(false)
   const { users, projects, spheres, models: allModels, currentUser } = useModelsData({ includeUsers: true, includeProjects: true })
+  const { success, error: showError } = useNotification()
   const [selectedProjects, setSelectedProjects] = useState([])
   const [zipFile, setZipFile] = useState(null)
   const [screenshots, setScreenshots] = useState([])
@@ -31,7 +33,8 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     watch,
     setValue,
     reset,
-    setError
+    setError,
+    clearErrors
   } = useForm({
     resolver: zodResolver(createModelSchema),
     defaultValues: {
@@ -111,12 +114,17 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   }
 
   const handleZipFileChange = (file) => {
+    // Очищаем предыдущие ошибки
+    clearErrors('root')
+    
     if (file) {
       const fileName = file.name.toLowerCase()
       const isZip = fileName.endsWith('.zip')
       
       if (!isZip) {
-        setError('root', { type: 'validation', message: 'Можно загружать только .zip файлы!' })
+        const errorMessage = 'Можно загружать только .zip файлы!'
+        setError('root', { type: 'validation', message: errorMessage })
+        showError(errorMessage)
         if (zipFileInputRef.current) {
           zipFileInputRef.current.value = ''
         }
@@ -125,7 +133,8 @@ export default function ModelUploadForm({ initialProjectId = null }) {
       }
       
       setZipFile(file)
-      setError('root', {}) // Очищаем ошибку
+    } else {
+      setZipFile(null)
     }
   }
 
@@ -209,6 +218,8 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     setUploadProgress(0)
     setUploadComplete(false)
 
+    // Уведомление о загрузке больше не показываем - используем индикатор прогресса на странице
+
     const xhr = new XMLHttpRequest()
     const formDataToSend = new FormData()
     
@@ -238,16 +249,20 @@ export default function ModelUploadForm({ initialProjectId = null }) {
           if (result.success) {
             setUploadProgress(100);
             setUploadComplete(true);
+            
+            // Показываем уведомление об успехе
+            success('Модель успешно добавлена!')
+            
             // Небольшая задержка перед возвратом на предыдущую страницу
             setTimeout(() => {
               router.back();
-            }, 500);
+            }, 1000);
           } else {
             throw new Error(result.error || 'Ошибка при сохранении модели');
           }
         } catch (err) {
           console.error('Ошибка парсинга ответа:', err);
-          alert('Ошибка при сохранении модели');
+          showError('Ошибка при сохранении модели')
           setUploadProgress(0);
           setUploadComplete(false);
         }
@@ -256,9 +271,9 @@ export default function ModelUploadForm({ initialProjectId = null }) {
         setUploadComplete(false);
         try {
           const error = JSON.parse(xhr.responseText);
-          alert(error.error || 'Ошибка загрузки файлов. Попробуйте снова.');
+          showError(error.error || 'Ошибка загрузки файлов. Попробуйте снова.')
         } catch {
-          alert('Ошибка загрузки файлов. Попробуйте снова.');
+          showError('Ошибка загрузки файлов. Попробуйте снова.')
         }
       }
       setLoading(false);
@@ -268,7 +283,7 @@ export default function ModelUploadForm({ initialProjectId = null }) {
       setUploadProgress(0);
       setUploadComplete(false);
       setLoading(false);
-      alert('Ошибка загрузки файлов. Проверьте подключение к интернету.');
+      showError('Ошибка загрузки файлов. Проверьте подключение к интернету.')
     });
 
     xhr.addEventListener('abort', () => {

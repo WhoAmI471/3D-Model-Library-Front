@@ -6,7 +6,10 @@ import { checkAnyPermission, checkPermission } from '@/lib/permission'
 import Link from 'next/link';
 import apiClient from '@/lib/apiClient'
 import DeleteReasonModal from './DeleteReasonModal'
+import ConfirmModal from './ConfirmModal'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
+import { useNotification } from '@/hooks/useNotification'
+import { useConfirm } from '@/hooks/useConfirm'
 import { 
   ArrowDownTrayIcon,
   PencilIcon,
@@ -25,6 +28,8 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false);
   const [user, setUser] = useState();
   const [validImages, setValidImages] = useState(model.images || []);
+  const { success, error: showError } = useNotification()
+  const { isOpen, message, title, confirmText, cancelText, variant, showConfirm, handleConfirm, handleCancel } = useConfirm()
   
   // Функция для получения текущей версии модели
   const getCurrentVersion = () => {
@@ -135,9 +140,15 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
     );
   };
 
-  const handleDeleteRequest = () => {
+  const handleDeleteRequest = async () => {
     if (user?.role === 'ADMIN') {
-      if (confirm('Вы уверены, что хотите удалить эту модель?')) {
+      const confirmed = await showConfirm({
+        message: `Вы уверены, что хотите удалить модель "${model.title}"?`,
+        variant: 'danger',
+        confirmText: 'Удалить'
+      })
+      
+      if (confirmed) {
         onDeleteRequest(model.id, true).then((result) => {
           if (result?.success && result.redirect) {
             router.push('/dashboard');
@@ -152,13 +163,13 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   const handleDeleteConfirm = async (reason) => {
     try {
       const data = await apiClient.models.requestDeletion(model.id, reason)
-      alert(data.message || 'Запрос на удаление отправлен');
-      setShowDeleteReasonModal(false);
-      router.refresh();
+      success(data.message || 'Запрос на удаление отправлен')
+      setShowDeleteReasonModal(false)
+      router.refresh()
     } catch (error) {
       const formattedError = await handleError(error, { context: 'ModelCard.handleDeleteConfirm', modelId: model.id })
       const errorMessage = getErrorMessage(formattedError)
-      alert(errorMessage)
+      showError(errorMessage)
     }
   };
 
@@ -365,6 +376,17 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
         isOpen={showDeleteReasonModal}
         onClose={() => setShowDeleteReasonModal(false)}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <ConfirmModal
+        isOpen={isOpen}
+        title={title}
+        message={message}
+        confirmText={confirmText}
+        cancelText={cancelText}
+        variant={variant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
       />
     </div>
   );

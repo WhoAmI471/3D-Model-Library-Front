@@ -1,6 +1,7 @@
 'use client'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { proxyUrl } from '@/lib/utils'
+import { useNotification } from '@/hooks/useNotification'
 
 /**
  * Компонент для управления скриншотами при редактировании модели
@@ -29,6 +30,7 @@ export default function ScreenshotsSection({
   canEditScreenshots = false,
   disabled = false
 }) {
+  const { error: showError } = useNotification()
   // Убеждаемся, что массивы существуют
   const currentScreenshotsArray = Array.isArray(currentScreenshots) ? currentScreenshots : []
   const newScreenshotsArray = Array.isArray(newScreenshots) ? newScreenshots : []
@@ -62,7 +64,7 @@ export default function ScreenshotsSection({
       })
       
       if (invalidFiles.length > 0) {
-        alert(`Следующие файлы не являются изображениями и не будут добавлены:\n${invalidFiles.join('\n')}\n\nРазрешены только изображения: JPG, PNG, GIF, WEBP, BMP`)
+        showError(`Следующие файлы не являются изображениями и не будут добавлены: ${invalidFiles.join(', ')}. Разрешены только изображения: JPG, PNG, GIF, WEBP, BMP`)
       }
       
       if (validFiles.length > 0) {

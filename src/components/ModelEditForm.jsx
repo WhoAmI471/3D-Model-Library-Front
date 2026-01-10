@@ -9,8 +9,7 @@ import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
 import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useModelsData } from '@/hooks/useModelsData'
 import apiClient, { ApiError } from '@/lib/apiClient'
-import { useToast } from '@/hooks/useToast'
-import ToastContainer from '@/components/ToastContainer'
+import { useNotification } from '@/hooks/useNotification'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import ScreenshotsSection from '@/components/modelForm/ScreenshotsSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
@@ -21,7 +20,7 @@ import { updateModelSchema } from '@/lib/validations/modelSchema'
 export default function ModelEditForm({ id, userRole }) {
   const router = useRouter()
   const { users, projects, spheres, models: allModels, currentUser, isLoading: isLoadingData } = useModelsData({ includeUsers: true, includeProjects: true })
-  const { toasts, success, error: showErrorToast, removeToast } = useToast()
+  const { success, error: showError } = useNotification()
   
   const [selectedProjects, setSelectedProjects] = useState([])
   const [zipFile, setZipFile] = useState(null)
@@ -95,65 +94,70 @@ export default function ModelEditForm({ id, userRole }) {
     return bCount - aCount
   })
 
+  // Функция для загрузки и обновления данных модели
+  const loadModel = async (showLoading = true) => {
+    try {
+      if (showLoading) setIsLoading(true)
+      const data = await apiClient.models.getById(id, { include: 'projects' })
+      
+      // Обрабатываем authorId: если null, используем текущего пользователя для админа, иначе 'UNKNOWN'
+      // Для админа сохраняем реальный ID автора (если есть), иначе устанавливаем текущего пользователя
+      // Для других пользователей: если authorId есть и это текущий пользователь - используем его ID, иначе 'EXTERNAL'
+      let authorIdValue = currentUser?.role === 'ADMIN' ? (currentUser.id || 'UNKNOWN') : 'UNKNOWN'
+      if (data.authorId) {
+        if (currentUser?.role === 'ADMIN') {
+          // Для админа сохраняем реальный ID автора
+          authorIdValue = data.authorId
+        } else if (currentUser && data.authorId === currentUser.id) {
+          authorIdValue = currentUser.id
+        } else {
+          authorIdValue = 'EXTERNAL'
+        }
+      }
+      
+      // Получаем текущую версию модели (последняя версия из списка или 1.0 по умолчанию)
+      let currentVersion = '1.0'
+      if (data.versions && data.versions.length > 0) {
+        // Сортируем версии по дате создания (последняя первая)
+        const sortedVersions = [...data.versions].sort((a, b) => 
+          new Date(b.createdAt) - new Date(a.createdAt)
+        )
+        currentVersion = sortedVersions[0].version
+      }
+      
+      reset({
+        title: data.title || '',
+        description: data.description || '',
+        authorId: authorIdValue,
+        version: currentVersion,
+        sphereId: data.sphere?.id || '',
+        projectIds: data.projects?.map(p => p.id) || []
+      })
+      
+      setSelectedProjects(data.projects?.map(p => p.id) || [])
+      
+      setCurrentFiles({
+        zip: data.fileUrl,
+        screenshots: data.images || []
+      })
+      
+      setExistingModel(data)
+      
+      // Очищаем новые скриншоты и удаленные после перезагрузки
+      setScreenshots([])
+      setDeletedScreenshots([])
+      
+    } catch (err) {
+      console.error('Ошибка загрузки модели:', err)
+      const formattedError = await handleError(err, { context: 'ModelEditForm.loadModel', modelId: id })
+      setError(getErrorMessage(formattedError))
+    } finally {
+      if (showLoading) setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!currentUser) return // Ждем загрузки текущего пользователя
-    
-    const loadModel = async () => {
-      try {
-        setIsLoading(true)
-        const data = await apiClient.models.getById(id, { include: 'projects' })
-        
-        // Обрабатываем authorId: если null, используем текущего пользователя для админа, иначе 'UNKNOWN'
-        // Для админа сохраняем реальный ID автора (если есть), иначе устанавливаем текущего пользователя
-        // Для других пользователей: если authorId есть и это текущий пользователь - используем его ID, иначе 'EXTERNAL'
-        let authorIdValue = currentUser?.role === 'ADMIN' ? (currentUser.id || 'UNKNOWN') : 'UNKNOWN'
-        if (data.authorId) {
-          if (currentUser?.role === 'ADMIN') {
-            // Для админа сохраняем реальный ID автора
-            authorIdValue = data.authorId
-          } else if (currentUser && data.authorId === currentUser.id) {
-            authorIdValue = currentUser.id
-          } else {
-            authorIdValue = 'EXTERNAL'
-          }
-        }
-        
-        // Получаем текущую версию модели (последняя версия из списка или 1.0 по умолчанию)
-        let currentVersion = '1.0'
-        if (data.versions && data.versions.length > 0) {
-          // Сортируем версии по дате создания (последняя первая)
-          const sortedVersions = [...data.versions].sort((a, b) => 
-            new Date(b.createdAt) - new Date(a.createdAt)
-          )
-          currentVersion = sortedVersions[0].version
-        }
-        
-        reset({
-          title: data.title || '',
-          description: data.description || '',
-          authorId: authorIdValue,
-          version: currentVersion,
-          sphereId: data.sphere?.id || '',
-          projectIds: data.projects?.map(p => p.id) || []
-        })
-        
-        setSelectedProjects(data.projects?.map(p => p.id) || [])
-        
-        setCurrentFiles({
-          zip: data.fileUrl,
-          screenshots: data.images || []
-        })
-        
-        setExistingModel(data)
-        
-      } catch (err) {
-        console.error('Ошибка загрузки модели:', err)
-        setError(err.message)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     if (id && currentUser !== null) loadModel()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, currentUser])
@@ -587,10 +591,9 @@ export default function ModelEditForm({ id, userRole }) {
 
       if (result && result.success) {
         success('Модель успешно обновлена')
-        // Возвращаемся на предыдущую страницу после успешного сохранения
-        setTimeout(() => {
-          router.back()
-        }, 500)
+        
+        // Перезагружаем данные модели для отображения обновленных скриншотов (без показа загрузки)
+        await loadModel(false)
       } else {
         throw new Error(result?.error || 'Не удалось обновить модель')
       }
@@ -598,7 +601,7 @@ export default function ModelEditForm({ id, userRole }) {
       const formattedError = await handleError(err, { context: 'ModelEditForm.onSubmitForm', modelId: id })
       const errorMessage = getErrorMessage(formattedError)
       setError(errorMessage)
-      showErrorToast(errorMessage)
+      showError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -1022,8 +1025,6 @@ export default function ModelEditForm({ id, userRole }) {
       )}
       </div>
       
-      {/* Toast контейнер */}
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }
