@@ -45,3 +45,19 @@ export async function logEmployeeAction(action, userId = null) {
     console.error('[Ошибка записи лога]', error)
   }
 }
+
+// Запись действий, связанных со сферами. Используем общую таблицу логов
+// без привязки к модели, фиксируя только действие и пользователя.
+export async function logSphereAction(action, userId = null) {
+  try {
+    await prisma.log.create({
+      data: {
+        action,
+        userId,
+        modelId: null
+      }
+    })
+  } catch (error) {
+    console.error('[Ошибка записи лога]', error)
+  }
+}

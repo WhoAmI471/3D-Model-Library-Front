@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS } from '@/lib/roles'
+import { logSphereAction } from '@/lib/logger'
 
 export async function GET() {
   try {
@@ -75,6 +76,14 @@ export async function POST(request) {
 
     const trimmedName = name.trim()
 
+    // Проверяем длину названия
+    if (trimmedName.length > 50) {
+      return NextResponse.json(
+        { error: 'Название сферы не должно превышать 50 символов' },
+        { status: 400 }
+      )
+    }
+
     // Проверяем, не существует ли уже сфера с таким именем
     const existingSphere = await prisma.sphere.findUnique({
       where: { name: trimmedName }
@@ -92,6 +101,8 @@ export async function POST(request) {
         name: trimmedName
       }
     })
+
+    await logSphereAction(`Создана сфера: ${trimmedName}`, user?.id || null)
 
     return NextResponse.json(newSphere, { status: 201 })
   } catch (error) {

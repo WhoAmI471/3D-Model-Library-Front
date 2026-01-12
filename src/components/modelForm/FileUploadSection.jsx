@@ -18,9 +18,9 @@ export default function FileUploadSection({
   
   return (
     <div className="mb-8">
-      <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">
-        {labelText}
-        {isRequired && <span className="text-red-500 ml-1">*</span>}
+      <div className="text-xs text-gray-500 uppercase tracking-wide mb-3 flex items-center">
+        <span>{labelText}</span>
+        {isRequired && <span className="text-red-500 ml-1" style={{ color: '#ef4444' }}>*</span>}
       </div>
       
       {currentFile && (

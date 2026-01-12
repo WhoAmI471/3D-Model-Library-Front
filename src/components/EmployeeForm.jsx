@@ -329,7 +329,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                   <button
                     type="button"
                     onClick={handleTogglePasswordChange}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
                   >
                     {showPasswordChange ? 'Отмена смены пароля' : 'Сменить пароль'}
                   </button>
@@ -522,7 +522,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                 className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
                   isSubmitting
                     ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
                 }`}
                 disabled={isSubmitting}
               >

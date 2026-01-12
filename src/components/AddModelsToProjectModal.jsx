@@ -141,7 +141,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
               <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-gray-200">
                 <button
                   onClick={() => setActiveTab('all')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                     activeTab === 'all'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -164,7 +164,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
                     <button
                       key={sphere.id}
                       onClick={() => setActiveTab(sphere.id)}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                         activeTab === sphere.id
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -199,7 +199,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
                         selectedModels.includes(model.id) 
                           ? 'border-blue-500 shadow-md' 
                           : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                      }`}
+                      } cursor-pointer`}
                       onClick={() => handleModelSelect(model.id)}
                     >
                       {/* Галочка в углу */}
@@ -255,7 +255,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
                       <button
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
-                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"
                       >
                         Назад
                       </button>
@@ -265,7 +265,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
                       <button
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                         disabled={currentPage === totalPages}
-                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"
                       >
                         Вперед
                       </button>

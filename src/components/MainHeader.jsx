@@ -98,6 +98,17 @@ export default function MainHeader() {
     router.push('/login')
   }
 
+  const getRoleName = (role) => {
+    const roleMap = {
+      'ADMIN': 'Администратор',
+      'ARTIST': 'Художник',
+      'ANALYST': 'Аналитик',
+      'MANAGER': 'Менеджер',
+      'PROGRAMMER': 'Программист'
+    }
+    return roleMap[role] || role?.toLowerCase() || ''
+  }
+
   return (
     <header className="h-16 bg-white border-b border-gray-200">
       <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
@@ -126,7 +137,7 @@ export default function MainHeader() {
             
             <div className="hidden sm:block text-right">
               <p className="text-sm font-medium text-gray-900">{user.name}</p>
-              <p className="text-xs text-gray-500 capitalize">{user.role?.toLowerCase()}</p>
+              <p className="text-xs text-gray-500">{getRoleName(user.role)}</p>
             </div>
             <button
               onClick={handleLogout}

@@ -113,10 +113,13 @@ export default function ProjectPage({ params }) {
       const data = await apiClient.models.requestDeletion(selectedModelForDeletion.id, reason)
       success(data.message || 'Запрос на удаление отправлен')
       setShowDeleteReasonModal(false)
+      // Помечаем модель как ожидающую удаления, не удаляя из списка
+      setModels(prev => prev.map(m => 
+        m.id === selectedModelForDeletion.id 
+          ? { ...m, markedForDeletion: true }
+          : m
+      ))
       setSelectedModelForDeletion(null)
-      // Обновляем список моделей
-      const modelsData = await apiClient.models.getAll({ projectId: id })
-      setModels(modelsData)
     } catch (error) {
       const formattedError = await handleError(error, { context: 'ProjectPage.handleDeleteConfirm', modelId: selectedModelForDeletion.id, projectId: id })
       const errorMessage = getErrorMessage(formattedError)
@@ -128,6 +131,10 @@ export default function ProjectPage({ params }) {
     if (e) {
       e.preventDefault()
       e.stopPropagation()
+    }
+    // Если модель уже помечена на удаление, не обрабатываем запрос
+    if (model.markedForDeletion) {
+      return
     }
     if (userRole === 'ADMIN') {
       const confirmed = await showConfirm({
@@ -264,7 +271,7 @@ export default function ProjectPage({ params }) {
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                className="mt-4 text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
               >
                 Очистить фильтры
               </button>
@@ -282,6 +289,11 @@ export default function ProjectPage({ params }) {
                   href={`/dashboard/models/${model.id}?projectid=${id}`}
                   className="block relative aspect-square bg-gray-100 overflow-hidden group"
                 >
+                  {model.markedForDeletion && (
+                    <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-orange-500 text-white text-xs font-semibold rounded shadow-lg">
+                      Ожидает удаления
+                    </div>
+                  )}
                   {model.images && model.images.length > 0 ? (
                     <img
                       src={proxyUrl(model.images[0])}
@@ -345,8 +357,13 @@ export default function ProjectPage({ params }) {
                       {checkPermission(user, 'delete_models') && (
                         <button
                           onClick={(e) => handleDeleteRequest(model, e)}
-                          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                          title="Удалить"
+                          disabled={model.markedForDeletion}
+                          className={`p-1.5 rounded transition-colors ${
+                            model.markedForDeletion
+                              ? 'text-gray-400 cursor-not-allowed opacity-50'
+                              : 'text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer'
+                          }`}
+                          title={model.markedForDeletion ? 'Запрос на удаление уже активен для этой модели' : 'Удалить'}
                         >
                           <TrashIcon className="h-5 w-5" />
                         </button>

@@ -15,6 +15,8 @@ export default function AdminDeletionPanel({ userRole }) {
   const [error, setError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'markedAt', direction: 'desc' });
   const [expandedReasonId, setExpandedReasonId] = useState(null);
+  const [reasonModalOpen, setReasonModalOpen] = useState(false);
+  const [selectedReason, setSelectedReason] = useState('');
   const { success, error: showError } = useNotification()
   
   const [previewModel, setPreviewModel] = useState(null)
@@ -135,7 +137,6 @@ export default function AdminDeletionPanel({ userRole }) {
   const fetchPendingDeletions = async () => {
     setIsLoading(true);
     setError(null);
-    setExpandedReasonId(null); // Сбрасываем развернутую причину при обновлении
     
     try {
       const response = await fetch(
@@ -179,12 +180,12 @@ export default function AdminDeletionPanel({ userRole }) {
       direction = 'desc';
     }
     setSortConfig({ key, direction });
-    setExpandedReasonId(null); // Сбрасываем развернутую причину при сортировке
   };
 
-  const toggleReasonExpand = (modelId, e) => {
+  const showReasonModal = (reason, e) => {
     e.stopPropagation(); // Предотвращаем переход на страницу модели
-    setExpandedReasonId(expandedReasonId === modelId ? null : modelId);
+    setSelectedReason(reason);
+    setReasonModalOpen(true);
   };
 
   const sortedModels = [...modelsForDeletion].sort((a, b) => {
@@ -221,13 +222,13 @@ export default function AdminDeletionPanel({ userRole }) {
             Нет ожидающих запросов на удаление
           </div>
         ) : (
-          <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
+          <div className="bg-white shadow-sm rounded-lg overflow-hidden overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200" style={{ tableLayout: 'auto' }}>
             <thead className="bg-gray-50">
               <tr>
                 <th 
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-40"
                   onClick={() => requestSort('title')}
                   onMouseLeave={handleMouseLeave}
                 >
@@ -246,7 +247,7 @@ export default function AdminDeletionPanel({ userRole }) {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" onMouseLeave={handleMouseLeave}>
                   Запросил удаление
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" onMouseLeave={handleMouseLeave}>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40" onMouseLeave={handleMouseLeave}>
                   Причина
                 </th>
                 <th 
@@ -264,7 +265,7 @@ export default function AdminDeletionPanel({ userRole }) {
                     )}
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" onMouseLeave={handleMouseLeave}>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50" onMouseLeave={handleMouseLeave}>
                   Действия
                 </th>
               </tr>
@@ -277,16 +278,28 @@ export default function AdminDeletionPanel({ userRole }) {
                   onMouseEnter={(e) => handleMouseEnter(model, e)}
                   onClick={() => router.push(`/dashboard/models/${model.id}`)}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{model.title}</div>
-                    <div className="text-sm text-gray-500">{model.description?.substring(0, 30)}...</div>
+                  <td className="px-6 py-4 w-40">
+                    <div className="text-sm font-medium text-gray-900 truncate" title={model.title}>
+                      {model.title 
+                        ? (model.title.length > 15 
+                            ? `${model.title.substring(0, 15)}...` 
+                            : model.title)
+                        : '-'}
+                    </div>
+                    <div className="text-sm text-gray-500 truncate" title={model.description}>
+                      {model.description 
+                        ? (model.description.length > 15 
+                            ? `${model.description.substring(0, 15)}...` 
+                            : model.description)
+                        : ''}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{model.author?.name || 'Неизвестно'}</div>
                     <div className="text-sm text-gray-500">{model.author?.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{model.markedBy ? `${model.markedBy.name} (${model.markedBy.email})` : 'Пользователь не найден'}</div>
+                    <div className="text-sm text-gray-900">{model.markedBy ? model.markedBy.name : 'Пользователь не найден'}</div>
                     <div className="text-sm text-gray-500">
                       {{
                         ADMIN: 'Администратор',
@@ -298,17 +311,18 @@ export default function AdminDeletionPanel({ userRole }) {
                     </div>
                   </td>
                   <td 
-                    className="px-6 py-4 text-sm text-gray-500 max-w-md"
+                    className="px-6 py-4 text-sm text-gray-500 w-40 max-w-40"
                     onMouseLeave={handleMouseLeave}
                   >
                     {model.deletionComment ? (
                       <div 
-                        className={`flex items-center cursor-pointer ${expandedReasonId === model.id ? '' : 'truncate'}`}
-                        onClick={(e) => toggleReasonExpand(model.id, e)}
-                        title={expandedReasonId === model.id ? undefined : model.deletionComment}
+                        className="flex items-start cursor-pointer group"
+                        onClick={(e) => showReasonModal(model.deletionComment, e)}
                       >
-                        <InformationCircleIcon className="h-4 w-4 mr-1 text-blue-500 flex-shrink-0" />
-                        <span>{model.deletionComment}</span>
+                        <InformationCircleIcon className="h-4 w-4 mr-1 text-blue-500 flex-shrink-0 mt-0.5 group-hover:text-blue-600 transition-colors" />
+                        <span className="truncate block" title="Нажмите, чтобы увидеть полностью">
+                          {model.deletionComment}
+                        </span>
                       </div>
                     ) : (
                       <span className="text-sm text-gray-400">Не указана</span>
@@ -318,7 +332,7 @@ export default function AdminDeletionPanel({ userRole }) {
                     {new Date(model.markedAt).toLocaleString()}
                   </td>
                   <td 
-                    className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+                    className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex justify-end space-x-2">
@@ -365,6 +379,42 @@ export default function AdminDeletionPanel({ userRole }) {
           />
         )}
       </AnimatePresence>
+
+      {/* Модальное окно для показа полной причины */}
+      {reasonModalOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setReasonModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Причина удаления</h3>
+              <button
+                onClick={() => setReasonModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              >
+                <XCircleIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                {selectedReason}
+              </p>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setReasonModalOpen(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

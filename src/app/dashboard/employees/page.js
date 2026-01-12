@@ -270,7 +270,7 @@ export default function EmployeesPage() {
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                className="mt-4 text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
               >
                 Очистить поиск
               </button>

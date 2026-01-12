@@ -42,7 +42,7 @@ export const ProjectFilter = ({
             <h3 className="text-lg font-semibold text-gray-900">Фильтр по проектам</h3>
             <button
               onClick={onClose}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
             >
               <XMarkIcon className="h-5 w-5" />
             </button>
@@ -98,7 +98,7 @@ export const ProjectFilter = ({
                 onClick={() => {
                   selectedProjects.forEach(id => onToggleProject(id))
                 }}
-                className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
               >
                 Очистить все ({selectedProjects.length})
               </button>

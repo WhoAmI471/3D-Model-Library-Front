@@ -1,6 +1,116 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
+import { logSphereAction } from '@/lib/logger'
+
+export async function PUT(request, { params }) {
+  try {
+    const { id } = await params
+    const user = await getUserFromSession()
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Не авторизован' },
+        { status: 401 }
+      )
+    }
+
+    // Только администратор может изменять сферы
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Доступ запрещен' },
+        { status: 403 }
+      )
+    }
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID сферы обязательно' },
+        { status: 400 }
+      )
+    }
+
+    const body = await request.json()
+    const { name } = body
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Название сферы обязательно' },
+        { status: 400 }
+      )
+    }
+
+    const trimmedName = name.trim()
+
+    // Проверяем длину названия
+    if (trimmedName.length > 50) {
+      return NextResponse.json(
+        { error: 'Название сферы не должно превышать 50 символов' },
+        { status: 400 }
+      )
+    }
+
+    // Проверяем, существует ли сфера
+    const existingSphere = await prisma.sphere.findUnique({
+      where: { id }
+    })
+
+    if (!existingSphere) {
+      return NextResponse.json(
+        { error: 'Сфера не найдена' },
+        { status: 404 }
+      )
+    }
+
+    // Проверяем, не существует ли уже сфера с таким именем (кроме текущей)
+    const duplicateSphere = await prisma.sphere.findFirst({
+      where: {
+        name: trimmedName,
+        NOT: {
+          id: id
+        }
+      }
+    })
+
+    if (duplicateSphere) {
+      return NextResponse.json(
+        { error: 'Сфера с таким названием уже существует' },
+        { status: 400 }
+      )
+    }
+
+    // Сохраняем старое название для лога
+    const oldName = existingSphere.name
+
+    // Обновляем сферу
+    const updatedSphere = await prisma.sphere.update({
+      where: { id },
+      data: {
+        name: trimmedName
+      }
+    })
+
+    await logSphereAction(`Изменено название сферы: "${oldName}" → "${trimmedName}"`, user?.id || null)
+
+    return NextResponse.json(updatedSphere, { status: 200 })
+
+  } catch (error) {
+    console.error('Ошибка обновления сферы:', error)
+    
+    // Обработка ошибки уникальности от Prisma
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'Сфера с таким названием уже существует' },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json(
+      { error: 'Ошибка сервера' },
+      { status: 500 }
+    )
+  }
+}
 
 export async function DELETE(request, { params }) {
   try {
@@ -56,10 +166,15 @@ export async function DELETE(request, { params }) {
       )
     }
 
+    // Сохраняем название сферы для лога перед удалением
+    const sphereName = existingSphere.name
+
     // Удаляем сферу
     await prisma.sphere.delete({
       where: { id }
     })
+
+    await logSphereAction(`Удалена сфера: ${sphereName}`, user?.id || null)
 
     return NextResponse.json(
       { success: true, message: 'Сфера успешно удалена' },

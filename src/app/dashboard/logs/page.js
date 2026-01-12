@@ -319,7 +319,7 @@ export default function LogsPage() {
               </th>
               <th 
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-40"
                 onClick={() => requestSort('model')}
                 onMouseLeave={handleMouseLeave}
               >
@@ -359,8 +359,14 @@ export default function LogsPage() {
                   <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" onClick={() => router.push(`/dashboard/models/${log.model?.id}`)}>
                     {log.user ? `${log.user.name} (${log.user.email})` : 'Система'}
                   </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium" onClick={() => router.push(`/dashboard/models/${log.model?.id}`)}>
-                    {log.model?.title || '-'}
+                  <td className="px-6 py-2 text-sm font-medium w-40" onClick={() => router.push(`/dashboard/models/${log.model?.id}`)}>
+                    <div className="truncate text-right" title={log.model?.title || '-'}>
+                      {log.model?.title 
+                        ? (log.model.title.length > 15 
+                            ? `${log.model.title.substring(0, 15)}...` 
+                            : log.model.title)
+                        : '-'}
+                    </div>
                   </td>
                 </tr>
               ))

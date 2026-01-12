@@ -621,7 +621,7 @@ export default function ModelEditForm({ id, userRole }) {
         <div className="text-red-500 mb-4">Ошибка: {error}</div>
         <button 
           onClick={() => window.location.reload()} 
-          className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+          className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 cursor-pointer"
         >
           Попробовать снова
         </button>
@@ -850,7 +850,7 @@ export default function ModelEditForm({ id, userRole }) {
                             e.stopPropagation()
                             removeCurrentScreenshot(index)
                           }}
-                          className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
+                          className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10 cursor-pointer"
                         >
                           <XMarkIcon className="h-5 w-5" />
                         </button>
@@ -958,7 +958,7 @@ export default function ModelEditForm({ id, userRole }) {
                                 e.stopPropagation()
                                 removeScreenshot(index)
                               }}
-                              className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
+                              className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10 cursor-pointer"
                             >
                               <XMarkIcon className="h-5 w-5" />
                             </button>

@@ -76,6 +76,10 @@ export default function DashboardPage() {
 
   const handleDeleteRequest = async (model, e) => {
     e.stopPropagation()
+    // Если модель уже помечена на удаление, не обрабатываем запрос
+    if (model.markedForDeletion) {
+      return
+    }
     if (user?.role === 'ADMIN') {
       const confirmed = await showConfirm({
         message: `Вы уверены, что хотите удалить модель "${model.title}"?`,
@@ -111,8 +115,13 @@ export default function DashboardPage() {
       const data = await apiClient.models.requestDeletion(selectedModelForDeletion.id, reason)
       success(data.message || 'Запрос на удаление отправлен')
       setShowDeleteReasonModal(false)
+      // Помечаем модель как ожидающую удаления, не удаляя из списка
+      setModels(prev => prev.map(m => 
+        m.id === selectedModelForDeletion.id 
+          ? { ...m, markedForDeletion: true }
+          : m
+      ))
       setSelectedModelForDeletion(null)
-      setModels(prev => prev.filter(m => m.id !== selectedModelForDeletion.id))
     } catch (error) {
       const formattedError = await handleError(error, { context: 'DashboardPage.handleDeleteConfirm', modelId: selectedModelForDeletion.id })
       const errorMessage = getErrorMessage(formattedError)
@@ -218,7 +227,7 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-gray-200">
               <button
                 onClick={() => setActiveTab('all')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                   activeTab === 'all'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -239,7 +248,7 @@ export default function DashboardPage() {
                   <button
                     key={sphere.id}
                     onClick={() => setActiveTab(sphere.id)}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                       activeTab === sphere.id
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -270,7 +279,7 @@ export default function DashboardPage() {
                   setSearchTerm('')
                   setActiveTab('all')
                 }}
-                className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                className="mt-4 text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
               >
                 Очистить фильтры
               </button>
@@ -289,6 +298,11 @@ export default function DashboardPage() {
                   href={`/dashboard/models/${model.id}`}
                   className="block relative aspect-square bg-gray-100 overflow-hidden group"
                 >
+                  {model.markedForDeletion && (
+                    <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-orange-500 text-white text-xs font-semibold rounded shadow-lg">
+                      Ожидает удаления
+                    </div>
+                  )}
                   {model.images && model.images.length > 0 ? (
                     <img
                       src={proxyUrl(model.images[0])}
@@ -371,8 +385,13 @@ export default function DashboardPage() {
                       {checkPermission(user, 'delete_models') && (
                         <button
                           onClick={(e) => handleDeleteRequest(model, e)}
-                          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                          title="Удалить"
+                          disabled={model.markedForDeletion}
+                          className={`p-1.5 rounded transition-colors ${
+                            model.markedForDeletion
+                              ? 'text-gray-400 cursor-not-allowed opacity-50'
+                              : 'text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer'
+                          }`}
+                          title={model.markedForDeletion ? 'Запрос на удаление уже активен для этой модели' : 'Удалить'}
                         >
                           <TrashIcon className="h-5 w-5" />
                         </button>
@@ -391,7 +410,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"
                   >
                     Назад
                   </button>
@@ -401,7 +420,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                    className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"
                   >
                     Вперед
                   </button>

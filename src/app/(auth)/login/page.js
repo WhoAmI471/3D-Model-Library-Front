@@ -83,7 +83,7 @@ export default function LoginPage() {
               </div>
             )}
             <button 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg transition-colors text-sm font-medium"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg transition-colors text-sm font-medium cursor-pointer"
               type="submit"
             >
               Войти

@@ -127,7 +127,7 @@ export default function ScreenshotsSection({
                   e.stopPropagation()
                   onRemoveCurrent(index)
                 }}
-                className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
+                className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10 cursor-pointer"
                 disabled={!canEdit || disabled}
               >
                 <XMarkIcon className="h-5 w-5" />
@@ -178,7 +178,7 @@ export default function ScreenshotsSection({
                   e.stopPropagation()
                   onRemoveNew(index)
                 }}
-                className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
+                className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10 cursor-pointer"
                 disabled={disabled}
               >
                 <XMarkIcon className="h-5 w-5" />
@@ -228,7 +228,7 @@ export default function ScreenshotsSection({
                 <button
                   type="button"
                   onClick={() => onRestoreDeleted && onRestoreDeleted(url)}
-                  className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   title="Восстановить скриншот"
                   disabled={disabled}
                 >

@@ -141,6 +141,10 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
   };
 
   const handleDeleteRequest = async () => {
+    // Если модель уже помечена на удаление, не обрабатываем запрос
+    if (model.markedForDeletion) {
+      return
+    }
     if (user?.role === 'ADMIN') {
       const confirmed = await showConfirm({
         message: `Вы уверены, что хотите удалить модель "${model.title}"?`,
@@ -165,6 +169,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
       const data = await apiClient.models.requestDeletion(model.id, reason)
       success(data.message || 'Запрос на удаление отправлен')
       setShowDeleteReasonModal(false)
+      // Обновляем страницу, чтобы показать обновленную модель с пометкой
       router.refresh()
     } catch (error) {
       const formattedError = await handleError(error, { context: 'ModelCard.handleDeleteConfirm', modelId: model.id })
@@ -212,7 +217,13 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
             {checkPermission(user, 'delete_models') && (
               <button 
                 onClick={handleDeleteRequest}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+                disabled={model.markedForDeletion}
+                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  model.markedForDeletion
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
+                    : 'bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-700 cursor-pointer'
+                }`}
+                title={model.markedForDeletion ? 'Запрос на удаление уже активен для этой модели' : 'Удалить'}
               >
                 <TrashIcon className="h-5 w-5" />
                 Удалить
@@ -263,7 +274,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
             >
               <button 
                 onClick={closeModal}
-                className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
+                className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10 cursor-pointer"
               >
                 <XMarkIcon className="h-8 w-8" />
               </button>
@@ -280,14 +291,14 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
                   <>
                     <button 
                       onClick={prevImage}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors cursor-pointer"
                     >
                       <ChevronLeftIcon className="h-6 w-6" />
                     </button>
                     
                     <button 
                       onClick={nextImage}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors cursor-pointer"
                     >
                       <ChevronRightIcon className="h-6 w-6" />
                     </button>
@@ -301,7 +312,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
-                      className={`h-2 rounded-full transition-all ${
+                      className={`h-2 rounded-full transition-all cursor-pointer ${
                         index === currentImageIndex ? 'bg-white w-8' : 'bg-white/50 w-2'
                       }`}
                     />

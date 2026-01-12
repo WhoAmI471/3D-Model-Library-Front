@@ -11,7 +11,8 @@ import { useModelsData } from '@/hooks/useModelsData'
 import { useModal } from '@/hooks/useModal'
 import { usePagination } from '@/hooks/usePagination'
 import { projectSchema } from '@/lib/validations/projectSchema'
-import { handleError } from '@/lib/errorHandler'
+import { handleError, getErrorMessage } from '@/lib/errorHandler'
+import { ApiError } from '@/lib/apiClient'
 
 export default function ProjectForm({ project, onSubmit, onCancel }) {
   const router = useRouter()
@@ -30,6 +31,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     handleSubmit: handleFormSubmit,
     formState: { errors, isSubmitting },
     setValue,
+    setError,
     watch,
     reset
   } = useForm({
@@ -72,7 +74,6 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
     const filteredValue = value
       .replace(/[^а-яА-ЯёЁa-zA-Z0-9\s]/g, '')
       .replace(/\s+/g, ' ')
-      .trim()
     
     setValue(name, filteredValue, { shouldValidate: true })
   }
@@ -119,9 +120,26 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
         deleteImage: !imageFile && !imagePreview 
       })
     } catch (error) {
-      // Используем централизованную обработку ошибок
-      await handleError(error, { context: 'ProjectForm.onSubmitForm' })
-      // Ошибки также обрабатываются через formState.errors в react-hook-form
+      // Проверяем, является ли это ошибкой дубликата проекта
+      const formattedError = await handleError(error, { context: 'ProjectForm.onSubmitForm' })
+      const errorMessage = getErrorMessage(formattedError)
+      
+      // Если ошибка связана с дубликатом названия проекта, устанавливаем её в поле name
+      if ((error instanceof ApiError && error.status === 400) || error?.status === 400) {
+        if (
+          errorMessage.includes('Проект с таким названием уже существует') ||
+          errorMessage.includes('проект с таким названием') ||
+          errorMessage.toLowerCase().includes('уже существует')
+        ) {
+          setError('name', {
+            type: 'manual',
+            message: 'Проект с таким названием уже существует'
+          })
+        }
+      }
+      
+      // Пробрасываем ошибку дальше, чтобы показать оповещение
+      throw error
     }
   }
 
@@ -236,7 +254,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors cursor-pointer"
                       disabled={isSubmitting}
                     >
                       <XMarkIcon className="w-4 h-4" />
@@ -314,7 +332,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                   <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-gray-200">
                     <button
                       onClick={() => setActiveTab('all')}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                         activeTab === 'all'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -337,7 +355,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                         <button
                           key={sphere.id}
                           onClick={() => setActiveTab(sphere.id)}
-                          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                             activeTab === sphere.id
                               ? 'bg-blue-600 text-white'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -372,7 +390,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                             watchedModelIds?.includes(model.id) 
                               ? 'border-blue-500 shadow-md' 
                               : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                          }`}
+                          } cursor-pointer`}
                           onClick={() => handleModelSelect(model.id)}
                         >
                           {/* Галочка в углу */}
@@ -428,7 +446,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                           <button
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
-                            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"
                           >
                             Назад
                           </button>
@@ -438,7 +456,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                           <button
                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages}
-                            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium"
+                            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"
                           >
                             Вперед
                           </button>
@@ -461,7 +479,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
               disabled={isSubmitting}
             >
               Отмена
@@ -471,7 +489,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
               className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
                 isSubmitting
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
               }`}
               disabled={isSubmitting}
             >

@@ -98,7 +98,7 @@ export const ModelPreview = ({
               onClick={handlePrevImage}
               onMouseEnter={(e) => e.stopPropagation()}
               onMouseLeave={(e) => e.stopPropagation()}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full z-10"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full z-10 cursor-pointer"
             >
               &lt;
             </button>
@@ -106,7 +106,7 @@ export const ModelPreview = ({
               onClick={handleNextImage}
               onMouseEnter={(e) => e.stopPropagation()}
               onMouseLeave={(e) => e.stopPropagation()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full z-10"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full z-10 cursor-pointer"
             >
               &gt;
             </button>
@@ -121,7 +121,7 @@ export const ModelPreview = ({
                 e.stopPropagation()
                 setLocalIndex(index)
               }}
-              className={`w-2 h-2 rounded-full transition-all ${
+              className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
                 index === localIndex ? 'bg-white' : 'bg-white/50 hover:bg-white/70'
               }`}
             />

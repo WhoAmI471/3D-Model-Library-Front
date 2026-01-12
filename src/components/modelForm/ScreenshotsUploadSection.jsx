@@ -106,7 +106,7 @@ export default function ScreenshotsUploadSection({
                   e.stopPropagation()
                   onRemove(index)
                 }}
-                className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10"
+                className="absolute top-2 right-2 p-1 rounded-full bg-white text-gray-700 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors z-10 cursor-pointer"
                 disabled={disabled}
               >
                 <XMarkIcon className="h-5 w-5" />
