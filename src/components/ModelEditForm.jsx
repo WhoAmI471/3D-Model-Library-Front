@@ -646,24 +646,31 @@ export default function ModelEditForm({ id, userRole }) {
                   <ArrowLeftIcon className="h-5 w-5" />
                 </button>
           {canEditModel ? (
-            <input
-              {...register('title')}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              className={`text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0 ${
-                errors.title ? 'border-b border-red-500' : ''
-              }`}
-              placeholder="Название модели"
-              maxLength={50}
-            />
+            <div className="relative w-full">
+              {!formData.title && (
+                <div className="absolute text-2xl font-semibold leading-none pb-0 pointer-events-none text-gray-400">
+                  Название модели <span className="text-red-500 opacity-50">*</span>
+                </div>
+              )}
+              <input
+                {...register('title')}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                className={`text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0 relative ${
+                  errors.title ? 'border-b border-red-500' : ''
+                }`}
+                placeholder=""
+                maxLength={50}
+              />
+              {errors.title && (
+                <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+              )}
+            </div>
           ) : (
             <h1 className="text-2xl font-semibold text-gray-900 leading-none pb-0">
               {formData.title || 'Редактирование модели'}
             </h1>
-          )}
-          {errors.title && canEditModel && (
-            <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
           )}
         </div>
       

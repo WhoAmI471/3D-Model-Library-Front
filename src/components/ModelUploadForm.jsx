@@ -49,6 +49,7 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   })
   
   const formData = watch()
+  const titleValue = formData.title || ''
 
   // Устанавливаем текущего пользователя по умолчанию, если автор еще не выбран
   useEffect(() => {
@@ -326,16 +327,23 @@ export default function ModelUploadForm({ initialProjectId = null }) {
           >
             <ArrowLeftIcon className="h-5 w-5" />
           </button>
-          <input
-            {...register('title')}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            className={`text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0 ${
-              errors.title ? 'border-b border-red-500' : ''
-            }`}
-            placeholder="Название модели"
-            maxLength={50}
-          />
+          <div className="relative w-full">
+            {!titleValue && (
+              <div className="absolute text-2xl font-semibold leading-none pb-0 pointer-events-none text-gray-400">
+                Название модели <span className="text-red-500 opacity-50">*</span>
+              </div>
+            )}
+            <input
+              {...register('title')}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              className={`text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0 relative ${
+                errors.title ? 'border-b border-red-500' : ''
+              }`}
+              placeholder=""
+              maxLength={50}
+            />
+          </div>
         </div>
       
       <form onSubmit={handleFormSubmit(onSubmitForm)} className="space-y-8">

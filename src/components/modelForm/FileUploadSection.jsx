@@ -12,9 +12,16 @@ export default function FileUploadSection({
   label = 'ZIP-архив модели',
   inputRef = null
 }) {
+  // Проверяем, является ли поле обязательным (есть ли звездочка в label)
+  const isRequired = label.includes('*')
+  const labelText = label.replace(' *', '').replace('*', '').trim()
+  
   return (
     <div className="mb-8">
-      <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">{label}</div>
+      <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">
+        {labelText}
+        {isRequired && <span className="text-red-500 ml-1">*</span>}
+      </div>
       
       {currentFile && (
         <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
