@@ -378,6 +378,41 @@ const apiClient = {
     },
   },
 
+  // ===== DELETED MODELS =====
+  deletedModels: {
+    async getAll(params = {}) {
+      const queryParams = new URLSearchParams()
+      if (params.page) queryParams.append('page', params.page)
+      if (params.limit) queryParams.append('limit', params.limit)
+      
+      const url = queryParams.toString()
+        ? `/api/deleted-models?${queryParams.toString()}`
+        : '/api/deleted-models'
+      
+      const { data } = await request(url)
+      return data
+    },
+
+    async getById(id) {
+      const { data } = await request(`/api/deleted-models/${id}`)
+      return data
+    },
+
+    async delete(id) {
+      const { data } = await request(`/api/deleted-models/${id}`, {
+        method: 'DELETE'
+      })
+      return data
+    },
+
+    async deleteAll() {
+      const { data } = await request('/api/deleted-models', {
+        method: 'DELETE'
+      })
+      return data
+    }
+  },
+
   // ===== NEXTCLOUD PROXY =====
   nextcloud: {
     async getFile(path) {

@@ -252,7 +252,7 @@ export default function ProjectsPage() {
                     href={`/dashboard/projects/${project.id}`}
                     className="block"
                   >
-                    <h3 className="font-semibold text-gray-900 mb-2 truncate hover:text-blue-600 transition-colors cursor-pointer">
+                    <h3 className="font-semibold text-gray-900 mb-2 truncate hover:text-blue-600 transition-colors cursor-pointer" title={project.name}>
                       {project.name}
                     </h3>
                   </Link>

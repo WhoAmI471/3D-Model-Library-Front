@@ -53,6 +53,16 @@ export default function DashboardPage() {
     load()
   }, [router])
 
+  const getModelVersion = (model) => {
+    if (model.versions && model.versions.length > 0) {
+      const sortedVersions = [...model.versions].sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      )
+      return sortedVersions[0].version
+    }
+    return '1.0'
+  }
+
   const handleDownload = async (model, e) => {
     e.stopPropagation()
     setIsDownloading(prev => ({ ...prev, [model.id]: true }))
@@ -62,7 +72,8 @@ export default function DashboardPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${model.title}.zip` || 'model.zip'
+      const version = getModelVersion(model)
+      a.download = `${model.title}_v${version}.zip` || 'model.zip'
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -135,8 +146,8 @@ export default function DashboardPage() {
 
   // Сортировка сфер: по количеству моделей, "Другое" в конце
   const sortedSpheres = [...spheres].sort((a, b) => {
-    const aCount = models.filter(model => model.sphere?.id === a.id).length
-    const bCount = models.filter(model => model.sphere?.id === b.id).length
+    const aCount = models.filter(model => model.spheres?.some(s => s.id === a.id)).length
+    const bCount = models.filter(model => model.spheres?.some(s => s.id === b.id)).length
     
     // Если одна из сфер называется "Другое", она идет в конец
     if (a.name === 'Другое') return 1
@@ -150,7 +161,11 @@ export default function DashboardPage() {
     .filter(model => {
       // Фильтрация по вкладке сферы
       if (activeTab === 'all') return true
-      return model.sphere?.id === activeTab
+      if (activeTab === 'no-sphere') {
+        // Показываем модели без сфер
+        return !model.spheres || model.spheres.length === 0
+      }
+      return model.spheres?.some(s => s.id === activeTab)
     })
     .filter(model => {
       // Фильтрация по поиску
@@ -160,7 +175,7 @@ export default function DashboardPage() {
       return (
         model.title?.toLowerCase().includes(searchLower) ||
         (model.author?.name?.toLowerCase().includes(searchLower)) ||
-        (model.sphere?.name?.toLowerCase().includes(searchLower)) ||
+        (model.spheres?.some(s => s.name.toLowerCase().includes(searchLower))) ||
         (model.projects?.some(p => p.name.toLowerCase().includes(searchLower)))
       )
     })
@@ -239,9 +254,23 @@ export default function DashboardPage() {
                 </span>
               </button>
               <div className="h-6 w-px bg-gray-300"></div>
+              <button
+                onClick={() => setActiveTab('no-sphere')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                  activeTab === 'no-sphere'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Без сферы
+                <span className={`ml-1.5 text-xs ${activeTab === 'no-sphere' ? 'text-blue-100' : 'text-gray-500'}`}>
+                  {models.filter(m => !m.spheres || m.spheres.length === 0).length}
+                </span>
+              </button>
+              <div className="h-6 w-px bg-gray-300"></div>
               {sortedSpheres.map((sphere) => {
                 const sphereModelsCount = models.filter(model =>
-                  model.sphere?.id === sphere.id
+                  model.spheres?.some(s => s.id === sphere.id)
                 ).length
                 
                 return (
@@ -269,11 +298,11 @@ export default function DashboardPage() {
         {filteredModels.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-500 text-lg">
-              {searchTerm || activeTab !== 'all'
+              {searchTerm || (activeTab !== 'all' && activeTab !== 'no-sphere')
                 ? 'Модели не найдены'
                 : 'Нет моделей'}
             </p>
-            {(searchTerm || activeTab !== 'all') && (
+            {(searchTerm || (activeTab !== 'all' && activeTab !== 'no-sphere')) && (
               <button
                 onClick={() => {
                   setSearchTerm('')
@@ -323,9 +352,11 @@ export default function DashboardPage() {
 
                 {/* Контент карточки */}
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                    {model.title}
-                  </h3>
+                  <Link href={`/dashboard/models/${model.id}`}>
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors" title={model.title}>
+                      {model.title}
+                    </h3>
+                  </Link>
                   
                   <div className="space-y-2 mb-4">
                     {model.author && (

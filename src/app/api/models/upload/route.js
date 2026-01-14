@@ -22,15 +22,11 @@ export async function POST(request) {
       authorId = null
     }
     const projectId = formData.get('projectId') || null
-    let sphereId = formData.get('sphereId')
-    // Преобразуем пустую строку в null
-    if (sphereId === '' || sphereId === null || sphereId === undefined) {
-      sphereId = null
-    }
+    const sphereIds = formData.getAll('sphereIds') || []
     const version = formData.get('version') || '1.0'
     const screenshots = formData.getAll('screenshots') || []
 
-    if (!zipFile || !title || !sphereId || typeof zipFile.arrayBuffer !== 'function') {
+    if (!zipFile || !title || typeof zipFile.arrayBuffer !== 'function') {
       return new Response(JSON.stringify({ error: 'Обязательные поля отсутствуют или файл некорректен' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -46,16 +42,21 @@ export async function POST(request) {
       })
     }
 
-    // Проверяем, что сфера существует в базе данных
-    const sphere = await prisma.sphere.findUnique({
-      where: { id: sphereId }
-    })
+    // Определяем сферы для связи
+    const finalSphereIds = [...sphereIds]
     
-    if (!sphere) {
-      return new Response(JSON.stringify({ error: `Неверная сфера применения (ID: ${sphereId})` }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
+    // Проверяем, что сферы существуют в базе данных (если выбраны)
+    if (finalSphereIds.length > 0) {
+      const spheres = await prisma.sphere.findMany({
+        where: { id: { in: finalSphereIds } }
       })
+      
+      if (spheres.length !== finalSphereIds.length) {
+        return new Response(JSON.stringify({ error: 'Одна или несколько указанных сфер не найдены' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
     }
 
     const modelId = uuidv4()
@@ -92,22 +93,30 @@ export async function POST(request) {
       imageUrls.push(url)
     }
 
+    const modelData = {
+      id: modelId,
+      title,
+      description,
+      fileUrl,
+      images: imageUrls,
+      authorId: authorId || null,
+      projects: {
+        connect: projectIds.map(id => ({ id }))
+      }
+    }
+
+    // Добавляем связи со сферами только если они выбраны
+    if (finalSphereIds.length > 0) {
+      modelData.spheres = {
+        connect: finalSphereIds.map(id => ({ id }))
+      }
+    }
+
     const newModel = await prisma.model.create({
-      data: {
-        id: modelId,
-        title,
-        description,
-        fileUrl,
-        images: imageUrls,
-        authorId: authorId || null,
-        sphereId: sphereId,
-        projects: {
-          connect: projectIds.map(id => ({ id }))
-        },
-      },
+      data: modelData,
       include: { 
         projects: true,
-        sphere: true
+        spheres: true
       }
     })
 
@@ -133,7 +142,7 @@ export async function POST(request) {
       include: { 
         author: true, 
         projects: true,
-        sphere: true
+        spheres: true
       },
     })
 

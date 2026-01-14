@@ -14,6 +14,7 @@ import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import ScreenshotsSection from '@/components/modelForm/ScreenshotsSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
 import ProjectsSection from '@/components/modelForm/ProjectsSection'
+import SpheresSection from '@/components/modelForm/SpheresSection'
 import FileUploadSection from '@/components/modelForm/FileUploadSection'
 import { updateModelSchema } from '@/lib/validations/modelSchema'
 
@@ -23,6 +24,7 @@ export default function ModelEditForm({ id, userRole }) {
   const { success, error: showError } = useNotification()
   
   const [selectedProjects, setSelectedProjects] = useState([])
+  const [selectedSpheres, setSelectedSpheres] = useState([])
   const [zipFile, setZipFile] = useState(null)
   const [screenshots, setScreenshots] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -33,6 +35,7 @@ export default function ModelEditForm({ id, userRole }) {
   })
   const [deletedScreenshots, setDeletedScreenshots] = useState([])
   const [projectSearchTerm, setProjectSearchTerm] = useState('')
+  const [sphereSearchTerm, setSphereSearchTerm] = useState('')
   const [existingModel, setExistingModel] = useState(null)
   const [draggedIndex, setDraggedIndex] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
@@ -52,7 +55,7 @@ export default function ModelEditForm({ id, userRole }) {
       description: '',
       authorId: '',
       version: '1.0',
-      sphereId: '',
+      sphereIds: [],
       projectIds: []
     },
     mode: 'onChange'
@@ -80,19 +83,6 @@ export default function ModelEditForm({ id, userRole }) {
       setCanEditScreenshots(false)
     }
   }, [currentUser])
-
-  // Сортировка сфер: по количеству моделей, "Другое" в конце
-  const sortedSpheres = [...spheres].sort((a, b) => {
-    const aCount = allModels.filter(model => model.sphere?.id === a.id).length
-    const bCount = allModels.filter(model => model.sphere?.id === b.id).length
-    
-    // Если одна из сфер называется "Другое", она идет в конец
-    if (a.name === 'Другое') return 1
-    if (b.name === 'Другое') return -1
-    
-    // Остальные сортируем по количеству моделей (от большего к меньшему)
-    return bCount - aCount
-  })
 
   // Функция для загрузки и обновления данных модели
   const loadModel = async (showLoading = true) => {
@@ -130,11 +120,12 @@ export default function ModelEditForm({ id, userRole }) {
         description: data.description || '',
         authorId: authorIdValue,
         version: currentVersion,
-        sphereId: data.sphere?.id || '',
+        sphereIds: data.spheres?.map(s => s.id) || [],
         projectIds: data.projects?.map(p => p.id) || []
       })
       
       setSelectedProjects(data.projects?.map(p => p.id) || [])
+      setSelectedSpheres(data.spheres?.map(s => s.id) || [])
       
       setCurrentFiles({
         zip: data.fileUrl,
@@ -243,6 +234,16 @@ export default function ModelEditForm({ id, userRole }) {
     
     setSelectedProjects(newIds)
     setValue('projectIds', newIds, { shouldValidate: false })
+  }
+
+  const toggleSphere = (sphereId) => {
+    const currentIds = formData.sphereIds || []
+    const newIds = currentIds.includes(sphereId)
+      ? currentIds.filter(id => id !== sphereId)
+      : [...currentIds, sphereId]
+    
+    setSelectedSpheres(newIds)
+    setValue('sphereIds', newIds, { shouldValidate: false })
   }
 
   const isValidImageFile = (file) => {
@@ -526,7 +527,8 @@ export default function ModelEditForm({ id, userRole }) {
           formDataToSend.append('description', data.description || '')
         }
         if (canEditSphere) {
-          formDataToSend.append('sphereId', data.sphereId || '')
+          const sphereIds = data.sphereIds || selectedSpheres
+          sphereIds.forEach(id => formDataToSend.append('sphereIds', id))
         }
         if (canEditScreenshots) {
           // Добавляем информацию об удаленных скриншотах
@@ -553,13 +555,16 @@ export default function ModelEditForm({ id, userRole }) {
         if (data.description !== undefined) formDataToSend.append('description', data.description || '')
         if (data.authorId) formDataToSend.append('authorId', data.authorId)
         if (data.version) formDataToSend.append('version', data.version)
-        if (data.sphereId) formDataToSend.append('sphereId', data.sphereId)
         
         // Добавляем выбранные проекты
         const projectIds = data.projectIds || selectedProjects
         projectIds.forEach(projectId => {
           formDataToSend.append('projectIds', projectId)
         })
+
+        // Добавляем выбранные сферы
+        const sphereIds = data.sphereIds || selectedSpheres
+        sphereIds.forEach(id => formDataToSend.append('sphereIds', id))
         
         // Добавляем информацию об удаленных скриншотах
         deletedScreenshots.forEach(url => {
@@ -713,13 +718,21 @@ export default function ModelEditForm({ id, userRole }) {
               handleChange={handleChange}
               users={users}
               currentUser={currentUser}
-              sortedSpheres={sortedSpheres}
               canEditModel={canEditModel}
               canEditDescription={canEditDescription}
-              canEditSphere={canEditSphere}
               showTitle={false}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
+            />
+
+            {/* Сферы */}
+            <SpheresSection
+              spheres={spheres}
+              selectedSpheres={selectedSpheres}
+              onToggleSphere={toggleSphere}
+              searchTerm={sphereSearchTerm}
+              onSearchChange={setSphereSearchTerm}
+              disabled={isLoading || isSubmitting}
             />
 
             {/* ZIP-архив модели */}
@@ -772,33 +785,16 @@ export default function ModelEditForm({ id, userRole }) {
               </div>
             )}
             
-            {/* Сфера */}
+            {/* Сферы */}
             {canEditSphere && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Сфера <span className="text-red-500">*</span>
-                </label>
-                <select
-                  {...register('sphereId')}
-                  onChange={handleChange}
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 cursor-pointer ${
-                    errors.sphereId ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  style={!formData.sphereId ? { color: 'rgba(156, 163, 175, 0.7)' } : { color: 'rgba(17, 24, 39, 1)' }}
-                >
-                  <option value="" disabled hidden>
-                    Выберите сферу
-                  </option>
-                  {sortedSpheres.map((sphere) => (
-                    <option key={sphere.id} value={sphere.id}>
-                      {sphere.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.sphereId && (
-                  <p className="mt-1 text-sm text-red-600">{errors.sphereId.message}</p>
-                )}
-              </div>
+              <SpheresSection
+                spheres={spheres}
+                selectedSpheres={selectedSpheres}
+                onToggleSphere={toggleSphere}
+                searchTerm={sphereSearchTerm}
+                onSearchChange={setSphereSearchTerm}
+                disabled={isLoading || isSubmitting}
+              />
             )}
             
             {/* Скриншоты */}

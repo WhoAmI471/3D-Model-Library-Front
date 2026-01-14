@@ -107,7 +107,8 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${model.title}.zip` || 'model.zip';
+      const version = selectedVersion.version || getCurrentVersion();
+      a.download = `${model.title}_v${version}.zip` || 'model.zip';
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -336,8 +337,12 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
           </div>
           
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Сфера</div>
-            <div className="text-sm font-medium text-gray-900 truncate">{model.sphere?.name || 'Не указана'}</div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Сферы</div>
+            <div className="text-sm font-medium text-gray-900">
+              {model.spheres && model.spheres.length > 0
+                ? model.spheres.map(s => s.name).join(', ')
+                : 'Не указаны'}
+            </div>
           </div>
           
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">

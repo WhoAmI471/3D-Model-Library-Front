@@ -10,6 +10,7 @@ import { useNotification } from '@/hooks/useNotification'
 import ScreenshotsUploadSection from '@/components/modelForm/ScreenshotsUploadSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
 import ProjectsSection from '@/components/modelForm/ProjectsSection'
+import SpheresSection from '@/components/modelForm/SpheresSection'
 import FileUploadSection from '@/components/modelForm/FileUploadSection'
 import { createModelSchema } from '@/lib/validations/modelSchema'
 
@@ -22,9 +23,11 @@ export default function ModelUploadForm({ initialProjectId = null }) {
   const { users, projects, spheres, models: allModels, currentUser } = useModelsData({ includeUsers: true, includeProjects: true })
   const { success, error: showError } = useNotification()
   const [selectedProjects, setSelectedProjects] = useState([])
+  const [selectedSpheres, setSelectedSpheres] = useState([])
   const [zipFile, setZipFile] = useState(null)
   const [screenshots, setScreenshots] = useState([])
   const [projectSearchTerm, setProjectSearchTerm] = useState('')
+  const [sphereSearchTerm, setSphereSearchTerm] = useState('')
   
   const {
     register,
@@ -42,7 +45,7 @@ export default function ModelUploadForm({ initialProjectId = null }) {
       description: '',
       authorId: '',
       version: '1.0',
-      sphereId: '',
+      sphereIds: [],
       projectIds: []
     },
     mode: 'onChange'
@@ -198,6 +201,16 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     setValue('projectIds', newIds, { shouldValidate: false })
   }
 
+  const toggleSphere = (sphereId) => {
+    const currentIds = formData.sphereIds || []
+    const newIds = currentIds.includes(sphereId)
+      ? currentIds.filter(id => id !== sphereId)
+      : [...currentIds, sphereId]
+    
+    setSelectedSpheres(newIds)
+    setValue('sphereIds', newIds, { shouldValidate: false })
+  }
+
 
   const onSubmitForm = async (data) => {
     // Валидация файлов
@@ -227,11 +240,13 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     formDataToSend.append('title', data.title)
     formDataToSend.append('description', data.description || '')
     formDataToSend.append('authorId', data.authorId || '')
-    formDataToSend.append('sphereId', data.sphereId)
     formDataToSend.append('version', data.version || '1.0')
 
     const projectIds = data.projectIds || selectedProjects
     projectIds.forEach(id => formDataToSend.append('projectIds', id))
+
+    const sphereIds = data.sphereIds || selectedSpheres
+    sphereIds.forEach(id => formDataToSend.append('sphereIds', id))
 
     formDataToSend.append('zipFile', zipFile)
     screenshots.forEach(sc => formDataToSend.append('screenshots', sc.file))
@@ -296,20 +311,6 @@ export default function ModelUploadForm({ initialProjectId = null }) {
     xhr.open('POST', '/api/models/upload')
     xhr.send(formDataToSend)
   }
-
-
-  // Сортировка сфер: по количеству моделей, "Другое" в конце
-  const sortedSpheres = [...spheres].sort((a, b) => {
-    const aCount = allModels.filter(model => model.sphere?.id === a.id).length
-    const bCount = allModels.filter(model => model.sphere?.id === b.id).length
-    
-    // Если одна из сфер называется "Другое", она идет в конец
-    if (a.name === 'Другое') return 1
-    if (b.name === 'Другое') return -1
-    
-    // Остальные сортируем по количеству моделей (от большего к меньшему)
-    return bCount - aCount
-  })
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(projectSearchTerm.toLowerCase()))
@@ -380,13 +381,21 @@ export default function ModelUploadForm({ initialProjectId = null }) {
           }}
           users={users}
           currentUser={currentUser}
-          sortedSpheres={sortedSpheres}
           canEditModel={true}
           canEditDescription={true}
-          canEditSphere={true}
           showTitle={false}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
+        />
+
+        {/* Сферы */}
+        <SpheresSection
+          spheres={spheres}
+          selectedSpheres={selectedSpheres}
+          onToggleSphere={toggleSphere}
+          searchTerm={sphereSearchTerm}
+          onSearchChange={setSphereSearchTerm}
+          disabled={loading}
         />
         
         {/* Проект (если выбран) */}

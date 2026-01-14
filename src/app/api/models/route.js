@@ -60,8 +60,8 @@ export async function GET(request) {
       }
     }
     
-    // Всегда включаем sphere для удобства использования на фронтенде
-    include.sphere = {
+    // Всегда включаем spheres для удобства использования на фронтенде
+    include.spheres = {
       select: {
         id: true,
         name: true

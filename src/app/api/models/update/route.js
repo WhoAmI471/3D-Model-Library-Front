@@ -29,6 +29,7 @@ export async function POST(request) {
   try {
     const formData = await request.formData()
     const projectIds = formData.getAll('projectIds')
+    const sphereIds = formData.getAll('sphereIds')
     const id = formData.get('id')
     const version = formData.get('version')
     const deletedScreenshots = formData.getAll('deletedScreenshots')
@@ -47,7 +48,7 @@ export async function POST(request) {
       include: {
         projects: true,
         author: true,
-        sphere: true
+        spheres: true
       }
     })
 
@@ -149,6 +150,27 @@ export async function POST(request) {
         }
       }
       
+      // Сравниваем сферы
+      const currentSphereIds = existingModel.spheres.map(s => s.id).sort()
+      const finalSphereIds = [...sphereIds].sort()
+      
+        if (JSON.stringify(currentSphereIds) !== JSON.stringify(finalSphereIds)) {
+          // Получаем названия сфер для лога
+          const currentSpheres = existingModel.spheres.map(s => s.name).join(', ') || 'нет'
+          const newSphereNames = finalSphereIds.length > 0
+            ? (await prisma.sphere.findMany({
+                where: { id: { in: finalSphereIds } }
+              })).map(s => s.name).join(', ')
+            : 'нет'
+          
+          changes.push(`Сферы: "${currentSpheres}" → "${newSphereNames}"`)
+          
+          // Добавляем связь со сферами (если пусто, то удаляем все связи)
+          updateData.spheres = {
+            set: finalSphereIds.map(id => ({ id }))
+          }
+        }
+      
       if (authorId !== existingModel.authorId) {
         const newAuthor = await prisma.user.findUnique({
           where: { id: authorId }
@@ -230,33 +252,30 @@ export async function POST(request) {
     } else {
       // Если нет права EDIT_MODELS, но есть права на отдельные поля
       // Обработка изменения сферы
-      const newSphereId = formData.get('sphereId')
-      if (newSphereId !== null && newSphereId !== existingModel.sphereId) {
-        if (canEditSphere) {
-          let oldSphereName = 'Не указана'
-          let newSphereName = 'Не указана'
+      if (canEditSphere) {
+        const currentSphereIds = existingModel.spheres.map(s => s.id).sort()
+        const finalSphereIds = [...sphereIds].sort()
+        
+        if (JSON.stringify(currentSphereIds) !== JSON.stringify(finalSphereIds)) {
+          // Получаем названия сфер для лога
+          const currentSpheres = existingModel.spheres.map(s => s.name).join(', ') || 'нет'
+          const newSpheres = await prisma.sphere.findMany({
+            where: { id: { in: sortedFinalSphereIds } }
+          })
+          const newSphereNames = newSpheres.map(s => s.name).join(', ') || 'нет'
           
-          if (existingModel.sphere) {
-            oldSphereName = existingModel.sphere.name
+          changes.push(`Сферы: "${currentSpheres}" → "${newSphereNames}"`)
+          
+          // Добавляем связь со сферами
+          updateData.spheres = {
+            set: sortedFinalSphereIds.map(id => ({ id }))
           }
-          
-          if (newSphereId) {
-            const newSphere = await prisma.sphere.findUnique({
-              where: { id: newSphereId }
-            })
-            if (newSphere) {
-              newSphereName = newSphere.name
-            }
-          }
-          
-          changes.push(`Сфера: "${oldSphereName}" → "${newSphereName}"`)
-          updateData.sphereId = newSphereId
-        } else {
-          return NextResponse.json(
-            { error: 'Доступ запрещен. У вас нет прав для изменения сферы модели.' },
-            { status: 403 }
-          )
         }
+      } else if (sphereIds.length > 0 || existingModel.spheres.length > 0) {
+        return NextResponse.json(
+          { error: 'Доступ запрещен. У вас нет прав для изменения сферы модели.' },
+          { status: 403 }
+        )
       }
       
       // Обработка скриншотов
@@ -328,30 +347,6 @@ export async function POST(request) {
       }
     }
     
-    // Обработка изменения сферы (если не обработано выше, но есть право EDIT_MODELS)
-    if (canEditModels) {
-      const newSphereId = formData.get('sphereId')
-      if (newSphereId !== null && newSphereId !== existingModel.sphereId && !updateData.sphereId) {
-        let oldSphereName = 'Не указана'
-        let newSphereName = 'Не указана'
-        
-        if (existingModel.sphere) {
-          oldSphereName = existingModel.sphere.name
-        }
-        
-        if (newSphereId) {
-          const newSphere = await prisma.sphere.findUnique({
-            where: { id: newSphereId }
-          })
-          if (newSphere) {
-            newSphereName = newSphere.name
-          }
-        }
-        
-        changes.push(`Сфера: "${oldSphereName}" → "${newSphereName}"`)
-        updateData.sphereId = newSphereId
-      }
-    }
 
 
     // Обновление модели
@@ -361,7 +356,7 @@ export async function POST(request) {
     include: {
       projects: true,
       author: true,
-      sphere: true
+      spheres: true
     }
   })
 

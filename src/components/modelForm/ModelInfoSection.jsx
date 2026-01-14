@@ -10,10 +10,8 @@ export default function ModelInfoSection({
   handleChange,
   users = [],
   currentUser,
-  sortedSpheres = [],
   canEditModel = false,
   canEditDescription = false,
-  canEditSphere = false,
   showTitle = false,
   titleClassName = '',
   onKeyDown,
@@ -60,7 +58,7 @@ export default function ModelInfoSection({
       </div>
 
       {/* Информация о модели */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {/* Автор */}
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Автор</div>
@@ -116,31 +114,6 @@ export default function ModelInfoSection({
             maxLength={20}
             disabled={!canEditModel}
           />
-        </div>
-        
-        {/* Сфера */}
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-          <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
-            Сфера <span className="text-red-500">*</span>
-          </div>
-          <select
-            name="sphereId"
-            value={form.sphereId || ''}
-            onChange={handleChange}
-            required
-            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm cursor-pointer text-gray-900"
-            disabled={canEditModel ? false : !canEditSphere}
-            style={!form.sphereId ? { color: 'rgba(156, 163, 175, 0.7)' } : {}}
-          >
-            <option value="" disabled hidden className="text-gray-400">
-              Выберите сферу
-            </option>
-            {sortedSpheres.map((sphere) => (
-              <option key={sphere.id} value={sphere.id} className="text-gray-900">
-                {sphere.name}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
     </>

@@ -67,10 +67,44 @@ export async function GET(request) {
       prisma.log.count({ where })
     ])
 
+    // Для логов с modelId = null ищем соответствующие удаленные модели
+    // Если в action есть "Модель удалена (название)", ищем удаленную модель по названию
+    const deletedModels = await prisma.deletedModel.findMany({
+      select: {
+        id: true,
+        originalModelId: true,
+        title: true,
+        images: true
+      }
+    })
+
+    // Обогащаем логи данными об удаленных моделях
+    const enrichedLogs = logs.map(log => {
+      if (!log.model && log.action && log.action.includes('Модель удалена')) {
+        // Извлекаем название модели из action (формат: "Модель удалена (название)")
+        const match = log.action.match(/Модель удалена \((.+?)\)/)
+        if (match) {
+          const modelTitle = match[1]
+          const deletedModel = deletedModels.find(dm => dm.title === modelTitle)
+          if (deletedModel) {
+            return {
+              ...log,
+              deletedModel: {
+                id: deletedModel.id,
+                title: deletedModel.title,
+                images: deletedModel.images
+              }
+            }
+          }
+        }
+      }
+      return log
+    })
+
     const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
 
     return NextResponse.json({
-      logs,
+      logs: enrichedLogs,
       totalPages,
       currentPage: page,
       totalCount

@@ -7,7 +7,8 @@ import {
   UsersIcon, 
   TrashIcon, 
   DocumentTextIcon,
-  Squares2X2Icon
+  Squares2X2Icon,
+  ArchiveBoxIcon
 } from '@heroicons/react/24/outline'
 
 export default function Navigation({ userRole }) {
@@ -49,6 +50,12 @@ export default function Navigation({ userRole }) {
       href: '/dashboard/deletion-requests',
       icon: TrashIcon,
       current: pathname === '/dashboard/deletion-requests'
+    }] : []),
+    ...(userRole === 'ADMIN' ? [{
+      name: 'История удаленных моделей',
+      href: '/dashboard/deleted-models',
+      icon: ArchiveBoxIcon,
+      current: pathname?.startsWith('/dashboard/deleted-models')
     }] : [])
   ]
 

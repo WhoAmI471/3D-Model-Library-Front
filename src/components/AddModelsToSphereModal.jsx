@@ -9,7 +9,7 @@ import { useModelsData } from '@/hooks/useModelsData'
 import { useModal } from '@/hooks/useModal'
 import { usePagination } from '@/hooks/usePagination'
 
-export default function AddModelsToProjectModal({ projectId, onClose, onAdd, existingModelIds = [] }) {
+export default function AddModelsToSphereModal({ sphereId, onClose, onAdd, existingModelIds = [] }) {
   const router = useRouter()
   const { models, spheres, currentUser, isLoading: isLoadingModels } = useModelsData()
   const [selectedModels, setSelectedModels] = useState([])
@@ -33,8 +33,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
     }
   }
 
-
-  // Фильтруем модели: исключаем те, что уже есть в проекте
+  // Фильтруем модели: исключаем те, что уже есть в сфере
   const availableModels = models.filter(model => 
     !existingModelIds.includes(model.id)
   )
@@ -86,7 +85,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-800">
-              Добавить модели в проект
+              Добавить модели в сферу
             </h2>
             <button
               onClick={onClose}
@@ -112,7 +111,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
             {currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) && (
               <button
                 type="button"
-                onClick={() => router.push(`/dashboard/models/upload?projectId=${projectId}`)}
+                onClick={() => router.push(`/dashboard/models/upload`)}
                 className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer overflow-hidden"
                 style={{ 
                   width: '2.5rem', 
@@ -153,6 +152,20 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
                   Все модели
                   <span className={`ml-1.5 text-xs ${activeTab === 'all' ? 'text-blue-100' : 'text-gray-500'}`}>
                     {availableModels.length}
+                  </span>
+                </button>
+                <div className="h-6 w-px bg-gray-300"></div>
+                <button
+                  onClick={() => setActiveTab('no-sphere')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                    activeTab === 'no-sphere'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Без сферы
+                  <span className={`ml-1.5 text-xs ${activeTab === 'no-sphere' ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {availableModels.filter(m => !m.spheres || m.spheres.length === 0).length}
                   </span>
                 </button>
                 <div className="h-6 w-px bg-gray-300"></div>
@@ -209,7 +222,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
                       <div className="absolute top-2 right-2 z-10">
                         <input
                           type="checkbox"
-                          id={`modal-model-${model.id}`}
+                          id={`sphere-modal-model-${model.id}`}
                           checked={selectedModels.includes(model.id)}
                           onChange={() => handleModelSelect(model.id)}
                           className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
@@ -305,4 +318,3 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
     </div>
   )
 }
-

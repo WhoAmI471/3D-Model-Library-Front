@@ -2,16 +2,14 @@
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
-import { checkPermission, checkAnyPermission } from '@/lib/permission';
+import { checkPermission, checkAnyPermission } from '@/lib/permission'
 import apiClient from '@/lib/apiClient'
 import Loading from '@/components/Loading'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import { useNotification } from '@/hooks/useNotification'
 import { useConfirm } from '@/hooks/useConfirm'
-import AddModelsToProjectModal from "@/components/AddModelsToProjectModal"
+import AddModelsToSphereModal from "@/components/AddModelsToSphereModal"
 import DeleteReasonModal from "@/components/DeleteReasonModal"
 import ConfirmModal from "@/components/ConfirmModal"
 import { 
@@ -23,15 +21,15 @@ import {
   ArrowDownTrayIcon
 } from '@heroicons/react/24/outline'
 
-export default function ProjectPage({ params }) {
+export default function SpherePage({ params }) {
   const { id } = use(params)
   const router = useRouter()
-  const [project, setProject] = useState(null)
+  const [sphere, setSphere] = useState(null)
   const [models, setModels] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [userRole, setUserRole] = useState(null)
-  const [user, setUser] = useState();
+  const [user, setUser] = useState()
   const [showAddModelsModal, setShowAddModelsModal] = useState(false)
   const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false)
   const [selectedModelForDeletion, setSelectedModelForDeletion] = useState(null)
@@ -51,7 +49,7 @@ export default function ProjectPage({ params }) {
     load()
   }, [])
 
-  // Загрузка данных проекта и моделей
+  // Загрузка данных сферы и моделей
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -61,17 +59,14 @@ export default function ProjectPage({ params }) {
         const userData = await apiClient.auth.me()
         setUserRole(userData.user?.role || null)
 
-        // Получаем данные проекта
-        const projectData = await apiClient.projects.getById(id)
-        setProject(projectData)
-
-        // Получаем модели проекта
-        const modelsData = await apiClient.models.getAll({ projectId: id })
-        setModels(modelsData)
+        // Получаем данные сферы с моделями
+        const sphereData = await apiClient.spheres.getById(id)
+        setSphere(sphereData)
+        setModels(sphereData.models || [])
         
       } catch (error) {
         console.error('Ошибка загрузки данных:', error)
-        router.push('/dashboard/projects')
+        router.push('/dashboard/spheres')
       } finally {
         setIsLoading(false)
       }
@@ -117,9 +112,8 @@ export default function ProjectPage({ params }) {
     }
   }
 
-
   const handleDeleteConfirm = async (reason) => {
-    if (!selectedModelForDeletion) return;
+    if (!selectedModelForDeletion) return
 
     try {
       const data = await apiClient.models.requestDeletion(selectedModelForDeletion.id, reason)
@@ -133,7 +127,7 @@ export default function ProjectPage({ params }) {
       ))
       setSelectedModelForDeletion(null)
     } catch (error) {
-      const formattedError = await handleError(error, { context: 'ProjectPage.handleDeleteConfirm', modelId: selectedModelForDeletion.id, projectId: id })
+      const formattedError = await handleError(error, { context: 'SpherePage.handleDeleteConfirm', modelId: selectedModelForDeletion.id, sphereId: id })
       const errorMessage = getErrorMessage(formattedError)
       showError(errorMessage)
     }
@@ -165,7 +159,7 @@ export default function ProjectPage({ params }) {
             throw new Error(data.error || 'Ошибка при удалении')
           }
         } catch (error) {
-          const formattedError = await handleError(error, { context: 'ProjectPage.handleDeleteRequest', modelId: model.id, projectId: id })
+          const formattedError = await handleError(error, { context: 'SpherePage.handleDeleteRequest', modelId: model.id, sphereId: id })
           const errorMessage = getErrorMessage(formattedError)
           showError(errorMessage)
         }
@@ -195,16 +189,16 @@ export default function ProjectPage({ params }) {
     )
   }
 
-  if (!project) {
+  if (!sphere) {
     return (
       <div className="min-h-full bg-white">
         <div className="max-w-7xl mx-auto px-6 py-8 text-center py-8">
-          <div className="text-red-500 mb-4">Проект не найден</div>
+          <div className="text-red-500 mb-4">Сфера не найдена</div>
           <button 
-            onClick={() => router.push('/dashboard/projects')}
+            onClick={() => router.push('/dashboard/spheres')}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors cursor-pointer"
           >
-            Вернуться к списку проектов
+            Вернуться к списку сфер
           </button>
         </div>
       </div>
@@ -226,11 +220,11 @@ export default function ProjectPage({ params }) {
           </button>
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 leading-none pb-0">
-              {project.name}
-              {project.city && (
-                <span className="text-lg font-normal text-gray-600 ml-3">• {project.city}</span>
-              )}
+              {sphere.name}
             </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Моделей: {models.length}
+            </p>
           </div>
           {(userRole === 'ADMIN' || checkPermission(user, 'upload_models')) && (
             <button
@@ -298,7 +292,7 @@ export default function ProjectPage({ params }) {
               >
                 {/* Превью изображения */}
                 <Link
-                  href={`/dashboard/models/${model.id}?projectid=${id}`}
+                  href={`/dashboard/models/${model.id}?sphereid=${id}`}
                   className="block relative aspect-square bg-gray-100 overflow-hidden group"
                 >
                   {model.markedForDeletion && (
@@ -326,7 +320,7 @@ export default function ProjectPage({ params }) {
 
                 {/* Контент карточки */}
                 <div className="p-4">
-                  <Link href={`/dashboard/models/${model.id}?projectid=${id}`}>
+                  <Link href={`/dashboard/models/${model.id}?sphereid=${id}`}>
                     <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors" title={model.title}>
                       {model.title}
                     </h3>
@@ -388,36 +382,36 @@ export default function ProjectPage({ params }) {
           </div>
         )}
 
-
         {showAddModelsModal && (
-          <AddModelsToProjectModal
-            projectId={id}
+          <AddModelsToSphereModal
+            sphereId={id}
             existingModelIds={models.map(m => m.id)}
             onClose={() => setShowAddModelsModal(false)}
             onAdd={async (selectedModelIds) => {
               try {
-                // Получаем текущие модели проекта
-                const currentModelIds = models.map(m => m.id)
-                // Объединяем существующие модели с новыми
-                const allModelIds = [...new Set([...currentModelIds, ...selectedModelIds])]
-                
-                // Обновляем проект
-                await apiClient.projects.update(id, {
-                  name: project.name,
-                  city: project.city,
-                  modelIds: allModelIds
-                })
+                // Обновляем каждую модель, добавляя сферу
+                for (const modelId of selectedModelIds) {
+                  const model = await apiClient.models.getById(modelId)
+                  const currentSphereIds = model.spheres?.map(s => s.id) || []
+                  if (!currentSphereIds.includes(id)) {
+                    const formData = new FormData()
+                    formData.append('id', modelId)
+                    const newSphereIds = [...currentSphereIds, id]
+                    newSphereIds.forEach(sphereId => formData.append('sphereIds', sphereId))
+                    
+                    await apiClient.models.update(modelId, formData)
+                  }
+                }
 
                 // Перезагружаем данные
-                const projectData = await apiClient.projects.getById(id)
-                setProject(projectData)
-
-                const modelsData = await apiClient.models.getAll({ projectId: id })
-                setModels(modelsData)
+                const sphereData = await apiClient.spheres.getById(id)
+                setSphere(sphereData)
+                setModels(sphereData.models || [])
 
                 setShowAddModelsModal(false)
+                success('Модели успешно добавлены в сферу')
               } catch (error) {
-                const formattedError = await handleError(error, { context: 'ProjectPage.onAdd', projectId: id, modelIds: selectedModelIds })
+                const formattedError = await handleError(error, { context: 'SpherePage.onAdd', sphereId: id, modelIds: selectedModelIds })
                 const errorMessage = getErrorMessage(formattedError)
                 showError(errorMessage)
               }

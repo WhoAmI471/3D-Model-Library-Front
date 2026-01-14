@@ -3,6 +3,81 @@ import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 import { logSphereAction } from '@/lib/logger'
 
+export async function GET(request, { params }) {
+  try {
+    const { id } = await params
+    const user = await getUserFromSession()
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Не авторизован' },
+        { status: 401 }
+      )
+    }
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID сферы обязательно' },
+        { status: 400 }
+      )
+    }
+
+    const sphere = await prisma.sphere.findUnique({
+      where: { id },
+      include: {
+        models: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            },
+            projects: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            spheres: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            versions: {
+              orderBy: {
+                createdAt: 'desc'
+              },
+              take: 1
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      }
+    })
+
+    if (!sphere) {
+      return NextResponse.json(
+        { error: 'Сфера не найдена' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json(sphere)
+  } catch (error) {
+    console.error('Ошибка загрузки сферы:', error)
+    return NextResponse.json(
+      { error: 'Ошибка сервера' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PUT(request, { params }) {
   try {
     const { id } = await params
@@ -31,7 +106,7 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json()
-    const { name } = body
+    const { name, modelIds = [] } = body
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json(
@@ -50,6 +125,15 @@ export async function PUT(request, { params }) {
       )
     }
 
+    // Проверяем зарезервированные названия (без учета регистра)
+    const lowerName = trimmedName.toLowerCase()
+    if (lowerName === 'все модели' || lowerName === 'без сферы') {
+      return NextResponse.json(
+        { error: 'Название "Все модели" и "Без сферы" зарезервированы и не могут быть использованы' },
+        { status: 400 }
+      )
+    }
+
     // Проверяем, существует ли сфера
     const existingSphere = await prisma.sphere.findUnique({
       where: { id }
@@ -61,6 +145,7 @@ export async function PUT(request, { params }) {
         { status: 404 }
       )
     }
+
 
     // Проверяем, не существует ли уже сфера с таким именем (кроме текущей)
     const duplicateSphere = await prisma.sphere.findFirst({
@@ -86,7 +171,18 @@ export async function PUT(request, { params }) {
     const updatedSphere = await prisma.sphere.update({
       where: { id },
       data: {
-        name: trimmedName
+        name: trimmedName,
+        models: {
+          set: modelIds.map(modelId => ({ id: modelId }))
+        }
+      },
+      include: {
+        models: {
+          select: {
+            id: true,
+            title: true
+          }
+        }
       }
     })
 
@@ -96,6 +192,11 @@ export async function PUT(request, { params }) {
 
   } catch (error) {
     console.error('Ошибка обновления сферы:', error)
+    console.error('Детали ошибки:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    })
     
     // Обработка ошибки уникальности от Prisma
     if (error.code === 'P2002') {
@@ -106,7 +207,7 @@ export async function PUT(request, { params }) {
     }
 
     return NextResponse.json(
-      { error: 'Ошибка сервера' },
+      { error: 'Ошибка сервера', details: error.message },
       { status: 500 }
     )
   }
@@ -141,28 +242,13 @@ export async function DELETE(request, { params }) {
 
     // Проверяем, существует ли сфера
     const existingSphere = await prisma.sphere.findUnique({
-      where: { id },
-      include: {
-        models: {
-          select: {
-            id: true
-          }
-        }
-      }
+      where: { id }
     })
 
     if (!existingSphere) {
       return NextResponse.json(
         { error: 'Сфера не найдена' },
         { status: 404 }
-      )
-    }
-
-    // Проверяем, есть ли связанные модели
-    if (existingSphere.models.length > 0) {
-      return NextResponse.json(
-        { error: `Невозможно удалить сферу. К ней привязано ${existingSphere.models.length} моделей. Сначала удалите или измените сферу у всех связанных моделей.` },
-        { status: 400 }
       )
     }
 
@@ -184,14 +270,6 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     console.error('Ошибка удаления сферы:', error)
     
-    // Обработка ошибки внешнего ключа
-    if (error.code === 'P2003') {
-      return NextResponse.json(
-        { error: 'Невозможно удалить сферу. К ней привязаны модели.' },
-        { status: 400 }
-      )
-    }
-
     return NextResponse.json(
       { error: 'Ошибка сервера' },
       { status: 500 }

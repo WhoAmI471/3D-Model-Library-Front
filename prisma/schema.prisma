@@ -7,19 +7,20 @@ datasource db {
 }
 
 model User {
-  id           String            @id @default(uuid())
-  name         String
-  email        String            @unique
-  password     String
-  role         Role
-  sphereId     String?
-  createdAt    DateTime          @default(now())
-  permissions  String[]
-  deletedLogs  DeletedModelLog[] @relation("UserDeletedLogs")
-  logs         Log[]
-  models       Model[]           @relation("UserModels")
-  markedModels Model[]           @relation("MarkedForDeletion")
-  sphere       Sphere?           @relation("UserSphere", fields: [sphereId], references: [id])
+  id            String            @id @default(uuid())
+  name          String
+  email         String            @unique
+  password      String
+  role          Role
+  sphereId      String?
+  createdAt     DateTime          @default(now())
+  permissions   String[]
+  deletedLogs   DeletedModelLog[] @relation("UserDeletedLogs")
+  deletedModels DeletedModel[]    @relation("DeletedModels")
+  logs          Log[]
+  models        Model[]           @relation("UserModels")
+  markedModels  Model[]           @relation("MarkedForDeletion")
+  sphere        Sphere?           @relation("UserSphere", fields: [sphereId], references: [id])
 }
 
 model Model {
@@ -31,7 +32,6 @@ model Model {
   fileUrl           String
   images            String[]       @default([])
   authorId          String?
-  sphereId          String?
   markedForDeletion Boolean        @default(false)
   markedById        String?
   markedAt          DateTime?
@@ -39,9 +39,9 @@ model Model {
   logs              Log[]
   author            User?          @relation("UserModels", fields: [authorId], references: [id])
   markedBy          User?          @relation("MarkedForDeletion", fields: [markedById], references: [id])
-  sphere            Sphere?        @relation(fields: [sphereId], references: [id])
   versions          ModelVersion[]
   projects          Project[]      @relation("ModelProjects")
+  spheres           Sphere[]       @relation("ModelSpheres")
 }
 
 model ModelVersion {
@@ -66,8 +66,9 @@ model Project {
 model Sphere {
   id        String   @id @default(uuid())
   name      String   @unique
+  iconName  String?
   createdAt DateTime @default(now())
-  models    Model[]
+  models    Model[]  @relation("ModelSpheres")
   users     User[]   @relation("UserSphere")
 }
 
@@ -89,6 +90,25 @@ model DeletedModelLog {
   createdAt DateTime @default(now())
   deletedAt DateTime @default(now())
   user      User?    @relation("UserDeletedLogs", fields: [userId], references: [id])
+}
+
+model DeletedModel {
+  id              String   @id @default(uuid())
+  originalModelId String? // ID оригинальной модели для связи с логами
+  title           String
+  description     String?
+  images          String[] @default([])
+  authorId        String?
+  authorName      String? // Сохраняем имя автора на случай удаления пользователя
+  sphereId        String?
+  sphereName      String? // Сохраняем название сферы
+  deletedById     String?
+  deletedAt       DateTime @default(now())
+  deletionComment String?
+  createdAt       DateTime // Дата создания оригинальной модели
+  updatedAt       DateTime // Дата последнего обновления оригинальной модели
+  projectNames    String[] @default([]) // Названия проектов на момент удаления
+  user            User?    @relation("DeletedModels", fields: [deletedById], references: [id])
 }
 
 enum Role {

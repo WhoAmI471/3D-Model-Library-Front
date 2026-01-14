@@ -65,7 +65,7 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { name } = body
+    const { name, modelIds = [] } = body
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json(
@@ -84,6 +84,15 @@ export async function POST(request) {
       )
     }
 
+    // Проверяем зарезервированные названия (без учета регистра)
+    const lowerName = trimmedName.toLowerCase()
+    if (lowerName === 'все модели' || lowerName === 'без сферы') {
+      return NextResponse.json(
+        { error: 'Название "Все модели" и "Без сферы" зарезервированы и не могут быть использованы' },
+        { status: 400 }
+      )
+    }
+
     // Проверяем, не существует ли уже сфера с таким именем
     const existingSphere = await prisma.sphere.findUnique({
       where: { name: trimmedName }
@@ -98,7 +107,18 @@ export async function POST(request) {
 
     const newSphere = await prisma.sphere.create({
       data: {
-        name: trimmedName
+        name: trimmedName,
+        models: {
+          connect: modelIds.map(id => ({ id }))
+        }
+      },
+      include: {
+        models: {
+          select: {
+            id: true,
+            title: true
+          }
+        }
       }
     })
 

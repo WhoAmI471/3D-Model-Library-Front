@@ -145,8 +145,8 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
 
   // Сортировка сфер: по количеству моделей, "Другое" в конце
   const sortedSpheres = [...spheres].sort((a, b) => {
-    const aCount = models.filter(model => model.sphere?.id === a.id).length
-    const bCount = models.filter(model => model.sphere?.id === b.id).length
+    const aCount = models.filter(model => model.spheres?.some(s => s.id === a.id)).length
+    const bCount = models.filter(model => model.spheres?.some(s => s.id === b.id)).length
     
     if (a.name === 'Другое') return 1
     if (b.name === 'Другое') return -1
@@ -157,7 +157,10 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
   const filteredModels = models
     .filter(model => {
       if (activeTab === 'all') return true
-      return model.sphere?.id === activeTab
+      if (activeTab === 'no-sphere') {
+        return !model.spheres || model.spheres.length === 0
+      }
+      return model.spheres?.some(s => s.id === activeTab)
     })
     .filter(model =>
       model.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -213,7 +216,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                   }`}
                   disabled={isSubmitting}
                   placeholder="Введите название проекта"
-                  maxLength={50}
+                  maxLength={150}
                 />
                 {errors.name && (
                   <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
@@ -344,9 +347,23 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                       </span>
                     </button>
                     <div className="h-6 w-px bg-gray-300"></div>
+                    <button
+                      onClick={() => setActiveTab('no-sphere')}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                        activeTab === 'no-sphere'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Без сферы
+                      <span className={`ml-1.5 text-xs ${activeTab === 'no-sphere' ? 'text-blue-100' : 'text-gray-500'}`}>
+                        {models.filter(m => !m.spheres || m.spheres.length === 0).length}
+                      </span>
+                    </button>
+                    <div className="h-6 w-px bg-gray-300"></div>
                     {sortedSpheres.map((sphere) => {
                       const sphereModelsCount = models.filter(model =>
-                        model.sphere?.id === sphere.id
+                        model.spheres?.some(s => s.id === sphere.id)
                       ).length
                       
                       if (sphereModelsCount === 0) return null

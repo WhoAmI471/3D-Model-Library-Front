@@ -73,10 +73,9 @@ const baseModelSchema = z.object({
     .regex(/^[\d.]+$/, 'Версия должна содержать только цифры и точки')
     .default('1.0'),
   
-  sphereId: z
-    .string()
-    .uuid('Некорректный ID сферы')
-    .min(1, 'Выберите сферу'),
+  sphereIds: z
+    .array(z.string().uuid('Некорректный ID сферы'))
+    .default([]),
   
   projectIds: z
     .array(z.string().uuid('Некорректный ID проекта'))
@@ -112,7 +111,7 @@ export const updateModelSchema = baseModelSchema.partial({
   description: true,
   authorId: true,
   version: true,
-  sphereId: true,
+  sphereIds: true,
   projectIds: true
 }).extend({
   zipFile: zipFileSchema,

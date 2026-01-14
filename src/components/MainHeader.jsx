@@ -73,6 +73,7 @@ export default function MainHeader() {
     if (pathname === '/dashboard/employees') return ['Сотрудники']
     if (pathname === '/dashboard/logs') return ['Логи']
     if (pathname === '/dashboard/deletion-requests') return ['Удаление моделей']
+    if (pathname?.startsWith('/dashboard/deleted-models')) return ['История удаленных моделей']
     if (pathname?.startsWith('/dashboard/models')) return ['Модели']
     if (pathname?.startsWith('/dashboard/projects')) return ['Проекты']
     return []

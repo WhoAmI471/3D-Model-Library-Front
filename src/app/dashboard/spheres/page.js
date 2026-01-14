@@ -1,11 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import Link from 'next/link'
+import Loading from '@/components/Loading'
+import SphereForm from '@/components/SphereForm'
+import { formatDateTime } from '@/lib/utils'
 import { checkPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS } from '@/lib/roles'
 import apiClient from '@/lib/apiClient'
-import Loading from '@/components/Loading'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import { useNotification } from '@/hooks/useNotification'
 import { useConfirm } from '@/hooks/useConfirm'
@@ -14,8 +15,7 @@ import {
   MagnifyingGlassIcon, 
   PlusIcon,
   TrashIcon,
-  PencilIcon,
-  XMarkIcon
+  PencilIcon
 } from '@heroicons/react/24/outline'
 
 export default function SpheresPage() {
@@ -23,31 +23,35 @@ export default function SpheresPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [sphereName, setSphereName] = useState('')
+  const [currentSphere, setCurrentSphere] = useState(null)
   const [user, setUser] = useState(null)
-  const [error, setError] = useState('')
-  const [editingSphere, setEditingSphere] = useState(null)
-  const [editName, setEditName] = useState('')
-  const [editError, setEditError] = useState('')
   const { success, error: showError } = useNotification()
   const { isOpen, message, title, confirmText, cancelText, variant, showConfirm, handleConfirm, handleCancel: handleConfirmCancel } = useConfirm()
 
   // Загрузка сфер
+  const fetchSpheres = async () => {
+    try {
+      const spheresData = await apiClient.spheres.getAll()
+      setSpheres(spheresData)
+    } catch (error) {
+      console.error('Ошибка загрузки сфер:', error)
+    }
+  }
+
   useEffect(() => {
-    const fetchSpheres = async () => {
+    const loadData = async () => {
+      await fetchSpheres()
       try {
-        const spheresData = await apiClient.spheres.getAll()
-        setSpheres(spheresData)
         const userData = await apiClient.auth.me()
         setUser(userData.user || null)
       } catch (error) {
-        console.error('Ошибка загрузки сфер:', error)
+        console.error('Ошибка загрузки пользователя:', error)
       } finally {
         setIsLoading(false)
       }
     }
     
-    fetchSpheres()
+    loadData()
   }, [])
 
   // Поиск и сортировка сфер
@@ -70,83 +74,45 @@ export default function SpheresPage() {
     return a.name.localeCompare(b.name)
   })
 
-  // Обработка добавления сферы
-  const handleSphereSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-
-    if (!sphereName.trim()) {
-      setError('Название сферы обязательно')
-      return
-    }
-
+  // Обработка добавления/обновления сферы
+  const handleSphereSubmit = async (sphereData) => {
     try {
-      const data = await apiClient.spheres.create({ name: sphereName.trim() })
-      setSpheres([...spheres, { ...data, modelsCount: 0 }])
-      setSphereName('')
+      if (currentSphere) {
+        await apiClient.spheres.update(currentSphere.id, sphereData)
+        success('Сфера успешно обновлена')
+      } else {
+        await apiClient.spheres.create(sphereData)
+        success('Сфера успешно создана')
+      }
+      
+      // Перезагружаем список сфер, чтобы получить актуальные данные
+      await fetchSpheres()
+      
       setShowAddForm(false)
-      setError('')
-      success('Сфера успешно создана')
+      setCurrentSphere(null)
     } catch (error) {
-      const formattedError = await handleError(error, { context: 'SpheresPage.handleSphereSubmit' })
+      const formattedError = await handleError(error, { context: 'SpheresPage.handleSphereSubmit', sphereId: currentSphere?.id })
       const errorMessage = getErrorMessage(formattedError)
-      setError(errorMessage)
       showError(errorMessage)
+      throw error
     }
   }
 
   const handleAdd = () => {
+    setCurrentSphere(null)
     setShowAddForm(true)
-    setSphereName('')
-    setError('')
   }
 
-  const handleCancel = () => {
-    setShowAddForm(false)
-    setSphereName('')
-    setError('')
-  }
-
-  // Обработка начала редактирования
-  const handleEdit = (sphere, e) => {
+  const handleEdit = async (sphere, e) => {
     e.stopPropagation()
-    setEditingSphere(sphere)
-    setEditName(sphere.name)
-    setEditError('')
-  }
-
-  // Обработка отмены редактирования
-  const handleCancelEdit = () => {
-    setEditingSphere(null)
-    setEditName('')
-    setEditError('')
-  }
-
-  // Обработка сохранения изменений
-  const handleUpdate = async () => {
-    if (!editingSphere) return
-
-    if (!editName.trim()) {
-      setEditError('Название сферы обязательно')
-      return
-    }
-
-    if (editName.trim().length > 50) {
-      setEditError('Название сферы не должно превышать 50 символов')
-      return
-    }
-
     try {
-      const updatedSphere = await apiClient.spheres.update(editingSphere.id, { name: editName.trim() })
-      setSpheres(spheres.map(s => s.id === editingSphere.id ? { ...updatedSphere, modelsCount: s.modelsCount } : s))
-      setEditingSphere(null)
-      setEditName('')
-      setEditError('')
-      success('Название сферы успешно изменено')
+      // Загружаем полную сферу с моделями
+      const fullSphere = await apiClient.spheres.getById(sphere.id)
+      setCurrentSphere(fullSphere)
+      setShowAddForm(true)
     } catch (error) {
-      const formattedError = await handleError(error, { context: 'SpheresPage.handleUpdate', sphereId: editingSphere.id })
+      const formattedError = await handleError(error, { context: 'SpheresPage.handleEdit', sphereId: sphere.id })
       const errorMessage = getErrorMessage(formattedError)
-      setEditError(errorMessage)
       showError(errorMessage)
     }
   }
@@ -155,13 +121,8 @@ export default function SpheresPage() {
   const handleDelete = async (sphere, e) => {
     e.stopPropagation()
     
-    if (sphere.modelsCount > 0) {
-      showError(`Невозможно удалить сферу "${sphere.name}". К ней привязано ${sphere.modelsCount} моделей. Сначала измените сферу у всех связанных моделей.`)
-      return
-    }
-
     const confirmed = await showConfirm({
-      message: `Вы уверены, что хотите удалить сферу "${sphere.name}"?`,
+      message: `Вы уверены, что хотите удалить сферу "${sphere.name}"?${sphere.modelsCount > 0 ? ` К сфере привязано ${sphere.modelsCount} моделей, они будут автоматически отвязаны.` : ''}`,
       variant: 'danger',
       confirmText: 'Удалить'
     })
@@ -243,45 +204,16 @@ export default function SpheresPage() {
             )}
           </div>
 
-          {/* Форма добавления сферы */}
+          {/* Форма сферы */}
           {showAddForm && (
-            <div className="mb-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Добавить новую сферу</h3>
-              <form onSubmit={handleSphereSubmit}>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Название сферы
-                  </label>
-                  <input
-                    type="text"
-                    value={sphereName}
-                    onChange={(e) => setSphereName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Введите название сферы"
-                    maxLength={50}
-                    autoFocus
-                  />
-                  {error && (
-                    <p className="mt-2 text-sm text-red-600">{error}</p>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    Сохранить
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                  >
-                    Отмена
-                  </button>
-                </div>
-              </form>
-            </div>
+            <SphereForm
+              sphere={currentSphere}
+              onSubmit={handleSphereSubmit}
+              onCancel={() => {
+                setShowAddForm(false)
+                setCurrentSphere(null)
+              }}
+            />
           )}
         </div>
 
@@ -303,7 +235,7 @@ export default function SpheresPage() {
             )}
           </div>
         ) : (
-          <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -311,7 +243,7 @@ export default function SpheresPage() {
                     Название
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Количество моделей
+                    Моделей
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Дата создания
@@ -325,30 +257,35 @@ export default function SpheresPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSpheres.map((sphere) => (
-                  <tr key={sphere.id} className="hover:bg-gray-50 bg-white">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {sphere.name}
+                  <tr key={sphere.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Link
+                        href={`/dashboard/spheres/${sphere.id}`}
+                        className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer"
+                      >
+                        {sphere.name}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {sphere.modelsCount || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {format(new Date(sphere.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                      {formatDateTime(sphere.createdAt)}
                     </td>
                     {user?.role === 'ADMIN' && (
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex justify-end gap-2">
                           <button
                             onClick={(e) => handleEdit(sphere, e)}
-                            className="text-blue-600 hover:text-blue-900 cursor-pointer"
-                            title="Редактировать название"
+                            className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                            title="Редактировать"
                           >
                             <PencilIcon className="h-5 w-5" />
                           </button>
                           <button
                             onClick={(e) => handleDelete(sphere, e)}
-                            className="text-red-600 hover:text-red-900 cursor-pointer"
-                            title="Удалить сферу"
+                            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                            title="Удалить"
                           >
                             <TrashIcon className="h-5 w-5" />
                           </button>
@@ -374,82 +311,6 @@ export default function SpheresPage() {
         onCancel={handleConfirmCancel}
       />
 
-      {/* Модальное окно редактирования сферы */}
-      {editingSphere && (
-        <div 
-          className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-          onClick={handleCancelEdit}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  Редактировать сферу
-                </h2>
-                <button
-                  onClick={handleCancelEdit}
-                  className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                >
-                  <XMarkIcon className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Название сферы
-                </label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => {
-                    setEditName(e.target.value)
-                    setEditError('')
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleUpdate()
-                    } else if (e.key === 'Escape') {
-                      handleCancelEdit()
-                    }
-                  }}
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    editError ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Введите название сферы"
-                  maxLength={50}
-                  autoFocus
-                />
-                {editError && (
-                  <p className="mt-1 text-sm text-red-600">{editError}</p>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="button"
-                  onClick={handleUpdate}
-                  className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer"
-                >
-                  Сохранить
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
-

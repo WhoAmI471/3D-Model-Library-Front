@@ -75,7 +75,7 @@ export default async function ModelPage({ params, searchParams }) {
       include: {
         author: true,
         projects: true,
-        sphere: true,
+        spheres: true,
         versions: {
           orderBy: {
             createdAt: 'desc',

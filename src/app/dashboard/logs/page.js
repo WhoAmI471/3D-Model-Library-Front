@@ -30,11 +30,12 @@ export default function LogsPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [autoPlayInterval, setAutoPlayInterval] = useState(null)
   const [expandedLogId, setExpandedLogId] = useState(null)
+  const [isDeletedModel, setIsDeletedModel] = useState(false) // Флаг для отслеживания удаленной модели
   
   const router = useRouter()
   
   const toggleLogExpand = (logId, e) => {
-    e.stopPropagation() // Предотвращаем переход на страницу модели
+    // Не останавливаем всплытие, чтобы переход на страницу модели тоже сработал
     setExpandedLogId(expandedLogId === logId ? null : logId)
   }
 
@@ -170,24 +171,35 @@ export default function LogsPage() {
     }
   }
 
-  const handleMouseEnter = (model, event) => {
+  const handleMouseEnter = (log, event) => {
+    let modelToPreview = null
+    let isDeleted = false
 
-    console.log(models)
-    const currentModel = models.find(item => item.id === model?.id);
-    if (currentModel?.images?.length > 0) {
-      console.log("OPEN")
+    // Проверяем, есть ли удаленная модель
+    if (log.deletedModel && log.deletedModel.images && log.deletedModel.images.length > 0) {
+      modelToPreview = log.deletedModel
+      isDeleted = true
+    } else if (log.model) {
+      // Проверяем обычную модель
+      const currentModel = models.find(item => item.id === log.model?.id)
+      if (currentModel?.images?.length > 0) {
+        modelToPreview = currentModel
+        isDeleted = false
+      }
+    }
+
+    if (modelToPreview) {
       const rect = event.currentTarget.getBoundingClientRect()
       const previewWidth = 320
       setPreviewPosition({
         x: rect.left - previewWidth - 20, // Позиция слева от строки
         y: rect.top - 80
       })
-      setPreviewModel(currentModel)
+      setPreviewModel(modelToPreview)
+      setIsDeletedModel(isDeleted)
       setCurrentImageIndex(0)
       setShowPreview(true)
-    }
-    else
-    {
+    } else {
       setShowPreview(false)
     }
   }
@@ -195,6 +207,7 @@ export default function LogsPage() {
   const handleMouseLeave = () => {
     setShowPreview(false)
     setPreviewModel(null)
+    setIsDeletedModel(false)
     stopAutoPlay()
   }
 
@@ -286,8 +299,7 @@ export default function LogsPage() {
             <tr>
               <th 
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => requestSort('date')}
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 onMouseLeave={handleMouseLeave}
               >
                 <div className="flex items-center">
@@ -297,35 +309,29 @@ export default function LogsPage() {
               </th>
               <th 
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 max-w-md"
-                onClick={() => requestSort('move')} 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-md"
                 onMouseLeave={handleMouseLeave}
               >
                 <div className="flex items-center">
                   Действие
-                  {/* {getSortIcon('move')} */}
                 </div>
               </th>
               <th 
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => requestSort('user')}
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 onMouseLeave={handleMouseLeave}
               >
                 <div className="flex items-center">
                   Пользователь
-                  {/* {getSortIcon('user')} */}
                 </div>
               </th>
               <th 
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-40"
-                onClick={() => requestSort('model')}
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40"
                 onMouseLeave={handleMouseLeave}
               >
                 <div className="flex items-center">
                   Модель
-                  {/* {getSortIcon('model')} */}
                 </div>
               </th>
               {/* <th className="py-3 px-4 text-left">Дата</th> */}
@@ -342,34 +348,56 @@ export default function LogsPage() {
                 </td>
               </tr>
             ) : logs.length > 0 ? (
-              logs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white" onMouseEnter={(e) => handleMouseEnter(log.model, e)}>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900" onClick={() => router.push(`/dashboard/models/${log.model?.id}`)}>
-                    {format(new Date(log.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}
-                  </td>
-                  <td 
-                    className="px-6 py-2 text-sm text-gray-500 max-w-md cursor-pointer" 
-                    onClick={(e) => toggleLogExpand(log.id, e)}
-                    title={expandedLogId === log.id ? undefined : log.action}
+              logs.map((log) => {
+                const modelTitle = log.model?.title || log.deletedModel?.title || '-'
+                const modelId = log.model?.id || log.deletedModel?.id
+                const isDeleted = !!log.deletedModel
+                
+                const handleRowClick = () => {
+                  if (isDeleted && log.deletedModel?.id) {
+                    router.push(`/dashboard/deleted-models/${log.deletedModel.id}`)
+                  } else if (log.model?.id) {
+                    router.push(`/dashboard/models/${log.model.id}`)
+                  }
+                }
+
+                return (
+                  <tr 
+                    key={log.id} 
+                    className="hover:bg-gray-50 odd:bg-blue-50 even:bg-white cursor-pointer" 
+                    onMouseEnter={(e) => handleMouseEnter(log, e)}
+                    onClick={handleRowClick}
                   >
-                    <div className={expandedLogId === log.id ? '' : 'truncate'}>
-                      {log.action}
-                    </div>
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" onClick={() => router.push(`/dashboard/models/${log.model?.id}`)}>
-                    {log.user ? `${log.user.name} (${log.user.email})` : 'Система'}
-                  </td>
-                  <td className="px-6 py-2 text-sm font-medium w-40" onClick={() => router.push(`/dashboard/models/${log.model?.id}`)}>
-                    <div className="truncate text-right" title={log.model?.title || '-'}>
-                      {log.model?.title 
-                        ? (log.model.title.length > 15 
-                            ? `${log.model.title.substring(0, 15)}...` 
-                            : log.model.title)
-                        : '-'}
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {format(new Date(log.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                    </td>
+                    <td 
+                      className="px-6 py-2 text-sm text-gray-500 max-w-md"
+                      title={expandedLogId === log.id ? undefined : log.action}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation()
+                        toggleLogExpand(log.id, e)
+                      }}
+                    >
+                      <div className={expandedLogId === log.id ? '' : 'truncate'}>
+                        {log.action}
+                      </div>
+                    </td>
+                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
+                      {log.user ? `${log.user.name} (${log.user.email})` : 'Система'}
+                    </td>
+                    <td className="px-6 py-2 text-sm font-medium w-40">
+                      <div className="truncate text-right" title={modelTitle}>
+                        {modelTitle !== '-' 
+                          ? (modelTitle.length > 15 
+                              ? `${modelTitle.substring(0, 15)}...` 
+                              : modelTitle)
+                          : '-'}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })
             ) : (
               <tr>
                 <td colSpan="4" className="py-4 text-center text-gray-500">

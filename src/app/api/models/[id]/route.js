@@ -27,7 +27,7 @@ export async function GET(request, { params }) {
       include: {
         author: true,
         projects: true,
-        sphere: true,
+        spheres: true,
         versions: true,
         logs: {
           include: {
@@ -128,6 +128,24 @@ export async function DELETE(request, { params }) {
         id
       },
       include: {
+        author: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        projects: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        spheres: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         logs: true
       }
     });
@@ -140,19 +158,72 @@ export async function DELETE(request, { params }) {
     }
 
       if (approve) {
-      // Удаляем файлы и связанные записи из БД
-      await deleteFile(model.fileUrl);
-      await Promise.all(model.images.map(img => deleteFile(img)));
+      // Получаем полную информацию о модели перед удалением
+      const fullModel = await prisma.model.findUnique({
+        where: { id },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          projects: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          spheres: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      });
+
+      if (!fullModel) {
+        return NextResponse.json(
+          { error: 'Модель не найдена' },
+          { status: 404 }
+        );
+      }
+
+      // Сохраняем данные модели в DeletedModel (без ZIP файла, только метаданные и изображения)
+      const sphereNames = fullModel.spheres?.map(s => s.name) || []
+      await prisma.deletedModel.create({
+        data: {
+          originalModelId: id,
+          title: fullModel.title,
+          description: fullModel.description,
+          images: fullModel.images, // Сохраняем скриншоты, но не ZIP
+          authorId: fullModel.authorId,
+          authorName: fullModel.author?.name || null,
+          sphereId: fullModel.spheres && fullModel.spheres.length > 0 ? fullModel.spheres[0].id : null,
+          sphereName: sphereNames.length > 0 ? sphereNames.join(', ') : null,
+          deletedById: user.id,
+          deletionComment: fullModel.deletionComment,
+          createdAt: fullModel.createdAt,
+          updatedAt: fullModel.updatedAt,
+          projectNames: fullModel.projects?.map(p => p.name) || []
+        }
+      });
+
+      // Удаляем только ZIP файл (изображения остаются в Nextcloud)
+      await deleteFile(fullModel.fileUrl);
       // Удаляем версии модели
       await prisma.modelVersion.deleteMany({ where: { modelId: id } });
       // Обнуляем ссылки на модель в логах, чтобы сохранить историю
       await prisma.log.updateMany({ where: { modelId: id }, data: { modelId: null } });
+      // Удаляем модель из БД
       await prisma.model.delete({ where: { id } });
-      await deleteFolderRecursive(`models/${sanitizeName(model.title)}`);
+      // НЕ удаляем папку модели, чтобы сохранить скриншоты для истории удаленных моделей
+      // Папка может содержать старые версии и скриншоты, которые нужны для отображения в истории
 
       await logModelAction(
-        `Модель удалена (${model.title})`,
-        id,
+        `Модель удалена (${fullModel.title})`,
+        null,
         user.id
       );
 
