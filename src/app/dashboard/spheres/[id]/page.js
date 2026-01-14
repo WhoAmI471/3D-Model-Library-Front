@@ -322,8 +322,8 @@ export default function SpherePage({ params }) {
                 <div className="p-4 flex flex-col flex-1">
                   <div className="flex-1">
                     <Link href={`/dashboard/models/${model.id}?sphereid=${id}`}>
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors" title={model.title}>
-                        {model.title}
+                      <h3 className="font-semibold text-gray-900 mb-2 cursor-pointer hover:text-blue-600 transition-colors" title={model.title}>
+                        {model.title && model.title.length > 25 ? `${model.title.substring(0, 25)}...` : model.title}
                       </h3>
                     </Link>
                     

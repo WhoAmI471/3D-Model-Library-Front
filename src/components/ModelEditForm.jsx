@@ -215,12 +215,18 @@ export default function ModelEditForm({ id, userRole }) {
       e.preventDefault()
       const pastedText = (e.clipboardData || window.clipboardData).getData('text')
       const filteredText = filterAllowedCharacters(pastedText)
-      const newValue = value.substring(0, selectionStart) + filteredText + value.substring(selectionEnd)
+      let newValue = value.substring(0, selectionStart) + filteredText + value.substring(selectionEnd)
+      
+      // Ограничение длины для description (1000 символов)
+      if (name === 'description' && newValue.length > 1000) {
+        newValue = newValue.substring(0, 1000)
+      }
+      
       setValue(name, newValue, { shouldValidate: true })
       
       setTimeout(() => {
         const input = e.target
-        const newCursorPos = selectionStart + filteredText.length
+        const newCursorPos = Math.min(selectionStart + filteredText.length, newValue.length)
         input.setSelectionRange(newCursorPos, newCursorPos)
       }, 0)
     }
