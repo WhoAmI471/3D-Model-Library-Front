@@ -291,19 +291,19 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
             </div>
 
             <div className="border-t border-gray-200 pt-6">
-              <div className="mb-4 flex items-center gap-3">
+              <div className={`mb-4 ${project && currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) ? 'flex items-center gap-3' : ''}`}>
                 <input
                   type="text"
                   placeholder="Поиск моделей..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`${project && currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) ? 'flex-1' : 'w-full'} px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   maxLength={50}
                 />
-                {currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) && (
+                {project && currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) && (
                   <button
                     type="button"
-                    onClick={() => router.push('/dashboard/models/upload')}
+                    onClick={() => router.push(`/dashboard/models/upload?projectId=${project.id}`)}
                     className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer overflow-hidden"
                     style={{ 
                       width: '2.5rem', 

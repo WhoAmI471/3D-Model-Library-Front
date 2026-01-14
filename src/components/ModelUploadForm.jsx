@@ -14,7 +14,7 @@ import SpheresSection from '@/components/modelForm/SpheresSection'
 import FileUploadSection from '@/components/modelForm/FileUploadSection'
 import { createModelSchema } from '@/lib/validations/modelSchema'
 
-export default function ModelUploadForm({ initialProjectId = null }) {
+export default function ModelUploadForm({ initialProjectId = null, initialSphereId = null }) {
   const router = useRouter()
   const zipFileInputRef = useRef(null)
   const [loading, setLoading] = useState(false)
@@ -68,6 +68,14 @@ export default function ModelUploadForm({ initialProjectId = null }) {
       setValue('projectIds', [initialProjectId])
     }
   }, [initialProjectId, projects, setValue])
+
+  // Автоматически выбираем сферу, если передан initialSphereId
+  useEffect(() => {
+    if (initialSphereId && spheres.length > 0) {
+      setSelectedSpheres([initialSphereId])
+      setValue('sphereIds', [initialSphereId])
+    }
+  }, [initialSphereId, spheres, setValue])
 
   // Получаем информацию о выбранном проекте для отображения города
   const selectedProject = projects.find(p => selectedProjects.includes(p.id))
@@ -269,9 +277,17 @@ export default function ModelUploadForm({ initialProjectId = null }) {
             // Показываем уведомление об успехе
             success('Модель успешно добавлена!')
             
-            // Небольшая задержка перед возвратом на предыдущую страницу
+            // Небольшая задержка перед возвратом
             setTimeout(() => {
-              router.back();
+              // Если модель добавлялась через редактирование проекта, возвращаемся на страницу проекта
+              if (initialProjectId) {
+                router.push(`/dashboard/projects/${initialProjectId}`)
+              } else if (initialSphereId) {
+                // Если модель добавлялась через сферу, возвращаемся на страницу сферы
+                router.push(`/dashboard/spheres/${initialSphereId}`)
+              } else {
+                router.back()
+              }
             }, 1000);
           } else {
             throw new Error(result.error || 'Ошибка при сохранении модели');

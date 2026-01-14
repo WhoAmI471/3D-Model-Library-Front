@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline'
 import apiClient from '@/lib/apiClient'
@@ -10,14 +10,107 @@ import NotificationContainer from '@/components/NotificationContainer'
 export default function MainHeader() {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [user, setUser] = useState(null)
   const [modelTitle, setModelTitle] = useState(null)
+  const [projectTitle, setProjectTitle] = useState(null)
+  const [sphereTitle, setSphereTitle] = useState(null)
 
-  // Получаем название модели, если мы на странице конкретной модели или редактирования
+  // Получаем название модели или проекта, если мы на странице конкретной модели/проекта
   useEffect(() => {
     // Пропускаем специальные страницы
     if (pathname === '/dashboard/models/upload') {
       setModelTitle(null)
+      // Проверяем, есть ли sphereId в query параметрах
+      const sphereId = searchParams?.get('sphereId')
+      if (sphereId) {
+        apiClient.spheres.getById(sphereId)
+          .then(data => {
+            if (data && typeof data === 'object' && data.name) {
+              setSphereTitle(data.name)
+            } else {
+              setSphereTitle(null)
+            }
+          })
+          .catch((error) => {
+            if (error?.status && error.status !== 404) {
+              console.warn('Ошибка загрузки названия сферы:', error?.message || 'Unknown error')
+            }
+            setSphereTitle(null)
+          })
+        setProjectTitle(null)
+        return
+      }
+      // Проверяем, есть ли projectId в query параметрах
+      const projectId = searchParams?.get('projectId')
+      if (projectId) {
+        apiClient.projects.getById(projectId)
+          .then(data => {
+            if (data && typeof data === 'object' && data.name) {
+              setProjectTitle(data.name)
+            } else {
+              setProjectTitle(null)
+            }
+          })
+          .catch((error) => {
+            if (error?.status && error.status !== 404) {
+              console.warn('Ошибка загрузки названия проекта:', error?.message || 'Unknown error')
+            }
+            setProjectTitle(null)
+          })
+        setSphereTitle(null)
+      } else {
+        setProjectTitle(null)
+        setSphereTitle(null)
+      }
+      return
+    }
+    
+    // Проверяем страницу просмотра проекта: /dashboard/projects/[id]
+    const projectIdMatch = pathname?.match(/^\/dashboard\/projects\/([^\/]+)$/)
+    const projectId = projectIdMatch?.[1]
+    
+    if (projectId) {
+      apiClient.projects.getById(projectId)
+        .then(data => {
+          if (data && typeof data === 'object' && data.name) {
+            setProjectTitle(data.name)
+          } else {
+            setProjectTitle(null)
+          }
+        })
+        .catch((error) => {
+          if (error?.status && error.status !== 404) {
+            console.warn('Ошибка загрузки названия проекта:', error?.message || 'Unknown error')
+          }
+          setProjectTitle(null)
+        })
+      setModelTitle(null)
+      setSphereTitle(null)
+      return
+    }
+    
+    // Проверяем страницу просмотра сферы: /dashboard/spheres/[id]
+    const sphereIdMatch = pathname?.match(/^\/dashboard\/spheres\/([^\/]+)$/)
+    const sphereId = sphereIdMatch?.[1]
+    
+    if (sphereId) {
+      apiClient.spheres.getById(sphereId)
+        .then(data => {
+          if (data && typeof data === 'object' && data.name) {
+            setSphereTitle(data.name)
+          } else {
+            setSphereTitle(null)
+          }
+        })
+        .catch((error) => {
+          if (error?.status && error.status !== 404) {
+            console.warn('Ошибка загрузки названия сферы:', error?.message || 'Unknown error')
+          }
+          setSphereTitle(null)
+        })
+      setModelTitle(null)
+      setProjectTitle(null)
       return
     }
     
@@ -50,10 +143,20 @@ export default function MainHeader() {
     } else {
       setModelTitle(null)
     }
-  }, [pathname])
+    setProjectTitle(null)
+    setSphereTitle(null)
+  }, [pathname, searchParams])
 
   const getSectionParts = () => {
     if (pathname === '/dashboard/models/upload') {
+      // Если есть название сферы, показываем путь со сферой
+      if (sphereTitle) {
+        return ['Сферы', sphereTitle, 'Добавление новой модели']
+      }
+      // Если есть название проекта, показываем путь с проектом
+      if (projectTitle) {
+        return ['Проекты', projectTitle, 'Добавление новой модели']
+      }
       return ['Модели', 'Добавление новой модели']
     }
     
@@ -66,6 +169,12 @@ export default function MainHeader() {
     
     // Если есть название модели, возвращаем массив ["Модели", "название"]
     if (modelTitle) return ['Модели', modelTitle]
+    
+    // Если есть название проекта, возвращаем массив ["Проекты", "название"]
+    if (projectTitle) return ['Проекты', projectTitle]
+    
+    // Если есть название сферы, возвращаем массив ["Сферы", "название"]
+    if (sphereTitle) return ['Сферы', sphereTitle]
     
     if (pathname === '/dashboard') return ['Модели']
     if (pathname === '/dashboard/projects') return ['Проекты']
@@ -110,6 +219,11 @@ export default function MainHeader() {
     return roleMap[role] || role?.toLowerCase() || ''
   }
 
+  const truncateText = (text, maxLength = 25) => {
+    if (!text || text.length <= maxLength) return text
+    return text.slice(0, maxLength) + '...'
+  }
+
   return (
     <header className="h-16 bg-white border-b border-gray-200">
       <div className="h-full max-w-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
@@ -125,7 +239,7 @@ export default function MainHeader() {
           {getSectionParts().map((part, index) => (
             <React.Fragment key={index}>
               <span className="text-gray-300 flex-shrink-0">|</span>
-              <span className="text-sm font-medium text-gray-600 truncate">{part}</span>
+              <span className="text-sm font-medium text-gray-600 truncate" title={part}>{truncateText(part, 25)}</span>
             </React.Fragment>
           ))}
         </div>

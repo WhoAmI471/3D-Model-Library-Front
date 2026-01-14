@@ -111,7 +111,7 @@ export default function AddModelsToSphereModal({ sphereId, onClose, onAdd, exist
             {currentUser && (currentUser.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.UPLOAD_MODELS)) && (
               <button
                 type="button"
-                onClick={() => router.push(`/dashboard/models/upload`)}
+                onClick={() => router.push(`/dashboard/models/upload?sphereId=${sphereId}`)}
                 className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer overflow-hidden"
                 style={{ 
                   width: '2.5rem', 

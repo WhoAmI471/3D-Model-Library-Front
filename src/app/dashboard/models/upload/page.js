@@ -9,11 +9,12 @@ export default function UploadPage() {
   // const authorId = session?.user?.id
   const searchParams = useSearchParams()
   const projectId = searchParams?.get('projectId')
+  const sphereId = searchParams?.get('sphereId')
 
   return (
     <div className="w-full mx-auto">
       {/* <h1 className="text-2xl font-bold mb-4">Загрузка модели</h1> */}
-      <ModelUploadForm initialProjectId={projectId} />
+      <ModelUploadForm initialProjectId={projectId} initialSphereId={sphereId} />
     </div>
   )
 }
