@@ -294,7 +294,7 @@ export default function ProjectPage({ params }) {
             {filteredModels.map((model) => (
               <div
                 key={model.id}
-                className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 hover:border-gray-300"
+                className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 hover:border-gray-300 flex flex-col"
               >
                 {/* Превью изображения */}
                 <Link
@@ -325,23 +325,25 @@ export default function ProjectPage({ params }) {
                 </Link>
 
                 {/* Контент карточки */}
-                <div className="p-4">
-                  <Link href={`/dashboard/models/${model.id}?projectid=${id}`}>
-                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors" title={model.title}>
-                      {model.title}
-                    </h3>
-                  </Link>
-                  
-                  <div className="space-y-2 mb-4">
-                    {model.author && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="truncate">{model.author.name}</span>
-                      </div>
-                    )}
+                <div className="p-4 flex flex-col flex-1">
+                  <div className="flex-1">
+                    <Link href={`/dashboard/models/${model.id}?projectid=${id}`}>
+                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors" title={model.title}>
+                        {model.title}
+                      </h3>
+                    </Link>
+                    
+                    <div className="space-y-2">
+                      {model.author && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <span className="truncate">{model.author.name}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Действия */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-4">
                     <span className="text-xs text-gray-500">
                       {formatDateTime(model.updatedAt)}
                     </span>

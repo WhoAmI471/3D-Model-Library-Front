@@ -274,7 +274,33 @@ export default function ModelEditForm({ id, userRole }) {
   const handleFileInputChange = (e) => {
     const files = Array.from(e.target.files || [])
     if (files.length > 0) {
-      handleScreenshotAdd(files)
+      const validFiles = []
+      const invalidFiles = []
+      const oversizedFiles = []
+      const MAX_FILE_SIZE = 700 * 1024 // 700 кБ в байтах
+      
+      files.forEach(file => {
+        if (!isValidImageFile(file)) {
+          invalidFiles.push(file.name)
+        } else if (file.size > MAX_FILE_SIZE) {
+          oversizedFiles.push(file.name)
+        } else {
+          validFiles.push(file)
+        }
+      })
+      
+      if (invalidFiles.length > 0) {
+        showError(`Следующие файлы не являются изображениями и не будут добавлены: ${invalidFiles.join(', ')}. Разрешены только изображения: JPG, PNG, GIF, WEBP, BMP`)
+      }
+      
+      if (oversizedFiles.length > 0) {
+        showError(`Следующие файлы превышают максимальный размер 700 кБ и не будут добавлены: ${oversizedFiles.join(', ')}`)
+      }
+      
+      if (validFiles.length > 0) {
+        handleScreenshotAdd(validFiles)
+      }
+      
       e.target.value = '' // Сбрасываем input для возможности повторной загрузки того же файла
     }
   }

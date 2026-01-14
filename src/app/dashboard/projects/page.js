@@ -222,7 +222,7 @@ export default function ProjectsPage() {
               {paginatedProjects.map((project) => (
               <div
                 key={project.id}
-                className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 hover:border-gray-300"
+                className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 hover:border-gray-300 flex flex-col"
               >
                 {/* Изображение проекта */}
                 <Link
@@ -247,29 +247,31 @@ export default function ProjectsPage() {
                 </Link>
 
                 {/* Контент карточки */}
-                <div className="p-4">
-                  <Link
-                    href={`/dashboard/projects/${project.id}`}
-                    className="block"
-                  >
-                    <h3 className="font-semibold text-gray-900 mb-2 truncate hover:text-blue-600 transition-colors cursor-pointer" title={project.name}>
-                      {project.name}
-                    </h3>
-                  </Link>
-                  
-                  <div className="space-y-2 mb-4">
-                    {project.city && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="truncate">{project.city}</span>
+                <div className="p-4 flex flex-col flex-1">
+                  <div className="flex-1">
+                    <Link
+                      href={`/dashboard/projects/${project.id}`}
+                      className="block"
+                    >
+                      <h3 className="font-semibold text-gray-900 mb-2 truncate hover:text-blue-600 transition-colors cursor-pointer" title={project.name}>
+                        {project.name}
+                      </h3>
+                    </Link>
+                    
+                    <div className="space-y-2">
+                      {project.city && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <span className="truncate">{project.city}</span>
+                        </div>
+                      )}
+                      <div className="text-sm text-gray-500">
+                        Моделей: {project.models?.length || 0}
                       </div>
-                    )}
-                    <div className="text-sm text-gray-500">
-                      Моделей: {project.models?.length || 0}
                     </div>
                   </div>
 
                   {/* Действия */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-4">
                     <span className="text-xs text-gray-500">
                       {formatDateTime(project.createdAt)}
                     </span>
