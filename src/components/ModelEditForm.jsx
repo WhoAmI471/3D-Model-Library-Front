@@ -666,32 +666,30 @@ export default function ModelEditForm({ id, userRole }) {
   return (
     <div className="min-h-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Заголовок с редактируемым названием */}
-        <div className="mb-6 pb-8 border-b border-gray-200 relative flex items-end gap-4">
-                <button
-                  type="button"
-                  onClick={() => router.back()}
-                  className="absolute -left-12 bottom-8 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                  title="Назад"
-                >
-                  <ArrowLeftIcon className="h-5 w-5" />
-                </button>
+        {/* Кнопка назад и название модели */}
+        <div className="mb-6 relative">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="absolute -left-12 top-0 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+            title="Назад"
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+          </button>
           {canEditModel ? (
-            <div className="relative w-full">
-              {!formData.title && (
-                <div className="absolute text-2xl font-semibold leading-none pb-0 pointer-events-none text-gray-400">
-                  Название модели <span className="text-red-500 opacity-50">*</span>
-                </div>
-              )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Название модели <span className="text-red-500">*</span>
+              </label>
               <input
                 {...register('title')}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
-                className={`text-2xl font-semibold text-gray-900 leading-none pb-0 w-full bg-transparent border-none focus:outline-none focus:ring-0 p-0 relative ${
-                  errors.title ? 'border-b border-red-500' : ''
+                className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${
+                  errors.title ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder=""
+                placeholder="Введите название модели"
                 maxLength={50}
               />
               {errors.title && (

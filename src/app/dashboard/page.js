@@ -370,7 +370,7 @@ export default function DashboardPage() {
                           {model.projects.slice(0, 2).map(project => (
                             <Link
                               key={project.id}
-                              href={`/dashboard/models/${model.id}`}
+                              href={`/dashboard/projects/${project.id}`}
                               className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200 transition-colors cursor-pointer"
                             >
                               {project.name}
