@@ -236,6 +236,11 @@ export default function ModelUploadForm({ initialProjectId = null, initialSphere
       setError('root', { type: 'validation', message: 'Добавьте минимум 2 скриншота' })
       return
     }
+    
+    if (screenshots.length > 8) {
+      setError('root', { type: 'validation', message: 'Максимальное количество скриншотов: 8' })
+      return
+    }
 
     if (loading) {
       return

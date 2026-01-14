@@ -536,7 +536,7 @@ export default function ModelEditForm({ id, userRole }) {
     const newScreenshotsCount = screenshots.length
     const totalScreenshots = remainingCurrentScreenshots.length + newScreenshotsCount
     
-    return totalScreenshots >= 2
+    return totalScreenshots >= 2 && totalScreenshots <= 8
   }
 
   const onSubmitForm = async (data) => {
@@ -546,6 +546,25 @@ export default function ModelEditForm({ id, userRole }) {
     try {
       // Проверка количества скриншотов перед сохранением (только если редактируются скриншоты)
       if ((canEditModel || canEditScreenshots) && !isValidScreenshotsCount()) {
+        const remainingCurrentScreenshots = currentFiles.screenshots.filter(
+          screenshot => {
+            const url = typeof screenshot === 'string' ? screenshot : (screenshot?.originalUrl || screenshot)
+            return !deletedScreenshots.includes(url)
+          }
+        )
+        const newScreenshotsCount = screenshots.length
+        const totalScreenshots = remainingCurrentScreenshots.length + newScreenshotsCount
+        
+        let errorMessage = ''
+        if (totalScreenshots < 2) {
+          errorMessage = 'Добавьте минимум 2 скриншота'
+        } else if (totalScreenshots > 8) {
+          errorMessage = 'Максимальное количество скриншотов: 8'
+        }
+        
+        if (errorMessage) {
+          showError(errorMessage)
+        }
         setIsLoading(false)
         return
       }

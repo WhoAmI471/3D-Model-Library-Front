@@ -34,6 +34,16 @@ export default function ScreenshotsUploadSection({
   const handleFileAdd = (e) => {
     const files = Array.from(e.target.files)
     if (files.length > 0) {
+      const MAX_SCREENSHOTS = 8
+      const currentCount = screenshots.length
+      
+      // Проверяем, не превышен ли лимит
+      if (currentCount >= MAX_SCREENSHOTS) {
+        showError(`Максимальное количество скриншотов: ${MAX_SCREENSHOTS}`)
+        e.target.value = ''
+        return
+      }
+      
       const validFiles = []
       const invalidFiles = []
       const oversizedFiles = []
@@ -58,7 +68,15 @@ export default function ScreenshotsUploadSection({
       }
       
       if (validFiles.length > 0) {
-        onAdd(validFiles.map(file => ({
+        // Ограничиваем количество добавляемых файлов до лимита
+        const availableSlots = MAX_SCREENSHOTS - currentCount
+        const filesToAdd = validFiles.slice(0, availableSlots)
+        
+        if (validFiles.length > availableSlots) {
+          showError(`Можно добавить только ${availableSlots} скриншот(ов). Максимальное количество: ${MAX_SCREENSHOTS}`)
+        }
+        
+        onAdd(filesToAdd.map(file => ({
           file,
           preview: URL.createObjectURL(file)
         })))
@@ -130,7 +148,7 @@ export default function ScreenshotsUploadSection({
       {/* Кнопка добавления скриншотов */}
       <div>
         <label className={`inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
-          disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          disabled || screenshots.length >= 8 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
         }`}>
           <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -142,12 +160,17 @@ export default function ScreenshotsUploadSection({
             accept="image/*"
             onChange={handleFileAdd}
             className="sr-only"
-            disabled={disabled}
+            disabled={disabled || screenshots.length >= 8}
           />
         </label>
         {screenshots.length < 2 && (
           <p className="mt-2 text-sm text-gray-500">
             Минимум 2 скриншота (сейчас: {screenshots.length})
+          </p>
+        )}
+        {screenshots.length >= 8 && (
+          <p className="mt-2 text-sm text-gray-500">
+            Максимальное количество скриншотов достигнуто (8)
           </p>
         )}
       </div>

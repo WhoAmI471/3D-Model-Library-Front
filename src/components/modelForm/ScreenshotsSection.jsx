@@ -52,6 +52,16 @@ export default function ScreenshotsSection({
   const handleFileAdd = (e) => {
     const files = Array.from(e.target.files)
     if (files.length > 0) {
+      const MAX_SCREENSHOTS = 8
+      const currentTotal = totalLength
+      
+      // Проверяем, не превышен ли лимит
+      if (currentTotal >= MAX_SCREENSHOTS) {
+        showError(`Максимальное количество скриншотов: ${MAX_SCREENSHOTS}`)
+        e.target.value = ''
+        return
+      }
+      
       const validFiles = []
       const invalidFiles = []
       const oversizedFiles = []
@@ -76,7 +86,15 @@ export default function ScreenshotsSection({
       }
       
       if (validFiles.length > 0) {
-        onAdd(validFiles)
+        // Ограничиваем количество добавляемых файлов до лимита
+        const availableSlots = MAX_SCREENSHOTS - currentTotal
+        const filesToAdd = validFiles.slice(0, availableSlots)
+        
+        if (validFiles.length > availableSlots) {
+          showError(`Можно добавить только ${availableSlots} скриншот(ов). Максимальное количество: ${MAX_SCREENSHOTS}`)
+        }
+        
+        onAdd(filesToAdd)
       }
       
       e.target.value = ''
@@ -202,7 +220,7 @@ export default function ScreenshotsSection({
       {/* Кнопка добавления скриншотов */}
       <div className="mt-4">
         <label className={`inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
-          (!canEdit || disabled) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          (!canEdit || disabled || totalLength >= 8) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
         }`}>
           <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -214,9 +232,19 @@ export default function ScreenshotsSection({
             accept="image/*"
             onChange={handleFileAdd}
             className="sr-only"
-            disabled={!canEdit || disabled}
+            disabled={!canEdit || disabled || totalLength >= 8}
           />
         </label>
+        {totalLength < 2 && (
+          <p className="mt-2 text-sm text-gray-500">
+            Минимум 2 скриншота (сейчас: {totalLength})
+          </p>
+        )}
+        {totalLength >= 8 && (
+          <p className="mt-2 text-sm text-gray-500">
+            Максимальное количество скриншотов достигнуто (8)
+          </p>
+        )}
       </div>
       
       {/* Удаленные скриншоты (можно восстановить) */}

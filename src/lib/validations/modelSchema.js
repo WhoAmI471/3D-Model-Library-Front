@@ -100,6 +100,8 @@ export const validateModelFiles = (zipFile, screenshots) => {
   
   if (!screenshots || screenshots.length < 2) {
     errors.screenshots = 'Добавьте минимум 2 скриншота'
+  } else if (screenshots.length > 8) {
+    errors.screenshots = 'Максимальное количество скриншотов: 8'
   }
   
   return errors
