@@ -332,7 +332,7 @@ export default function ModelUploadForm({ initialProjectId = null, initialSphere
     project.name.toLowerCase().includes(projectSearchTerm.toLowerCase()))
 
   return (
-    <div className="min-h-full bg-white">
+    <div className="bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Заголовок с редактируемым названием */}
         <div className="mb-6 pb-8 border-b border-gray-200 relative flex items-end gap-4">

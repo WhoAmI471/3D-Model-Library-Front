@@ -40,7 +40,7 @@ export default function Navigation({ userRole }) {
       current: pathname === '/dashboard/employees'
     }] : []),
     ...(userRole === 'ADMIN' ? [{
-      name: 'Логи',
+      name: 'Журнал событий',
       href: '/dashboard/logs',
       icon: DocumentTextIcon,
       current: pathname === '/dashboard/logs'
