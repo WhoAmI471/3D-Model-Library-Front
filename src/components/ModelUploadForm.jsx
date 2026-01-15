@@ -126,9 +126,6 @@ export default function ModelUploadForm({ initialProjectId = null, initialSphere
     }
   }, [initialSphereId, spheres, setValue])
 
-  // Получаем информацию о выбранном проекте для отображения города
-  const selectedProject = projects.find(p => selectedProjects.includes(p.id))
-  
   // Функция для фильтрации символов - разрешает только латиницу, кириллицу, цифры, пробелы и основные знаки препинания
   const filterAllowedCharacters = (text) => {
     const allowedPattern = /[a-zA-Zа-яА-ЯёЁ0-9\s.,\-_():;]/g
@@ -493,21 +490,6 @@ export default function ModelUploadForm({ initialProjectId = null, initialSphere
           onSearchChange={setSphereSearchTerm}
           disabled={loading}
         />
-        
-        {/* Проект (если выбран) */}
-        {selectedProject && (
-          <div className="mb-8">
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Проект</div>
-              <div className="text-sm font-medium text-gray-900">
-                {selectedProject.name}
-                {selectedProject.city && (
-                  <span className="text-gray-500 ml-2">• {selectedProject.city}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Проекты */}
         <ProjectsSection

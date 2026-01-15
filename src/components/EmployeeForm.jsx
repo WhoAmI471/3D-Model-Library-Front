@@ -9,21 +9,37 @@ import { createEmployeeSchema, updateEmployeeSchema } from '@/lib/validations/em
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
 
 export default function EmployeeForm({ employee, onSubmit, onCancel, userRole }) {
-  // Загружаем сохраненное значение из localStorage или используем true по умолчанию
-  const getSavedUseDefaultPermissions = () => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('employeeForm_useDefaultPermissions')
-      return saved !== null ? saved === 'true' : true
+  // Определяем начальное состояние галочки на основе данных сотрудника
+  const getInitialUseDefaultPermissions = () => {
+    if (employee && employee.role) {
+      // Для существующего сотрудника проверяем, соответствуют ли его права правам по умолчанию
+      const defaultPerms = DEFAULT_PERMISSIONS[employee.role] || []
+      const employeePerms = Array.isArray(employee.permissions) ? employee.permissions : []
+      
+      // Сравниваем массивы прав (порядок не важен)
+      const defaultPermsSorted = [...defaultPerms].sort()
+      const employeePermsSorted = [...employeePerms].sort()
+      
+      return JSON.stringify(defaultPermsSorted) === JSON.stringify(employeePermsSorted)
     }
+    // Для нового сотрудника используем true по умолчанию
     return true
   }
 
-  const [useDefaultPermissions, setUseDefaultPermissions] = useState(getSavedUseDefaultPermissions())
+  const [useDefaultPermissions, setUseDefaultPermissions] = useState(getInitialUseDefaultPermissions())
+  const [initialUseDefaultPermissions, setInitialUseDefaultPermissions] = useState(getInitialUseDefaultPermissions())
   const [isInitialized, setIsInitialized] = useState(false)
   const [showPasswordChange, setShowPasswordChange] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  const modalHandlers = useModal(onCancel)
+  // Обработчик отмены с сбросом состояния
+  const handleCancel = () => {
+    // При отмене сбрасываем состояние к исходному
+    setUseDefaultPermissions(initialUseDefaultPermissions)
+    onCancel()
+  }
+
+  const modalHandlers = useModal(handleCancel)
 
   // Определяем, требуется ли пароль
   const requirePassword = useMemo(() => {
@@ -95,16 +111,17 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
   const watchedRole = watch('role')
   const watchedPermissions = watch('permissions')
 
-  // Сохраняем состояние в localStorage при изменении
+  // Обработка изменения галочки (без сохранения в localStorage)
   const handleUseDefaultPermissionsChange = (checked) => {
     setUseDefaultPermissions(checked)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('employeeForm_useDefaultPermissions', checked.toString())
-    }
   }
 
   // Инициализация формы
   useEffect(() => {
+    const initialValue = getInitialUseDefaultPermissions()
+    setUseDefaultPermissions(initialValue)
+    setInitialUseDefaultPermissions(initialValue)
+    
     if (employee) {
       const employeePermissions = Array.isArray(employee.permissions) ? employee.permissions : []
       reset({
@@ -115,7 +132,6 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
         password: '',
         confirmPassword: ''
       })
-      setUseDefaultPermissions(getSavedUseDefaultPermissions())
     } else {
       reset({
         name: '',
@@ -125,7 +141,6 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
         password: '',
         confirmPassword: ''
       })
-      setUseDefaultPermissions(getSavedUseDefaultPermissions())
     }
     setIsInitialized(true)
   }, [employee, reset])
@@ -286,7 +301,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
               {employee ? 'Редактировать сотрудника' : 'Создать нового сотрудника'}
             </h2>
             <button
-              onClick={onCancel}
+              onClick={handleCancel}
               className="text-gray-400 hover:text-gray-600 cursor-pointer"
             >
               <XMarkIcon className="w-6 h-6" />
@@ -499,17 +514,32 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                 }
 
                 return Object.entries(permissionCategories).map(([categoryName, categoryPermissions]) => {
-                  const availablePermissions = categoryPermissions.filter(perm => 
+                  // Фильтруем права: EDIT_ALL_MODELS показываем только для Художника
+                  let filteredPermissions = categoryPermissions.filter(perm => 
                     Object.values(ALL_PERMISSIONS).includes(perm)
                   )
+                  
+                  // Для ролей, отличных от ARTIST, скрываем EDIT_ALL_MODELS
+                  if (watchedRole !== ROLES.ARTIST) {
+                    filteredPermissions = filteredPermissions.filter(perm => perm !== ALL_PERMISSIONS.EDIT_ALL_MODELS)
+                  }
+                  
+                  const availablePermissions = filteredPermissions
 
                   if (availablePermissions.length === 0) return null
 
                   return (
                     <div key={categoryName} className="space-y-3">
-                      <h4 className="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">
-                        {categoryName}
-                      </h4>
+                      <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+                        <h4 className="text-sm font-semibold text-gray-900">
+                          {categoryName}
+                        </h4>
+                        {watchedRole === ROLES.ARTIST && (categoryName === 'Проекты' || categoryName === 'Сферы') && (
+                          <span className="text-xs text-gray-500 italic">
+                            (может изменять {categoryName === 'Проекты' ? 'проекты' : 'сферы'} у моделей)
+                          </span>
+                        )}
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pl-4">
                         {availablePermissions.map((permission) => (
                           <div key={permission} className="flex items-center">
@@ -531,6 +561,8 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                             >
                               {permission === ALL_PERMISSIONS.EDIT_MODELS && watchedRole === ROLES.ARTIST
                                 ? 'Редактирование только своих моделей'
+                                : permission === ALL_PERMISSIONS.EDIT_ALL_MODELS && watchedRole === ROLES.ARTIST
+                                ? 'Редактирование всех моделей (для Художника)'
                                 : PERMISSION_LABELS[permission]}
                             </label>
                           </div>
@@ -546,7 +578,7 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
             <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end space-x-3">
               <button
                 type="button"
-                onClick={onCancel}
+                onClick={handleCancel}
                 className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                 disabled={isSubmitting}
               >

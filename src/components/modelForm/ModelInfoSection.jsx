@@ -67,7 +67,7 @@ export default function ModelInfoSection({
             value={form.authorId || (currentUser ? currentUser.id : 'UNKNOWN')}
             onChange={handleChange}
             className={`block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${
-              currentUser?.role !== 'ADMIN' ? 'bg-gray-50' : ''
+              currentUser?.role !== 'ADMIN' ? 'bg-gray-50 appearance-none' : ''
             }`}
             required
             disabled={currentUser?.role !== 'ADMIN' || !canEditModel}
