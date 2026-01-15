@@ -1,11 +1,49 @@
 import { NextResponse } from 'next/server'
 import axios from 'axios'
 
+// Функция для валидации и санитизации пути
+function sanitizePath(path) {
+  if (!path || typeof path !== 'string') {
+    return null
+  }
+  
+  // Удаляем все опасные символы и конструкции
+  // Запрещаем: http/https протоколы, команды оболочки, base64, и другие опасные паттерны
+  const dangerousPatterns = [
+    /^https?:\/\//i,           // HTTP/HTTPS протоколы
+    /[|&;`$(){}[\]]/,          // Команды оболочки
+    /base64/i,                  // base64 декодирование
+    /eval|exec|system|spawn/i, // Выполнение кода
+    /\.\./,                     // Path traversal
+    /\/\//,                     // Двойные слеши
+    /[\x00-\x1f\x7f-\x9f]/,    // Контрольные символы
+  ]
+  
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(path)) {
+      return null
+    }
+  }
+  
+  // Убираем начальные и конечные слеши, нормализуем путь
+  const normalized = path.replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/')
+  
+  // Проверяем, что путь не пустой и не слишком длинный
+  if (!normalized || normalized.length > 1000) {
+    return null
+  }
+  
+  return normalized
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const path = searchParams.get('path')
-  if (!path) {
-    return NextResponse.json({ error: 'Missing path' }, { status: 400 })
+  
+  // Валидация пути
+  const sanitizedPath = sanitizePath(path)
+  if (!sanitizedPath) {
+    return NextResponse.json({ error: 'Invalid or dangerous path' }, { status: 400 })
   }
 
   const url = process.env.NEXTCLOUD_URL
@@ -16,7 +54,9 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Nextcloud configuration missing' }, { status: 500 })
   }
 
-  const target = path.startsWith('http') ? path : `${url}/remote.php/dav/files/${username}/${path}`
+  // Безопасное формирование URL - только для путей внутри Nextcloud
+  // Убрана возможность использовать произвольные HTTP URL
+  const target = `${url}/remote.php/dav/files/${username}/${sanitizedPath}`
 
   try {
     const res = await axios.get(target, {
