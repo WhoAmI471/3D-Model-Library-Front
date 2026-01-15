@@ -147,22 +147,55 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
       ? [...currentPermissions, permission]
       : currentPermissions.filter(p => p !== permission)
     
-    // Если включаем "Редактирование описания", автоматически включаем права на редактирование сферы и скриншотов
-    if (permission === ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION && isAdding) {
-      if (!newPermissions.includes(ALL_PERMISSIONS.EDIT_MODEL_SPHERE)) {
-        newPermissions.push(ALL_PERMISSIONS.EDIT_MODEL_SPHERE)
+    // Если включаем "Редактирование моделей", автоматически включаем устаревшие права для обратной совместимости
+    if (permission === ALL_PERMISSIONS.EDIT_MODELS && isAdding) {
+      if (!newPermissions.includes(ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION)) {
+        newPermissions.push(ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION)
       }
       if (!newPermissions.includes(ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS)) {
         newPermissions.push(ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS)
       }
     }
     
-    // Если выключаем "Редактирование описания", также выключаем права на сферу и скриншоты
-    if (permission === ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION && !isAdding) {
+    // Если выключаем "Редактирование моделей", также выключаем устаревшие права
+    if (permission === ALL_PERMISSIONS.EDIT_MODELS && !isAdding) {
       newPermissions = newPermissions.filter(p => 
-        p !== ALL_PERMISSIONS.EDIT_MODEL_SPHERE && 
+        p !== ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION && 
         p !== ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS
       )
+    }
+    
+    // Если включаем устаревшие права, автоматически включаем EDIT_MODELS
+    if ((permission === ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION || permission === ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS) && isAdding) {
+      if (!newPermissions.includes(ALL_PERMISSIONS.EDIT_MODELS)) {
+        newPermissions.push(ALL_PERMISSIONS.EDIT_MODELS)
+      }
+      // Если включаем "Редактирование описания", автоматически включаем права на редактирование сферы и скриншотов (для обратной совместимости)
+      if (permission === ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION) {
+        if (!newPermissions.includes(ALL_PERMISSIONS.EDIT_MODEL_SPHERE)) {
+          newPermissions.push(ALL_PERMISSIONS.EDIT_MODEL_SPHERE)
+        }
+        if (!newPermissions.includes(ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS)) {
+          newPermissions.push(ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS)
+        }
+      }
+    }
+    
+    // Если выключаем устаревшие права, проверяем, нужно ли выключить EDIT_MODELS
+    if ((permission === ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION || permission === ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS) && !isAdding) {
+      const hasOtherEditRights = newPermissions.includes(ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION) || 
+                                  newPermissions.includes(ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS) ||
+                                  newPermissions.includes(ALL_PERMISSIONS.EDIT_MODELS)
+      if (!hasOtherEditRights) {
+        newPermissions = newPermissions.filter(p => p !== ALL_PERMISSIONS.EDIT_MODELS)
+      }
+      // Если выключаем "Редактирование описания", также выключаем права на сферу и скриншоты (для обратной совместимости)
+      if (permission === ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION) {
+        newPermissions = newPermissions.filter(p => 
+          p !== ALL_PERMISSIONS.EDIT_MODEL_SPHERE && 
+          p !== ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS
+        )
+      }
     }
     
     setValue('permissions', newPermissions, { shouldValidate: false })
@@ -451,14 +484,14 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                   'Модели': [
                     ALL_PERMISSIONS.UPLOAD_MODELS,
                     ALL_PERMISSIONS.EDIT_MODELS,
+                    ALL_PERMISSIONS.EDIT_ALL_MODELS, // Кастомное право для редактирования всех моделей
                     ALL_PERMISSIONS.DELETE_MODELS,
                     ALL_PERMISSIONS.DOWNLOAD_MODELS,
-                    ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION,
-                    ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS
+                    ALL_PERMISSIONS.EDIT_MODEL_SPHERE
                   ],
                   'Сферы': [
                     ALL_PERMISSIONS.ADD_SPHERE,
-                    ALL_PERMISSIONS.EDIT_MODEL_SPHERE
+                    ALL_PERMISSIONS.EDIT_SPHERE
                   ],
                   'Пользователи': [
                     ALL_PERMISSIONS.MANAGE_USERS
@@ -496,7 +529,9 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                                 useDefaultPermissions ? 'opacity-50' : ''
                               }`}
                             >
-                              {PERMISSION_LABELS[permission]}
+                              {permission === ALL_PERMISSIONS.EDIT_MODELS && watchedRole === ROLES.ARTIST
+                                ? 'Редактирование только своих моделей'
+                                : PERMISSION_LABELS[permission]}
                             </label>
                           </div>
                         ))}

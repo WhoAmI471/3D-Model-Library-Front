@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserFromSession } from '@/lib/auth'
 import { logSphereAction } from '@/lib/logger'
+import { checkPermission } from '@/lib/permission'
+import { ALL_PERMISSIONS } from '@/lib/roles'
 
 export async function GET(request, { params }) {
   try {
@@ -90,10 +92,11 @@ export async function PUT(request, { params }) {
       )
     }
 
-    // Только администратор может изменять сферы
-    if (user.role !== 'ADMIN') {
+    // Проверка права на редактирование сфер
+    // Администратор имеет все права, остальные проверяют право EDIT_SPHERE
+    if (user.role !== 'ADMIN' && !checkPermission(user, ALL_PERMISSIONS.EDIT_SPHERE)) {
       return NextResponse.json(
-        { error: 'Доступ запрещен' },
+        { error: 'Доступ запрещен. У вас нет прав для редактирования сфер.' },
         { status: 403 }
       )
     }
@@ -225,10 +228,11 @@ export async function DELETE(request, { params }) {
       )
     }
 
+    // Проверка права на удаление сфер
     // Только администратор может удалять сферы
     if (user.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Доступ запрещен' },
+        { error: 'Доступ запрещен. Только администратор может удалять сферы.' },
         { status: 403 }
       )
     }

@@ -123,12 +123,19 @@ export default function ModelEditForm({ id, userRole }) {
   const [canEditScreenshots, setCanEditScreenshots] = useState(null);
 
   // Устанавливаем права доступа на основе объекта пользователя
+  // EDIT_MODELS включает редактирование описания и скриншотов
+  // Отдельные права оставлены для обратной совместимости
   useEffect(() => {
     if (currentUser) {
-      setCanEditModel(checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODELS))
-      setCanEditDescription(checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION))
+      const hasEditModels = checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODELS)
+      const hasEditDescription = checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION) // Устаревшее
+      const hasEditScreenshots = checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS) // Устаревшее
+      
+      setCanEditModel(hasEditModels)
+      // EDIT_MODELS включает редактирование описания и скриншотов
+      setCanEditDescription(hasEditModels || hasEditDescription)
       setCanEditSphere(checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODEL_SPHERE))
-      setCanEditScreenshots(checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS))
+      setCanEditScreenshots(hasEditModels || hasEditScreenshots)
     } else {
       setCanEditModel(false)
       setCanEditDescription(false)

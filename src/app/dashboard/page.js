@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { checkAnyPermission, checkPermission } from '@/lib/permission'
+import { checkAnyPermission, checkPermission, canEditModel } from '@/lib/permission'
 import apiClient from '@/lib/apiClient'
 import { proxyUrl, formatDateTime, truncateText } from '@/lib/utils'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
@@ -406,7 +406,7 @@ export default function DashboardPage() {
                           <ArrowDownTrayIcon className="h-5 w-5" />
                         </button>
                       )}
-                      {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
+                      {canEditModel(user, model) && (
                         <Link
                           href={`/dashboard/models/update/${model.id}`}
                           onClick={(e) => e.stopPropagation()}

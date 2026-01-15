@@ -248,7 +248,7 @@ export default function SpheresPage() {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Дата создания
                   </th>
-                  {user?.role === 'ADMIN' && (
+                  {(user?.role === 'ADMIN' || checkPermission(user, ALL_PERMISSIONS.EDIT_SPHERE)) && (
                     <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Действия
                     </th>
@@ -272,23 +272,27 @@ export default function SpheresPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDateTime(sphere.createdAt)}
                     </td>
-                    {user?.role === 'ADMIN' && (
+                    {(user?.role === 'ADMIN' || checkPermission(user, ALL_PERMISSIONS.EDIT_SPHERE)) && (
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-2">
-                          <button
-                            onClick={(e) => handleEdit(sphere, e)}
-                            className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
-                            title="Редактировать"
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={(e) => handleDelete(sphere, e)}
-                            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                            title="Удалить"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
+                          {checkPermission(user, ALL_PERMISSIONS.EDIT_SPHERE) && (
+                            <button
+                              onClick={(e) => handleEdit(sphere, e)}
+                              className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                              title="Редактировать"
+                            >
+                              <PencilIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                          {user?.role === 'ADMIN' && (
+                            <button
+                              onClick={(e) => handleDelete(sphere, e)}
+                              className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                              title="Удалить"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}

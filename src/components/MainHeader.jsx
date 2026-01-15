@@ -214,7 +214,8 @@ export default function MainHeader() {
       'ARTIST': 'Художник',
       'ANALYST': 'Аналитик',
       'MANAGER': 'Менеджер',
-      'PROGRAMMER': 'Программист'
+      'PROGRAMMER': 'Программист',
+      'TESTER': 'Тестировщик'
     }
     return roleMap[role] || role?.toLowerCase() || ''
   }

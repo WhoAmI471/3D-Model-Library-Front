@@ -1,4 +1,5 @@
 'use client'
+import { useRef, useEffect } from 'react'
 import { formatFileSize } from '@/lib/utils'
 
 /**
@@ -12,9 +13,129 @@ export default function FileUploadSection({
   label = 'ZIP-архив модели',
   inputRef = null
 }) {
+  const internalInputRef = useRef(null)
+  const scrollPositionRef = useRef(0)
+  const scrollIntervalRef = useRef(null)
+  const actualInputRef = inputRef || internalInputRef
+
   // Проверяем, является ли поле обязательным (есть ли звездочка в label)
   const isRequired = label.includes('*')
   const labelText = label.replace(' *', '').replace('*', '').trim()
+
+  // Очищаем интервал при размонтировании
+  useEffect(() => {
+    return () => {
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current)
+      }
+    }
+  }, [])
+
+  const handleLabelClick = (e) => {
+    if (disabled) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+
+    // Сохраняем текущую позицию скролла
+    const savedScroll = window.scrollY || window.pageYOffset || document.documentElement.scrollTop
+    scrollPositionRef.current = savedScroll
+
+    // Предотвращаем стандартное поведение
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Функция восстановления скролла
+    const restoreScroll = () => {
+      if (scrollPositionRef.current > 0) {
+        window.scrollTo({
+          top: scrollPositionRef.current,
+          behavior: 'instant'
+        })
+      }
+    }
+
+    // Программно вызываем клик на input
+    if (actualInputRef.current) {
+      // Восстанавливаем позицию перед кликом
+      restoreScroll()
+      
+      // Небольшая задержка перед кликом для стабильности
+      setTimeout(() => {
+        actualInputRef.current.click()
+        // Восстанавливаем сразу после клика
+        restoreScroll()
+      }, 0)
+    }
+
+    // Создаем интервал для постоянного восстановления позиции
+    if (scrollIntervalRef.current) {
+      clearInterval(scrollIntervalRef.current)
+    }
+
+    scrollIntervalRef.current = setInterval(() => {
+      const currentScroll = window.scrollY || window.pageYOffset || document.documentElement.scrollTop
+      if (Math.abs(currentScroll - scrollPositionRef.current) > 1) {
+        restoreScroll()
+      }
+    }, 10)
+
+    // Восстанавливаем при возврате фокуса на окно
+    const handleFocus = () => {
+      restoreScroll()
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current)
+        scrollIntervalRef.current = null
+      }
+      scrollPositionRef.current = 0
+      window.removeEventListener('focus', handleFocus)
+    }
+
+    window.addEventListener('focus', handleFocus)
+    
+    // Останавливаем интервал через 3 секунды
+    setTimeout(() => {
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current)
+        scrollIntervalRef.current = null
+      }
+      scrollPositionRef.current = 0
+    }, 3000)
+  }
+
+  const handleInputChange = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      onFileChange(file)
+    } else {
+      onFileChange(null)
+    }
+
+    // Восстанавливаем позицию скролла после выбора файла
+    if (scrollPositionRef.current > 0) {
+      // Останавливаем интервал
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current)
+        scrollIntervalRef.current = null
+      }
+      
+      // Восстанавливаем позицию несколько раз для надежности
+      const restore = () => {
+        window.scrollTo({
+          top: scrollPositionRef.current,
+          behavior: 'instant'
+        })
+      }
+      
+      restore()
+      setTimeout(restore, 0)
+      setTimeout(restore, 50)
+      setTimeout(restore, 100)
+      
+      scrollPositionRef.current = 0
+    }
+  }
   
   return (
     <div className="mb-8">
@@ -41,29 +162,27 @@ export default function FileUploadSection({
       )}
       
       <div>
-        <label className={`inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
-          disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-        }`}>
+        <button
+          type="button"
+          className={`inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
+            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          }`}
+          onClick={handleLabelClick}
+          disabled={disabled}
+        >
           <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
           {currentFile ? 'Заменить ZIP-файл' : 'Выберите ZIP-файл'}
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".zip"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) {
-                onFileChange(file)
-              } else {
-                onFileChange(null)
-              }
-            }}
-            className="sr-only"
-            disabled={disabled}
-          />
-        </label>
+        </button>
+        <input
+          ref={actualInputRef}
+          type="file"
+          accept=".zip"
+          onChange={handleInputChange}
+          className="sr-only"
+          disabled={disabled}
+        />
         {newFile && (
           <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-700">

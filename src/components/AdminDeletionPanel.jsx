@@ -306,7 +306,8 @@ export default function AdminDeletionPanel({ userRole }) {
                         ARTIST: 'Художник',
                         PROGRAMMER: 'Программист',
                         MANAGER: 'Менеджер',
-                        ANALYST: 'Аналитик'
+                        ANALYST: 'Аналитик',
+                        TESTER: 'Тестировщик'
                       }[model.markedBy?.role] || model.markedBy?.role || ''}
                     </div>
                   </td>

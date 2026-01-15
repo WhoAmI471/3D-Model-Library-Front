@@ -8,12 +8,14 @@ const ALL_PERMISSIONS_VALUES = [
   'delete_models',
   'upload_models',
   'edit_models',
-  'edit_model_description',
+  'edit_model_description', // Устаревшее, входит в edit_models
   'edit_model_sphere',
-  'edit_model_screenshots',
+  'edit_model_screenshots', // Устаревшее, входит в edit_models
+  'edit_all_models', // Кастомное право для редактирования всех моделей (для Художника)
   'download_models',
   'edit_projects',
-  'add_sphere'
+  'add_sphere',
+  'edit_sphere'
 ]
 
 // Базовая схема сотрудника

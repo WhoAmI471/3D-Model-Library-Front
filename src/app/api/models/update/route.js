@@ -7,17 +7,23 @@ import { syncModelFolder, sanitizeName } from '@/lib/nextcloud'
 import { getUserFromSession } from '@/lib/auth'
 import { logModelAction } from '@/lib/logger'
 import { checkPermission } from '@/lib/permission'
-import { ALL_PERMISSIONS } from '@/lib/roles'
+import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
 
 export async function POST(request) {
   const user = await getUserFromSession()
   if (!user) return new Response('Unauthorized', { status: 401 })
 
   // Проверка общих прав на редактирование
+  // EDIT_MODELS включает в себя редактирование описания и скриншотов
+  // Отдельные права оставлены для обратной совместимости
   const canEditModels = checkPermission(user, ALL_PERMISSIONS.EDIT_MODELS)
-  const canEditDescription = checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION)
+  const canEditDescription = checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_DESCRIPTION) // Устаревшее
   const canEditSphere = checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_SPHERE)
-  const canEditScreenshots = checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS)
+  const canEditScreenshots = checkPermission(user, ALL_PERMISSIONS.EDIT_MODEL_SCREENSHOTS) // Устаревшее
+
+  // Если есть EDIT_MODELS, то автоматически разрешаем редактирование описания и скриншотов
+  const canEditDescriptionOrModels = canEditModels || canEditDescription
+  const canEditScreenshotsOrModels = canEditModels || canEditScreenshots
 
   if (!canEditModels && !canEditDescription && !canEditSphere && !canEditScreenshots) {
     return NextResponse.json(
@@ -59,14 +65,41 @@ export async function POST(request) {
       )
     }
 
+    // Проверка для Художника: может редактировать только свои модели (если нет кастомного права EDIT_ALL_MODELS)
+    // Если у Художника есть право EDIT_MODELS, проверяем, может ли он редактировать все модели
+    // или только свои (через кастомное право EDIT_ALL_MODELS)
+    if (user.role === ROLES.ARTIST && canEditModels) {
+      // Проверяем кастомное право для редактирования всех моделей
+      const canEditAllModels = checkPermission(user, ALL_PERMISSIONS.EDIT_ALL_MODELS)
+      
+      // Если нет права на редактирование всех моделей, проверяем, является ли пользователь автором
+      if (!canEditAllModels) {
+        // Если модель не имеет автора (authorId === null), Художник не может её редактировать
+        if (!existingModel.authorId) {
+          return NextResponse.json(
+            { error: 'Доступ запрещен. Вы можете редактировать только свои модели.' },
+            { status: 403 }
+          )
+        }
+        
+        // Если автор модели не совпадает с текущим пользователем, запрещаем редактирование
+        if (existingModel.authorId !== user.id) {
+          return NextResponse.json(
+            { error: 'Доступ запрещен. Вы можете редактировать только свои модели.' },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
     // Инициализируем updateData только с теми полями, которые разрешено менять
     const updateData = {}
     const changes = []
 
-    // Обработка описания (может быть изменено с правом EDIT_MODEL_DESCRIPTION)
+    // Обработка описания (может быть изменено с правом EDIT_MODELS или EDIT_MODEL_DESCRIPTION)
     const newDescription = formData.get('description')
     if (newDescription !== null && newDescription !== existingModel.description) {
-      if (canEditModels || canEditDescription) {
+      if (canEditDescriptionOrModels) {
         updateData.description = newDescription
         changes.push('Обновлено описание')
       } else {
@@ -78,7 +111,8 @@ export async function POST(request) {
     }
 
     // Все остальные поля требуют права EDIT_MODELS или соответствующих отдельных прав
-    if (canEditModels) {
+    // EDIT_MODELS включает редактирование скриншотов
+    if (canEditModels || canEditScreenshotsOrModels) {
       // Удаляем скриншоты, которые были помечены на удаление
       if (deletedScreenshots.length > 0) {
         await Promise.all(

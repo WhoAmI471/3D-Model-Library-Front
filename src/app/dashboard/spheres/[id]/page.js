@@ -2,7 +2,7 @@
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { checkPermission, checkAnyPermission } from '@/lib/permission'
+import { checkPermission, checkAnyPermission, canEditModel } from '@/lib/permission'
 import apiClient from '@/lib/apiClient'
 import Loading from '@/components/Loading'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
@@ -352,7 +352,7 @@ export default function SpherePage({ params }) {
                           <ArrowDownTrayIcon className="h-5 w-5" />
                         </button>
                       )}
-                      {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
+                      {canEditModel(user, model) && (
                         <Link
                           href={`/dashboard/models/update/${model.id}`}
                           onClick={(e) => e.stopPropagation()}

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation'
 import { formatDateTime, proxyUrl, truncateText } from '@/lib/utils'
-import { checkAnyPermission, checkPermission } from '@/lib/permission'
+import { checkAnyPermission, checkPermission, canEditModel } from '@/lib/permission'
 import Link from 'next/link';
 import apiClient from '@/lib/apiClient'
 import DeleteReasonModal from './DeleteReasonModal'
@@ -205,7 +205,7 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
               </button>
             )}
             
-            {checkAnyPermission(user, 'edit_models', 'edit_model_description') && (
+            {canEditModel(user, model) && (
               <Link 
                 href={`/dashboard/models/update/${model.id}`}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
