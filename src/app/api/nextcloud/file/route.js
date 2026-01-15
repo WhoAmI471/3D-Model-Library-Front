@@ -80,6 +80,7 @@ export async function GET(request) {
   // Валидация пути (передаем nextcloudUrl для проверки, что это наш Nextcloud)
   const sanitizedPath = sanitizePath(path, url)
   if (!sanitizedPath) {
+    console.error('[Nextcloud File API] Invalid path:', { originalPath: path, nextcloudUrl: url })
     return NextResponse.json({ error: 'Invalid or dangerous path' }, { status: 400 })
   }
 
@@ -107,9 +108,15 @@ export async function GET(request) {
   } catch (err) {
     const status = err.response?.status
     if (status === 404) {
+      console.error('[Nextcloud File API] File not found:', { path: sanitizedPath, target })
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
-    console.error('Failed to fetch file from Nextcloud:', err)
+    console.error('[Nextcloud File API] Failed to fetch file:', { 
+      error: err.message, 
+      path: sanitizedPath, 
+      target,
+      status: err.response?.status 
+    })
     return NextResponse.json({ error: 'Failed to fetch file' }, { status: 500 })
   }
 }
