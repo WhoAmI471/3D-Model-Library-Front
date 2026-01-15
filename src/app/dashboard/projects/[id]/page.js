@@ -216,14 +216,14 @@ export default function ProjectPage({ params }) {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Заголовок и кнопки */}
         <div className="mb-6 pb-6 border-b border-gray-200 flex justify-between items-end gap-4 relative">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="absolute -left-12 top-0 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-            title="Назад"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </button>
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="absolute -left-12 top-2 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              title="Назад"
+            >
+              <ArrowLeftIcon className="h-5 w-5" />
+            </button>
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 leading-none pb-0">
               {project.name}

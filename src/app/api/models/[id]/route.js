@@ -134,6 +134,13 @@ export async function DELETE(request, { params }) {
             name: true
           }
         },
+        markedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
         projects: {
           select: {
             id: true,
@@ -210,6 +217,15 @@ export async function DELETE(request, { params }) {
         }
       });
 
+      // Логируем подтверждение удаления перед фактическим удалением
+      const deletionComment = fullModel.deletionComment ? ` (причина: ${fullModel.deletionComment})` : '';
+      const markedByUser = model.markedBy ? ` (запросил: ${model.markedBy.name})` : '';
+      await logModelAction(
+        `Подтверждено удаление модели "${fullModel.title}"${markedByUser}${deletionComment}`,
+        id,
+        user.id
+      );
+
       // Удаляем только ZIP файл (изображения остаются в Nextcloud)
       await deleteFile(fullModel.fileUrl);
       // Удаляем версии модели
@@ -230,16 +246,24 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ success: true, message: 'Модель удалена' });
     } else {
       // Отмена пометки на удаление
+      const markedByUser = model.markedBy ? ` (запросил: ${model.markedBy.name})` : '';
+      const deletionComment = model.deletionComment ? ` (причина: ${model.deletionComment})` : '';
+      
+      await logModelAction(
+        `Отклонено удаление модели "${model.title}"${markedByUser}${deletionComment}`,
+        id,
+        user.id
+      );
+
       await prisma.model.update({
         where: { id },
         data: {
           markedForDeletion: false,
           markedById: null,
-          markedAt: null
+          markedAt: null,
+          deletionComment: null
         }
       });
-
-      await logModelAction('Запрос на удаление отклонён', id, user.id);
 
       return NextResponse.json({
         success: true,
