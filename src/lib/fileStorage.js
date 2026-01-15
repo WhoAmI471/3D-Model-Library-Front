@@ -33,8 +33,20 @@ function getNextcloudConfig() {
   return { url, username, password };
 }
 
-export function modelSubfolder(modelTitle, version, isScreenshot = false) {
-  const folderName = sanitizeName(modelTitle)
+export function modelSubfolder(modelTitle, version, isScreenshot = false, modelId = null) {
+  let folderName = sanitizeName(modelTitle)
+  
+  // Если название после санитизации некорректно, используем UUID модели или генерируем новый
+  if (!folderName) {
+    if (modelId) {
+      // Используем первые 8 символов UUID для создания уникальной папки
+      folderName = modelId.substring(0, 8)
+    } else {
+      // Если UUID не передан, генерируем новый (fallback)
+      folderName = uuidv4().substring(0, 8)
+    }
+  }
+  
   const parts = ['models', folderName, `v${version}`]
   if (isScreenshot) parts.push('screenshots')
   return parts.join('/')
@@ -96,13 +108,24 @@ export async function saveFile(file, subfolder = 'models') {
   }
 }
 
-export async function saveModelFile(file, modelTitle, version, isScreenshot = false) {
-  const folder = modelSubfolder(modelTitle, version, isScreenshot)
+export async function saveModelFile(file, modelTitle, version, isScreenshot = false, modelId = null) {
+  const folder = modelSubfolder(modelTitle, version, isScreenshot, modelId)
   return saveFile(file, folder)
 }
 
-export async function saveProjectImage(file, projectName) {
-  const folderName = sanitizeName(projectName)
+export async function saveProjectImage(file, projectName, projectId = null) {
+  let folderName = sanitizeName(projectName)
+  
+  // Если название после санитизации некорректно, используем UUID проекта
+  if (!folderName) {
+    if (projectId) {
+      folderName = projectId.substring(0, 8)
+    } else {
+      // Fallback - используем timestamp
+      folderName = `project_${Date.now()}`
+    }
+  }
+  
   const folder = `projects/${folderName}`
   return saveFile(file, folder)
 }

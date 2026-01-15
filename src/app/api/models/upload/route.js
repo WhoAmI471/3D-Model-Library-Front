@@ -61,7 +61,7 @@ export async function POST(request) {
 
     const modelId = uuidv4()
 
-    const fileUrl = await saveModelFile(zipFile, title, version)
+    const fileUrl = await saveModelFile(zipFile, title, version, false, modelId)
 
     // Проверка типа файлов для скриншотов
     const isValidImageFile = (file) => {
@@ -89,7 +89,7 @@ export async function POST(request) {
           headers: { 'Content-Type': 'application/json' },
         })
       }
-      const url = await saveModelFile(file, title, version, true)
+      const url = await saveModelFile(file, title, version, true, modelId)
       imageUrls.push(url)
     }
 
@@ -135,7 +135,7 @@ export async function POST(request) {
       authorId || null
     )
 
-    await syncModelFolder({ title, projects: newModel.projects })
+    await syncModelFolder({ id: modelId, title, projects: newModel.projects })
 
     const allModels = await prisma.model.findMany({
       orderBy: { createdAt: 'desc' },

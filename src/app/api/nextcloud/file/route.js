@@ -108,7 +108,7 @@ export async function GET(request) {
   } catch (err) {
     const status = err.response?.status
     if (status === 404) {
-      console.error('[Nextcloud File API] File not found:', { path: sanitizedPath, target })
+      // 404 - это нормальная ситуация (файл может быть удален), не логируем как ошибку
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
     console.error('[Nextcloud File API] Failed to fetch file:', { 

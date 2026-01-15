@@ -235,7 +235,7 @@ export async function POST(request) {
             { status: 400 }
           )
         }
-        updateData.fileUrl = await saveModelFile(zipFile, newTitle || existingModel.title, version || 'current')
+        updateData.fileUrl = await saveModelFile(zipFile, newTitle || existingModel.title, version || 'current', false, existingModel.id)
         changes.push('Обновлён файл модели')
       }
       
@@ -263,7 +263,7 @@ export async function POST(request) {
         }
 
         const newScreenshots = await Promise.all(
-          screenshots.map(file => saveModelFile(file, newTitle || existingModel.title, version || 'current', true))
+          screenshots.map(file => saveModelFile(file, newTitle || existingModel.title, version || 'current', true, existingModel.id))
         )
 
         // Используем новый порядок существующих скриншотов, если он был передан
@@ -358,7 +358,7 @@ export async function POST(request) {
           }
 
           const newScreenshots = await Promise.all(
-            screenshots.map(file => saveModelFile(file, existingModel.title, version || 'current', true))
+            screenshots.map(file => saveModelFile(file, existingModel.title, version || 'current', true, existingModel.id))
           )
 
           // Используем новый порядок существующих скриншотов, если он был передан

@@ -31,7 +31,25 @@ function getConfig() {
 }
 
 export function sanitizeName(name) {
-  return name.replace(/[^a-z0-9_\-]+/gi, '_')
+  if (!name || typeof name !== 'string') {
+    return null
+  }
+  
+  // Заменяем все недопустимые символы на подчеркивание
+  let sanitized = name.replace(/[^a-z0-9_\-]+/gi, '_')
+  
+  // Убираем множественные подчеркивания
+  sanitized = sanitized.replace(/_+/g, '_')
+  
+  // Убираем подчеркивания в начале и конце
+  sanitized = sanitized.replace(/^_+|_+$/g, '')
+  
+  // Если после санитизации осталась пустая строка или только подчеркивания, возвращаем null
+  if (!sanitized || sanitized === '_') {
+    return null
+  }
+  
+  return sanitized
 }
 
 export async function createFolderRecursive(folder) {
@@ -229,10 +247,28 @@ async function setTagsForPath(path, tags) {
 }
 
 export async function syncModelFolder(model, oldTitle = null) {
-  const folder = `models/${sanitizeName(model.title)}`
-  const prevFolder = oldTitle && sanitizeName(oldTitle) !== sanitizeName(model.title)
-    ? `models/${sanitizeName(oldTitle)}`
-    : null
+  let folderName = sanitizeName(model.title)
+  
+  // Если название после санитизации некорректно, используем ID модели
+  if (!folderName && model.id) {
+    folderName = model.id.substring(0, 8)
+  } else if (!folderName) {
+    // Если нет ни названия, ни ID, генерируем случайное имя (fallback)
+    folderName = `model_${Date.now()}`
+  }
+  
+  const folder = `models/${folderName}`
+  
+  let prevFolder = null
+  if (oldTitle) {
+    let prevFolderName = sanitizeName(oldTitle)
+    if (!prevFolderName && model.id) {
+      prevFolderName = model.id.substring(0, 8)
+    }
+    if (prevFolderName && prevFolderName !== folderName) {
+      prevFolder = `models/${prevFolderName}`
+    }
+  }
   try {
     if (prevFolder) {
       await renameFolder(prevFolder, folder)

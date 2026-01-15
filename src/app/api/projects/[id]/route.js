@@ -152,7 +152,7 @@ export async function PUT(request, { params }) {
       if (existingProject.imageUrl) {
         await deleteFile(existingProject.imageUrl)
       }
-      imageUrl = await saveProjectImage(imageFile, name)
+      imageUrl = await saveProjectImage(imageFile, name, existingProject.id)
       changes.push('Обновлено изображение проекта')
     }
 
