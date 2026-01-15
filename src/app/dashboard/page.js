@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
 import apiClient from '@/lib/apiClient'
-import { proxyUrl, formatDateTime } from '@/lib/utils'
+import { proxyUrl, formatDateTime, truncateText } from '@/lib/utils'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import { useNotification } from '@/hooks/useNotification'
 import { useConfirm } from '@/hooks/useConfirm'
@@ -372,8 +372,9 @@ export default function DashboardPage() {
                               key={project.id}
                               href={`/dashboard/projects/${project.id}`}
                               className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                              title={project.name}
                             >
-                              {project.name}
+                              {truncateText(project.name, 25)}
                             </Link>
                           ))}
                           {model.projects.length > 2 && (

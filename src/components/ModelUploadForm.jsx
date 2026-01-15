@@ -7,6 +7,8 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useModelsData } from '@/hooks/useModelsData'
 import { useDragAndDrop } from '@/hooks/useDragAndDrop'
 import { useNotification } from '@/hooks/useNotification'
+import { useDebounce } from '@/hooks/useDebounce'
+import apiClient from '@/lib/apiClient'
 import ScreenshotsUploadSection from '@/components/modelForm/ScreenshotsUploadSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
 import ProjectsSection from '@/components/modelForm/ProjectsSection'
@@ -28,6 +30,8 @@ export default function ModelUploadForm({ initialProjectId = null, initialSphere
   const [screenshots, setScreenshots] = useState([])
   const [projectSearchTerm, setProjectSearchTerm] = useState('')
   const [sphereSearchTerm, setSphereSearchTerm] = useState('')
+  const [isCheckingTitle, setIsCheckingTitle] = useState(false)
+  const [titleExists, setTitleExists] = useState(false)
   
   const {
     register,
@@ -52,6 +56,52 @@ export default function ModelUploadForm({ initialProjectId = null, initialSphere
   })
   
   const formData = watch()
+  const debouncedTitle = useDebounce(formData.title, 500)
+
+  // Проверка уникальности названия модели
+  useEffect(() => {
+    const checkTitleUniqueness = async () => {
+      const title = debouncedTitle?.trim()
+      
+      // Очищаем ошибку, если поле пустое
+      if (!title || title.length === 0) {
+        setTitleExists(false)
+        clearErrors('title')
+        setIsCheckingTitle(false)
+        return
+      }
+
+      // Не проверяем, если название слишком короткое (меньше минимальной длины)
+      if (title.length < 1) {
+        setTitleExists(false)
+        setIsCheckingTitle(false)
+        return
+      }
+
+      setIsCheckingTitle(true)
+      try {
+        const result = await apiClient.models.checkTitle(title)
+        if (result.exists) {
+          setTitleExists(true)
+          setError('title', {
+            type: 'manual',
+            message: 'Модель с таким названием уже существует'
+          })
+        } else {
+          setTitleExists(false)
+          clearErrors('title')
+        }
+      } catch (error) {
+        console.error('Ошибка проверки названия модели:', error)
+        // При ошибке не блокируем ввод
+        setTitleExists(false)
+      } finally {
+        setIsCheckingTitle(false)
+      }
+    }
+
+    checkTitleUniqueness()
+  }, [debouncedTitle, setError, clearErrors])
 
   // Устанавливаем текущего пользователя по умолчанию, если автор еще не выбран
   useEffect(() => {
@@ -226,6 +276,16 @@ export default function ModelUploadForm({ initialProjectId = null, initialSphere
 
 
   const onSubmitForm = async (data) => {
+    // Проверка уникальности названия перед отправкой
+    if (titleExists || isCheckingTitle) {
+      if (isCheckingTitle) {
+        showError('Пожалуйста, дождитесь завершения проверки названия')
+      } else {
+        showError('Модель с таким названием уже существует')
+      }
+      return
+    }
+
     // Валидация файлов
     if (!zipFile) {
       setError('root', { type: 'validation', message: 'Загрузите ZIP-архив модели' })
@@ -358,18 +418,27 @@ export default function ModelUploadForm({ initialProjectId = null, initialSphere
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Название модели <span className="text-red-500">*</span>
             </label>
-            <input
-              {...register('title')}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${
-                errors.title ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="Введите название модели"
-              maxLength={50}
-            />
-            {errors.title && (
-              <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+            <div className="relative">
+              <input
+                {...register('title')}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${
+                  errors.title || titleExists ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Введите название модели"
+                maxLength={50}
+              />
+              {isCheckingTitle && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                </div>
+              )}
+            </div>
+            {(errors.title || titleExists) && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.title?.message || 'Модель с таким названием уже существует'}
+              </p>
             )}
           </div>
         </div>

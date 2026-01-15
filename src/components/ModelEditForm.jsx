@@ -10,6 +10,7 @@ import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useModelsData } from '@/hooks/useModelsData'
 import apiClient, { ApiError } from '@/lib/apiClient'
 import { useNotification } from '@/hooks/useNotification'
+import { useDebounce } from '@/hooks/useDebounce'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import ScreenshotsSection from '@/components/modelForm/ScreenshotsSection'
 import ModelInfoSection from '@/components/modelForm/ModelInfoSection'
@@ -40,6 +41,8 @@ export default function ModelEditForm({ id, userRole }) {
   const [draggedIndex, setDraggedIndex] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
   const [draggedType, setDraggedType] = useState(null) // 'current' или 'new'
+  const [isCheckingTitle, setIsCheckingTitle] = useState(false)
+  const [titleExists, setTitleExists] = useState(false)
   
   const {
     register,
@@ -62,6 +65,56 @@ export default function ModelEditForm({ id, userRole }) {
   })
   
   const formData = watch()
+  const debouncedTitle = useDebounce(formData.title, 500)
+
+  // Проверка уникальности названия модели при редактировании
+  useEffect(() => {
+    const checkTitleUniqueness = async () => {
+      const title = debouncedTitle?.trim()
+      const originalTitle = existingModel?.title?.trim()
+      
+      // Очищаем ошибку, если поле пустое
+      if (!title || title.length === 0) {
+        setTitleExists(false)
+        setIsCheckingTitle(false)
+        return
+      }
+
+      // Не проверяем, если название не изменилось
+      if (title === originalTitle) {
+        setTitleExists(false)
+        setIsCheckingTitle(false)
+        return
+      }
+
+      // Не проверяем, если название слишком короткое
+      if (title.length < 1) {
+        setTitleExists(false)
+        setIsCheckingTitle(false)
+        return
+      }
+
+      setIsCheckingTitle(true)
+      try {
+        const result = await apiClient.models.checkTitle(title, id)
+        if (result.exists) {
+          setTitleExists(true)
+        } else {
+          setTitleExists(false)
+        }
+      } catch (error) {
+        console.error('Ошибка проверки названия модели:', error)
+        // При ошибке не блокируем ввод
+        setTitleExists(false)
+      } finally {
+        setIsCheckingTitle(false)
+      }
+    }
+
+    if (existingModel) {
+      checkTitleUniqueness()
+    }
+  }, [debouncedTitle, existingModel, id])
 
   
   const [canEditModel, setCanEditModel] = useState(null);
@@ -544,6 +597,25 @@ export default function ModelEditForm({ id, userRole }) {
     setError(null)
 
     try {
+      // Проверка уникальности названия перед отправкой (только если редактируется название)
+      if (canEditModel && data.title) {
+        const title = data.title.trim()
+        const originalTitle = existingModel?.title?.trim()
+        
+        // Проверяем только если название изменилось
+        if (title !== originalTitle) {
+          if (titleExists || isCheckingTitle) {
+            if (isCheckingTitle) {
+              showError('Пожалуйста, дождитесь завершения проверки названия')
+            } else {
+              showError('Модель с таким названием уже существует')
+            }
+            setIsLoading(false)
+            return
+          }
+        }
+      }
+
       // Проверка количества скриншотов перед сохранением (только если редактируются скриншоты)
       if ((canEditModel || canEditScreenshots) && !isValidScreenshotsCount()) {
         const remainingCurrentScreenshots = currentFiles.screenshots.filter(
@@ -706,19 +778,28 @@ export default function ModelEditForm({ id, userRole }) {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Название модели <span className="text-red-500">*</span>
               </label>
-              <input
-                {...register('title')}
-                onChange={handleChange}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${
-                  errors.title ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Введите название модели"
-                maxLength={50}
-              />
-              {errors.title && (
-                <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+              <div className="relative">
+                <input
+                  {...register('title')}
+                  onChange={handleChange}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${
+                    errors.title || titleExists ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Введите название модели"
+                  maxLength={50}
+                />
+                {isCheckingTitle && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  </div>
+                )}
+              </div>
+              {(errors.title || titleExists) && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.title?.message || 'Модель с таким названием уже существует'}
+                </p>
               )}
             </div>
           ) : (

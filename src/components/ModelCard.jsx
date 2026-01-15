@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation'
-import { formatDateTime, proxyUrl } from '@/lib/utils'
+import { formatDateTime, proxyUrl, truncateText } from '@/lib/utils'
 import { checkAnyPermission, checkPermission } from '@/lib/permission'
 import Link from 'next/link';
 import apiClient from '@/lib/apiClient'
@@ -361,8 +361,9 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
                   key={project.id}
                   href={`/dashboard/projects/${project.id}`}
                   className="inline-flex items-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors cursor-pointer border border-blue-200"
+                  title={project.name}
                 >
-                  {project.name}
+                  {truncateText(project.name, 25)}
                 </Link>
               ))}
             </div>

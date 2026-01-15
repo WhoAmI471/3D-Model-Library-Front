@@ -19,3 +19,8 @@ export function formatDateTime(dateString) {
 export function proxyUrl(url) {
   return url ? `/api/nextcloud/file?path=${encodeURIComponent(url)}` : ''
 }
+
+export function truncateText(text, maxLength = 25) {
+  if (!text || text.length <= maxLength) return text
+  return text.slice(0, maxLength) + '...'
+}

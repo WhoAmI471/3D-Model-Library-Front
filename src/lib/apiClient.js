@@ -180,6 +180,17 @@ const apiClient = {
       })
       return data
     },
+
+    async checkTitle(title, excludeId = null) {
+      const queryParams = new URLSearchParams()
+      queryParams.append('title', title)
+      if (excludeId) {
+        queryParams.append('excludeId', excludeId)
+      }
+      
+      const { data } = await request(`/api/models/check-title?${queryParams.toString()}`)
+      return data
+    },
   },
 
   // ===== PROJECTS =====
