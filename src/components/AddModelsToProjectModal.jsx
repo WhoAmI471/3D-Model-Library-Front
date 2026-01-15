@@ -143,6 +143,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
             <div className="mb-4">
               <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-gray-200">
                 <button
+                  type="button"
                   onClick={() => setActiveTab('all')}
                   className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                     activeTab === 'all'
@@ -166,6 +167,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
                   return (
                     <button
                       key={sphere.id}
+                      type="button"
                       onClick={() => setActiveTab(sphere.id)}
                       className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                         activeTab === sphere.id
@@ -256,6 +258,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
                   {totalPages > 1 && (
                     <div className="flex justify-center items-center gap-2 mt-4">
                       <button
+                        type="button"
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
                         className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"
@@ -266,6 +269,7 @@ export default function AddModelsToProjectModal({ projectId, onClose, onAdd, exi
                         Страница {currentPage} из {totalPages}
                       </div>
                       <button
+                        type="button"
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                         disabled={currentPage === totalPages}
                         className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"

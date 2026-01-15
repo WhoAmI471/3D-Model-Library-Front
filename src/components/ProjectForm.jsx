@@ -333,58 +333,61 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
               {spheres.length > 0 && (
                 <div className="mb-4">
                   <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('all')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                    activeTab === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Все модели
+                  <span className={`ml-1.5 text-xs ${activeTab === 'all' ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {models.length}
+                  </span>
+                </button>
+                <div className="h-6 w-px bg-gray-300"></div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('no-sphere')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                    activeTab === 'no-sphere'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Без сферы
+                  <span className={`ml-1.5 text-xs ${activeTab === 'no-sphere' ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {models.filter(m => !m.spheres || m.spheres.length === 0).length}
+                  </span>
+                </button>
+                <div className="h-6 w-px bg-gray-300"></div>
+                {sortedSpheres.map((sphere) => {
+                  const sphereModelsCount = models.filter(model =>
+                    model.spheres?.some(s => s.id === sphere.id)
+                  ).length
+                  
+                  if (sphereModelsCount === 0) return null
+                  
+                  return (
                     <button
-                      onClick={() => setActiveTab('all')}
+                      key={sphere.id}
+                      type="button"
+                      onClick={() => setActiveTab(sphere.id)}
                       className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
-                        activeTab === 'all'
+                        activeTab === sphere.id
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      Все модели
-                      <span className={`ml-1.5 text-xs ${activeTab === 'all' ? 'text-blue-100' : 'text-gray-500'}`}>
-                        {models.length}
+                      {sphere.name}
+                      <span className={`ml-1.5 text-xs ${activeTab === sphere.id ? 'text-blue-100' : 'text-gray-500'}`}>
+                        {sphereModelsCount}
                       </span>
                     </button>
-                    <div className="h-6 w-px bg-gray-300"></div>
-                    <button
-                      onClick={() => setActiveTab('no-sphere')}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
-                        activeTab === 'no-sphere'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      Без сферы
-                      <span className={`ml-1.5 text-xs ${activeTab === 'no-sphere' ? 'text-blue-100' : 'text-gray-500'}`}>
-                        {models.filter(m => !m.spheres || m.spheres.length === 0).length}
-                      </span>
-                    </button>
-                    <div className="h-6 w-px bg-gray-300"></div>
-                    {sortedSpheres.map((sphere) => {
-                      const sphereModelsCount = models.filter(model =>
-                        model.spheres?.some(s => s.id === sphere.id)
-                      ).length
-                      
-                      if (sphereModelsCount === 0) return null
-                      
-                      return (
-                        <button
-                          key={sphere.id}
-                          onClick={() => setActiveTab(sphere.id)}
-                          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
-                            activeTab === sphere.id
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {sphere.name}
-                          <span className={`ml-1.5 text-xs ${activeTab === sphere.id ? 'text-blue-100' : 'text-gray-500'}`}>
-                            {sphereModelsCount}
-                          </span>
-                        </button>
-                      )
-                    })}
+                  )
+                })}
                   </div>
                 </div>
               )}
@@ -461,6 +464,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                       {totalPages > 1 && (
                         <div className="flex justify-center items-center gap-2 mt-4">
                           <button
+                            type="button"
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
                             className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"
@@ -471,6 +475,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }) {
                             Страница {currentPage} из {totalPages}
                           </div>
                           <button
+                            type="button"
                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages}
                             className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm font-medium cursor-pointer"

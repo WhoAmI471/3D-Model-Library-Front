@@ -720,8 +720,8 @@ export default function ModelEditForm({ id, userRole }) {
       if (result && result.success) {
         success('Модель успешно обновлена')
         
-        // Перезагружаем данные модели для отображения обновленных скриншотов (без показа загрузки)
-        await loadModel(false)
+        // Перенаправляем на страницу карточки модели
+        router.push(`/dashboard/models/${id}`)
       } else {
         throw new Error(result?.error || 'Не удалось обновить модель')
       }
