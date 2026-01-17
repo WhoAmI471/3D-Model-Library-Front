@@ -140,6 +140,21 @@ export default function DeletedModelsPage() {
     })
     .sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt))
 
+  if (isLoading) {
+    return <Loading />
+  }
+
+  if (userRole !== 'ADMIN') {
+    return (
+      <div className="min-h-full bg-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Доступ запрещен</h2>
+          <p className="text-gray-600">У вас нет прав доступа для этого.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-full bg-white">
       <div className="max-w-7xl mx-auto px-6 py-8">

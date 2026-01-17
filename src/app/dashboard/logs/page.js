@@ -10,6 +10,8 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import apiClient from '@/lib/apiClient'
 
 export default function LogsPage() {
+  const router = useRouter()
+  const [user, setUser] = useState(null)
   const [logs, setLogs] = useState([])
   const [models, setModels] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -31,8 +33,6 @@ export default function LogsPage() {
   const [autoPlayInterval, setAutoPlayInterval] = useState(null)
   const [expandedLogId, setExpandedLogId] = useState(null)
   const [isDeletedModel, setIsDeletedModel] = useState(false) // Флаг для отслеживания удаленной модели
-  
-  const router = useRouter()
   
   const toggleLogExpand = (logId, e) => {
     // Не останавливаем всплытие, чтобы переход на страницу модели тоже сработал
@@ -76,9 +76,27 @@ export default function LogsPage() {
   }
 
   useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const userData = await apiClient.auth.me()
+        setUser(userData.user)
+        if (userData.user?.role !== 'ADMIN') {
+          setIsLoading(false)
+          return
+        }
+      } catch (err) {
+        router.push('/login')
+        return
+      }
+    }
+    loadUser()
+  }, [router])
+
+  useEffect(() => {
+    if (!user || user?.role !== 'ADMIN') return
     loadLogs()
     setExpandedLogId(null) // Сбрасываем развернутый лог при изменении данных
-  }, [page, filters, sortConfig]) // Добавляем sortConfig в зависимости
+  }, [user, page, filters, sortConfig]) // Добавляем user и sortConfig в зависимости
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target
@@ -230,6 +248,21 @@ export default function LogsPage() {
     }
   }, [autoPlayInterval])
 
+  
+  if (isLoading) {
+    return <Loading />
+  }
+
+  if (!user || user?.role !== 'ADMIN') {
+    return (
+      <div className="min-h-full bg-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Доступ запрещен</h2>
+          <p className="text-gray-600">У вас нет прав доступа для этого.</p>
+        </div>
+      </div>
+    )
+  }
   
   return (
     <div className="min-h-full bg-white" onMouseLeave={handleMouseLeave}>

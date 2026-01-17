@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { formatFileSize, proxyUrl } from '@/lib/utils'
-import { checkPermission } from '@/lib/permission'
+import { checkPermission, canEditModel as canEditModelPermission } from '@/lib/permission'
 import { ALL_PERMISSIONS, ROLES } from '@/lib/roles'
 import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useModelsData } from '@/hooks/useModelsData'
@@ -777,6 +777,42 @@ export default function ModelEditForm({ id, userRole }) {
         </button>
       </div>
     )
+  }
+
+  // Проверяем права доступа после загрузки данных
+  // Проверяем общие права на редактирование
+  const hasAnyEditPermission = canEditModel === true || canEditScreenshots === true || canEditDescription === true || canEditSphere === true
+  
+  // Проверяем, может ли пользователь редактировать конкретную модель
+  const canEditThisModel = existingModel && currentUser 
+    ? canEditModelPermission(currentUser, existingModel)
+    : false
+  
+  if (!isLoading && currentUser !== null && existingModel) {
+    // Если у пользователя нет общих прав на редактирование
+    if (!hasAnyEditPermission) {
+      return (
+        <div className="min-h-full bg-white flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Доступ запрещен</h2>
+            <p className="text-gray-600">У вас нет прав доступа для этого.</p>
+          </div>
+        </div>
+      )
+    }
+    
+    // Если у пользователя есть общие права, но он не может редактировать эту конкретную модель
+    // (например, художник пытается редактировать чужую модель)
+    if (hasAnyEditPermission && !canEditThisModel) {
+      return (
+        <div className="min-h-full bg-white flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Доступ запрещен</h2>
+            <p className="text-gray-600">У вас нет прав доступа для этого.</p>
+          </div>
+        </div>
+      )
+    }
   }
 
   const filteredProjects = projects.filter(project =>

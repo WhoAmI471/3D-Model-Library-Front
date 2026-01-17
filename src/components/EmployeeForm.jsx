@@ -507,9 +507,6 @@ export default function EmployeeForm({ employee, onSubmit, onCancel, userRole })
                   'Сферы': [
                     ALL_PERMISSIONS.ADD_SPHERE,
                     ALL_PERMISSIONS.EDIT_SPHERE
-                  ],
-                  'Пользователи': [
-                    ALL_PERMISSIONS.MANAGE_USERS
                   ]
                 }
 

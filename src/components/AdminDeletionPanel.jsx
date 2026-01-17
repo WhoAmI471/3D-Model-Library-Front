@@ -198,7 +198,16 @@ export default function AdminDeletionPanel({ userRole }) {
     return 0;
   });
 
-  if (userRole !== 'ADMIN') return null;
+  if (userRole !== 'ADMIN') {
+    return (
+      <div className="min-h-full bg-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Доступ запрещен</h2>
+          <p className="text-gray-600">У вас нет прав доступа для этого.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-full bg-white" onMouseLeave={handleMouseLeave}>
