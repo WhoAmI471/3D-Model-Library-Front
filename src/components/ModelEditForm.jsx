@@ -150,19 +150,22 @@ export default function ModelEditForm({ id, userRole }) {
       if (showLoading) setIsLoading(true)
       const data = await apiClient.models.getById(id, { include: 'projects' })
       
-      // Обрабатываем authorId: если null, используем текущего пользователя для админа, иначе 'UNKNOWN'
-      // Для админа сохраняем реальный ID автора (если есть), иначе устанавливаем текущего пользователя
-      // Для других пользователей: если authorId есть и это текущий пользователь - используем его ID, иначе 'EXTERNAL'
-      let authorIdValue = currentUser?.role === 'ADMIN' ? (currentUser.id || 'UNKNOWN') : 'UNKNOWN'
+      // Обрабатываем authorId: только художники могут быть авторами
+      // Если authorId указывает на не-художника или null, устанавливаем 'EXTERNAL'
+      let authorIdValue
       if (data.authorId) {
-        if (currentUser?.role === 'ADMIN') {
-          // Для админа сохраняем реальный ID автора
+        // Проверяем, является ли автор художником
+        // Если data.author есть и его роль ARTIST, используем authorId
+        // Иначе устанавливаем 'EXTERNAL'
+        if (data.author && data.author.role === 'ARTIST') {
           authorIdValue = data.authorId
-        } else if (currentUser && data.authorId === currentUser.id) {
-          authorIdValue = currentUser.id
         } else {
+          // Если автор не художник, устанавливаем 'EXTERNAL'
           authorIdValue = 'EXTERNAL'
         }
+      } else {
+        // Если authorId null, устанавливаем 'EXTERNAL'
+        authorIdValue = 'EXTERNAL'
       }
       
       // Получаем текущую версию модели (последняя версия из списка или 1.0 по умолчанию)
@@ -586,7 +589,15 @@ export default function ModelEditForm({ id, userRole }) {
       return true
     }
     
-    // Проверяем количество скриншотов
+    // Проверяем, редактируются ли скриншоты: есть новые, удаленные или изменен порядок
+    const hasScreenshotChanges = screenshots.length > 0 || deletedScreenshots.length > 0
+    
+    // Если скриншоты не редактируются, валидация не нужна
+    if (!hasScreenshotChanges) {
+      return true
+    }
+    
+    // Проверяем количество скриншотов только если они редактируются
     const remainingCurrentScreenshots = currentFiles.screenshots.filter(
       screenshot => {
         const url = typeof screenshot === 'string' ? screenshot : (screenshot?.originalUrl || screenshot)
@@ -600,6 +611,8 @@ export default function ModelEditForm({ id, userRole }) {
   }
 
   const onSubmitForm = async (data) => {
+    console.log('onSubmitForm called with data:', data)
+    console.log('canEditModel:', canEditModel, 'canEditDescription:', canEditDescription, 'canEditSphere:', canEditSphere, 'canEditScreenshots:', canEditScreenshots)
     setIsLoading(true)
     setError(null)
 
@@ -624,7 +637,9 @@ export default function ModelEditForm({ id, userRole }) {
       }
 
       // Проверка количества скриншотов перед сохранением (только если редактируются скриншоты)
-      if ((canEditModel || canEditScreenshots) && !isValidScreenshotsCount()) {
+      // Проверяем только если есть изменения в скриншотах (новые или удаленные)
+      const hasScreenshotChanges = screenshots.length > 0 || deletedScreenshots.length > 0
+      if ((canEditModel || canEditScreenshots) && hasScreenshotChanges && !isValidScreenshotsCount()) {
         const remainingCurrentScreenshots = currentFiles.screenshots.filter(
           screenshot => {
             const url = typeof screenshot === 'string' ? screenshot : (screenshot?.originalUrl || screenshot)
@@ -816,10 +831,29 @@ export default function ModelEditForm({ id, userRole }) {
           )}
         </div>
       
-      <form id="model-edit-form" onSubmit={handleFormSubmit(onSubmitForm)} className="space-y-8">
+      <form id="model-edit-form" onSubmit={handleFormSubmit(onSubmitForm, (errors) => {
+        console.error('Form validation errors:', errors)
+        if (Object.keys(errors).length > 0) {
+          const firstError = Object.values(errors)[0]
+          const errorMessage = firstError?.message || 'Пожалуйста, исправьте ошибки в форме'
+          showError(errorMessage)
+        }
+      })} className="space-y-8">
         {errors.root && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-sm text-red-600">{errors.root.message}</p>
+          </div>
+        )}
+        {Object.keys(errors).length > 0 && errors.root === undefined && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm text-yellow-600">Пожалуйста, исправьте ошибки в форме</p>
+            {Object.entries(errors).map(([key, error]) => (
+              error?.message && (
+                <p key={key} className="text-sm text-yellow-600 mt-1">
+                  {key}: {error.message}
+                </p>
+              )
+            ))}
           </div>
         )}
         {canEditModel === true ? (
@@ -858,6 +892,7 @@ export default function ModelEditForm({ id, userRole }) {
               canEditModel={canEditModel}
               canEditDescription={canEditDescription}
               showTitle={false}
+              existingModel={existingModel}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
             />
@@ -1136,7 +1171,7 @@ export default function ModelEditForm({ id, userRole }) {
               <button
                 type="button"
                 onClick={() => router.back()}
-                disabled={isLoading || isSubmitting || !isValidScreenshotsCount()}
+                disabled={isLoading || isSubmitting}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Отмена
@@ -1144,9 +1179,9 @@ export default function ModelEditForm({ id, userRole }) {
               <button
                 type="submit"
                 form="model-edit-form"
-                disabled={isLoading || isSubmitting || !isValidScreenshotsCount()}
+                disabled={isLoading || isSubmitting}
                 className={`inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                  (isLoading || isSubmitting || !isValidScreenshotsCount()) ? 'opacity-70 cursor-not-allowed' : ''
+                  (isLoading || isSubmitting) ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
               >
                 {(isLoading || isSubmitting) ? (

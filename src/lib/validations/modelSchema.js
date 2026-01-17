@@ -62,7 +62,10 @@ const baseModelSchema = z.object({
   
   authorId: z
     .string()
-    .uuid('Некорректный ID автора')
+    .refine(
+      (val) => !val || val === 'EXTERNAL' || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val),
+      { message: 'Некорректный ID автора' }
+    )
     .optional()
     .nullable(),
   

@@ -1,5 +1,6 @@
 'use client'
-import { ROLES } from '@/lib/roles'
+import { ROLES, ALL_PERMISSIONS } from '@/lib/roles'
+import { checkPermission } from '@/lib/permission'
 
 /**
  * Компонент для отображения и редактирования основной информации о модели
@@ -15,7 +16,8 @@ export default function ModelInfoSection({
   showTitle = false,
   titleClassName = '',
   onKeyDown,
-  onPaste
+  onPaste,
+  existingModel = null
 }) {
   return (
     <>
@@ -64,25 +66,20 @@ export default function ModelInfoSection({
           <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Автор</div>
           <select
             name="authorId"
-            value={form.authorId || (currentUser ? currentUser.id : 'UNKNOWN')}
+            value={form.authorId || ''}
             onChange={handleChange}
             className={`block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${
-              currentUser?.role !== 'ADMIN' ? 'bg-gray-50 appearance-none' : ''
+              (currentUser?.role !== 'ADMIN' && !checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODELS)) ? 'bg-gray-50 appearance-none' : ''
             }`}
             required
-            disabled={currentUser?.role !== 'ADMIN' || !canEditModel}
+            disabled={(currentUser?.role !== 'ADMIN' && !checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODELS)) || !canEditModel}
           >
-            {currentUser?.role === 'ADMIN' ? (
+            {(currentUser?.role === 'ADMIN' || checkPermission(currentUser, ALL_PERMISSIONS.EDIT_MODELS)) ? (
               <>
-                {currentUser && (
-                  <option value={currentUser.id}>
-                    {currentUser.name} (Я)
-                  </option>
-                )}
-                <option value="UNKNOWN">Неизвестно</option>
                 <option value="EXTERNAL">Сторонняя модель</option>
+                {/* Показываем только художников, так как только они могут быть авторами */}
                 {users
-                  .filter(user => user.role === ROLES.ARTIST && user.id !== currentUser?.id)
+                  .filter(user => user.role === ROLES.ARTIST)
                   .map(user => (
                     <option key={user.id} value={user.id}>
                       {user.name}
@@ -91,12 +88,20 @@ export default function ModelInfoSection({
               </>
             ) : (
               <>
-                {currentUser && (
+                {/* Для не-админов: если текущий пользователь - художник, показываем опцию "Я" */}
+                {currentUser && currentUser.role === ROLES.ARTIST && (
                   <option value={currentUser.id}>
                     {currentUser.name} (Я)
                   </option>
                 )}
-                <option value="UNKNOWN">Неизвестно</option>
+                {/* Добавляем опцию для автора модели, если он художник и не текущий пользователь */}
+                {existingModel?.author && existingModel.authorId && 
+                 existingModel.author.role === 'ARTIST' &&
+                 existingModel.authorId !== currentUser?.id && (
+                  <option value={existingModel.authorId}>
+                    {existingModel.author.name || 'Автор модели'}
+                  </option>
+                )}
                 <option value="EXTERNAL">Сторонняя модель</option>
               </>
             )}

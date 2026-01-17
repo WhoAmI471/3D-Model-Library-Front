@@ -328,7 +328,11 @@ export const ModelCard = ({ model, onDeleteRequest, projectId }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Автор</div>
-            <div className="text-sm font-medium text-gray-900 truncate">{model.author?.name || 'Не указан'}</div>
+            <div className="text-sm font-medium text-gray-900 truncate">
+              {model.authorId && model.author && model.author.role === 'ARTIST' 
+                ? model.author.name 
+                : 'Сторонняя модель'}
+            </div>
           </div>
           
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">

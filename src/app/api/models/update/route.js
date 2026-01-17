@@ -206,12 +206,20 @@ export async function POST(request) {
         }
       
       if (authorId !== existingModel.authorId) {
-        const newAuthor = await prisma.user.findUnique({
-          where: { id: authorId }
-        })
-        changes.push(
-          `Автор: "${existingModel.author?.name || 'нет'}" → "${newAuthor?.name || 'нет'}"`
-        )
+        // Проверяем, что authorId не равен null перед поиском пользователя
+        if (authorId) {
+          const newAuthor = await prisma.user.findUnique({
+            where: { id: authorId }
+          })
+          changes.push(
+            `Автор: "${existingModel.author?.name || 'нет'}" → "${newAuthor?.name || 'нет'}"`
+          )
+        } else {
+          // Если authorId стал null, это означает, что автор был удален или установлен как неизвестный
+          changes.push(
+            `Автор: "${existingModel.author?.name || 'нет'}" → "нет"`
+          )
+        }
       }
       
       // Обработка ZIP-файла

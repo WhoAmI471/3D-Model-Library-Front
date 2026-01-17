@@ -424,11 +424,13 @@ export default function ProjectPage({ params }) {
                     </Link>
                     
                     <div className="space-y-2">
-                      {model.author && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="truncate">{model.author.name}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="truncate">
+                          {model.authorId && model.author && model.author.role === 'ARTIST' 
+                            ? model.author.name 
+                            : 'Сторонняя модель'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

@@ -295,7 +295,11 @@ export default function AdminDeletionPanel({ userRole }) {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{model.author?.name || 'Неизвестно'}</div>
+                    <div className="text-sm text-gray-900">
+                      {model.author && model.author.role === 'ARTIST' 
+                        ? model.author.name 
+                        : 'Сторонняя модель'}
+                    </div>
                     <div className="text-sm text-gray-500">{model.author?.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

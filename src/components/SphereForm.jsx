@@ -308,11 +308,11 @@ export default function SphereForm({ sphere, onSubmit, onCancel }) {
                                 <h3 className="font-medium text-sm text-gray-900 line-clamp-2 mb-1">
                                   {model.title}
                                 </h3>
-                                {model.author?.name && (
-                                  <p className="text-xs text-gray-500 truncate">
-                                    {model.author.name}
-                                  </p>
-                                )}
+                                <p className="text-xs text-gray-500 truncate">
+                                  {model.authorId && model.author && model.author.role === 'ARTIST' 
+                                    ? model.author.name 
+                                    : 'Сторонняя модель'}
+                                </p>
                               </div>
                             </div>
                           ))}
