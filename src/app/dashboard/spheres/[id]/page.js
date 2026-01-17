@@ -3,6 +3,7 @@ import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { checkPermission, checkAnyPermission, canEditModel } from '@/lib/permission'
+import { ALL_PERMISSIONS } from '@/lib/roles'
 import apiClient from '@/lib/apiClient'
 import Loading from '@/components/Loading'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
@@ -12,6 +13,7 @@ import { useConfirm } from '@/hooks/useConfirm'
 import AddModelsToSphereModal from "@/components/AddModelsToSphereModal"
 import DeleteReasonModal from "@/components/DeleteReasonModal"
 import ConfirmModal from "@/components/ConfirmModal"
+import SphereForm from "@/components/SphereForm"
 import { 
   ArrowLeftIcon,
   PlusIcon,
@@ -34,6 +36,8 @@ export default function SpherePage({ params }) {
   const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false)
   const [selectedModelForDeletion, setSelectedModelForDeletion] = useState(null)
   const [isDownloading, setIsDownloading] = useState({})
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [currentSphereForEdit, setCurrentSphereForEdit] = useState(null)
   const { success, error: showError } = useNotification()
   const { isOpen, message, title, confirmText, cancelText, variant, showConfirm, handleConfirm, handleCancel } = useConfirm()
   
@@ -171,6 +175,75 @@ export default function SpherePage({ params }) {
     }
   }
 
+  // Обработка редактирования сферы
+  const handleEdit = async (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    try {
+      // Загружаем полную сферу с моделями
+      const fullSphere = await apiClient.spheres.getById(id)
+      setCurrentSphereForEdit(fullSphere)
+      setShowEditForm(true)
+    } catch (error) {
+      const formattedError = await handleError(error, { context: 'SpherePage.handleEdit', sphereId: id })
+      const errorMessage = getErrorMessage(formattedError)
+      showError(errorMessage)
+    }
+  }
+
+  // Обработка отправки формы редактирования сферы
+  const handleSphereSubmit = async (sphereData) => {
+    try {
+      await apiClient.spheres.update(id, sphereData)
+      success('Сфера успешно обновлена')
+      
+      // Перезагружаем данные сферы
+      const updatedSphere = await apiClient.spheres.getById(id)
+      setSphere(updatedSphere)
+      setModels(updatedSphere.models || [])
+      
+      setShowEditForm(false)
+      setCurrentSphereForEdit(null)
+    } catch (error) {
+      const formattedError = await handleError(error, { context: 'SpherePage.handleSphereSubmit', sphereId: id })
+      const errorMessage = getErrorMessage(formattedError)
+      showError(errorMessage)
+      throw error
+    }
+  }
+
+  // Обработка удаления сферы
+  const handleDeleteSphere = async (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
+    const confirmed = await showConfirm({
+      message: `Вы уверены, что хотите удалить сферу "${sphere.name}"?${models.length > 0 ? ` К сфере привязано ${models.length} моделей, они будут автоматически отвязаны.` : ''}`,
+      variant: 'danger',
+      confirmText: 'Удалить'
+    })
+    
+    if (!confirmed) return
+
+    try {
+      const data = await apiClient.spheres.delete(id)
+      if (data && data.success) {
+        success('Сфера успешно удалена')
+        router.push('/dashboard/spheres')
+      } else {
+        showError(data?.error || 'Ошибка удаления сферы')
+      }
+    } catch (error) {
+      const formattedError = await handleError(error, { context: 'SpherePage.handleDeleteSphere', sphereId: id })
+      const errorMessage = getErrorMessage(formattedError)
+      showError(errorMessage)
+    }
+  }
+
   // Фильтрация и сортировка моделей
   const filteredModels = models
     .filter(model => 
@@ -226,32 +299,26 @@ export default function SpherePage({ params }) {
               Моделей: {models.length}
             </p>
           </div>
-          {(userRole === 'ADMIN' || checkPermission(user, 'upload_models')) && (
-            <button
-              onClick={() => setShowAddModelsModal(true)}
-              className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer flex-shrink-0 overflow-hidden"
-              style={{ 
-                width: '2.5rem', 
-                paddingLeft: '0.625rem', 
-                paddingRight: '0.625rem',
-                transition: 'width 0.2s, padding-right 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.setProperty('width', '195px', 'important')
-                e.currentTarget.style.setProperty('padding-right', '2rem', 'important')
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.setProperty('width', '2.5rem', 'important')
-                e.currentTarget.style.setProperty('padding-right', '0.625rem', 'important')
-              }}
-              title="Добавить модель"
-            >
-              <PlusIcon className="h-5 w-5 flex-shrink-0" style={{ color: '#ffffff', strokeWidth: 2 }} />
-              <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                Добавить модель
-              </span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {(user?.role === 'ADMIN' || checkPermission(user, ALL_PERMISSIONS.EDIT_SPHERE)) && (
+              <button
+                onClick={handleEdit}
+                className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                title="Редактировать сферу"
+              >
+                <PencilIcon className="h-5 w-5" />
+              </button>
+            )}
+            {user?.role === 'ADMIN' && (
+              <button
+                onClick={handleDeleteSphere}
+                className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                title="Удалить сферу"
+              >
+                <TrashIcon className="h-5 w-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Поиск */}
@@ -384,43 +451,6 @@ export default function SpherePage({ params }) {
           </div>
         )}
 
-        {showAddModelsModal && (
-          <AddModelsToSphereModal
-            sphereId={id}
-            existingModelIds={models.map(m => m.id)}
-            onClose={() => setShowAddModelsModal(false)}
-            onAdd={async (selectedModelIds) => {
-              try {
-                // Обновляем каждую модель, добавляя сферу
-                for (const modelId of selectedModelIds) {
-                  const model = await apiClient.models.getById(modelId)
-                  const currentSphereIds = model.spheres?.map(s => s.id) || []
-                  if (!currentSphereIds.includes(id)) {
-                    const formData = new FormData()
-                    formData.append('id', modelId)
-                    const newSphereIds = [...currentSphereIds, id]
-                    newSphereIds.forEach(sphereId => formData.append('sphereIds', sphereId))
-                    
-                    await apiClient.models.update(modelId, formData)
-                  }
-                }
-
-                // Перезагружаем данные
-                const sphereData = await apiClient.spheres.getById(id)
-                setSphere(sphereData)
-                setModels(sphereData.models || [])
-
-                setShowAddModelsModal(false)
-                success('Модели успешно добавлены в сферу')
-              } catch (error) {
-                const formattedError = await handleError(error, { context: 'SpherePage.onAdd', sphereId: id, modelIds: selectedModelIds })
-                const errorMessage = getErrorMessage(formattedError)
-                showError(errorMessage)
-              }
-            }}
-          />
-        )}
-
         <DeleteReasonModal
           isOpen={showDeleteReasonModal}
           onClose={() => {
@@ -440,6 +470,17 @@ export default function SpherePage({ params }) {
           onConfirm={handleConfirm}
           onCancel={handleCancel}
         />
+
+        {showEditForm && (
+          <SphereForm
+            sphere={currentSphereForEdit}
+            onSubmit={handleSphereSubmit}
+            onCancel={() => {
+              setShowEditForm(false)
+              setCurrentSphereForEdit(null)
+            }}
+          />
+        )}
       </div>
     </div>
   )

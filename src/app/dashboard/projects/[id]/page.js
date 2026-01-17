@@ -5,15 +5,16 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { checkPermission, checkAnyPermission, canEditModel } from '@/lib/permission';
+import { ALL_PERMISSIONS } from '@/lib/roles'
 import apiClient from '@/lib/apiClient'
 import Loading from '@/components/Loading'
 import { proxyUrl, formatDateTime } from '@/lib/utils'
 import { getErrorMessage, handleError } from '@/lib/errorHandler'
 import { useNotification } from '@/hooks/useNotification'
 import { useConfirm } from '@/hooks/useConfirm'
-import AddModelsToProjectModal from "@/components/AddModelsToProjectModal"
 import DeleteReasonModal from "@/components/DeleteReasonModal"
 import ConfirmModal from "@/components/ConfirmModal"
+import ProjectForm from "@/components/ProjectForm"
 import { 
   ArrowLeftIcon,
   PlusIcon,
@@ -32,10 +33,11 @@ export default function ProjectPage({ params }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [userRole, setUserRole] = useState(null)
   const [user, setUser] = useState();
-  const [showAddModelsModal, setShowAddModelsModal] = useState(false)
   const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false)
   const [selectedModelForDeletion, setSelectedModelForDeletion] = useState(null)
   const [isDownloading, setIsDownloading] = useState({})
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [currentProjectForEdit, setCurrentProjectForEdit] = useState(null)
   const { success, error: showError } = useNotification()
   const { isOpen, message, title, confirmText, cancelText, variant, showConfirm, handleConfirm, handleCancel } = useConfirm()
   
@@ -177,6 +179,100 @@ export default function ProjectPage({ params }) {
     }
   }
 
+  // Обработка редактирования проекта
+  const handleEditProject = async (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    try {
+      // Загружаем полный проект с моделями
+      const fullProject = await apiClient.projects.getById(id)
+      setCurrentProjectForEdit(fullProject)
+      setShowEditForm(true)
+    } catch (error) {
+      const formattedError = await handleError(error, { context: 'ProjectPage.handleEditProject', projectId: id })
+      const errorMessage = getErrorMessage(formattedError)
+      showError(errorMessage)
+    }
+  }
+
+  // Обработка отправки формы редактирования проекта
+  const handleProjectSubmit = async (projectData) => {
+    try {
+      // Если есть файл изображения, используем FormData
+      if (projectData.imageFile || projectData.deleteImage) {
+        const formData = new FormData()
+        formData.append('name', projectData.name)
+        formData.append('city', projectData.city || '')
+        if (projectData.modelIds) {
+          projectData.modelIds.forEach(id => formData.append('modelIds', id))
+        }
+        if (projectData.imageFile) {
+          formData.append('image', projectData.imageFile)
+        }
+        if (projectData.deleteImage) {
+          formData.append('deleteImage', 'true')
+        }
+        await apiClient.projects.update(id, formData)
+      } else {
+        // Иначе используем JSON
+        await apiClient.projects.update(id, {
+          name: projectData.name,
+          city: projectData.city,
+          modelIds: projectData.modelIds || [],
+        })
+      }
+
+      success('Проект успешно обновлен')
+      
+      // Перезагружаем данные проекта
+      const updatedProject = await apiClient.projects.getById(id)
+      setProject(updatedProject)
+
+      const modelsData = await apiClient.models.getAll({ projectId: id })
+      setModels(modelsData)
+      
+      setShowEditForm(false)
+      setCurrentProjectForEdit(null)
+    } catch (error) {
+      const formattedError = await handleError(error, { context: 'ProjectPage.handleProjectSubmit', projectId: id })
+      const errorMessage = getErrorMessage(formattedError)
+      showError(errorMessage)
+      throw error
+    }
+  }
+
+  // Обработка удаления проекта
+  const handleDeleteProject = async (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
+    const confirmed = await showConfirm({
+      message: `Вы уверены, что хотите удалить проект "${project.name}"?${models.length > 0 ? ` К проекту привязано ${models.length} моделей, они будут автоматически отвязаны.` : ''}`,
+      variant: 'danger',
+      confirmText: 'Удалить'
+    })
+    
+    if (!confirmed) return
+
+    try {
+      const data = await apiClient.projects.delete(id)
+      if (data && data.success) {
+        success('Проект успешно удален')
+        router.push('/dashboard/projects')
+      } else {
+        showError(data?.error || 'Ошибка удаления проекта')
+      }
+    } catch (error) {
+      const formattedError = await handleError(error, { context: 'ProjectPage.handleDeleteProject', projectId: id })
+      const errorMessage = getErrorMessage(formattedError)
+      showError(errorMessage)
+    }
+  }
+
   // Фильтрация и сортировка моделей
   const filteredModels = models
     .filter(model => 
@@ -232,32 +328,26 @@ export default function ProjectPage({ params }) {
               )}
             </h1>
           </div>
-          {(userRole === 'ADMIN' || checkPermission(user, 'upload_models')) && (
-            <button
-              onClick={() => setShowAddModelsModal(true)}
-              className="group relative inline-flex items-center h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium cursor-pointer flex-shrink-0 overflow-hidden"
-              style={{ 
-                width: '2.5rem', 
-                paddingLeft: '0.625rem', 
-                paddingRight: '0.625rem',
-                transition: 'width 0.2s, padding-right 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.setProperty('width', '195px', 'important')
-                e.currentTarget.style.setProperty('padding-right', '2rem', 'important')
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.setProperty('width', '2.5rem', 'important')
-                e.currentTarget.style.setProperty('padding-right', '0.625rem', 'important')
-              }}
-              title="Добавить модель"
-            >
-              <PlusIcon className="h-5 w-5 flex-shrink-0" style={{ color: '#ffffff', strokeWidth: 2 }} />
-              <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                Добавить модель
-              </span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {(user?.role === 'ADMIN' || checkPermission(user, ALL_PERMISSIONS.EDIT_PROJECTS)) && (
+              <button
+                onClick={handleEditProject}
+                className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                title="Редактировать проект"
+              >
+                <PencilIcon className="h-5 w-5" />
+              </button>
+            )}
+            {(user?.role === 'ADMIN' || checkPermission(user, ALL_PERMISSIONS.EDIT_PROJECTS)) && (
+              <button
+                onClick={handleDeleteProject}
+                className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                title="Удалить проект"
+              >
+                <TrashIcon className="h-5 w-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Поиск */}
@@ -391,38 +481,13 @@ export default function ProjectPage({ params }) {
         )}
 
 
-        {showAddModelsModal && (
-          <AddModelsToProjectModal
-            projectId={id}
-            existingModelIds={models.map(m => m.id)}
-            onClose={() => setShowAddModelsModal(false)}
-            onAdd={async (selectedModelIds) => {
-              try {
-                // Получаем текущие модели проекта
-                const currentModelIds = models.map(m => m.id)
-                // Объединяем существующие модели с новыми
-                const allModelIds = [...new Set([...currentModelIds, ...selectedModelIds])]
-                
-                // Обновляем проект
-                await apiClient.projects.update(id, {
-                  name: project.name,
-                  city: project.city,
-                  modelIds: allModelIds
-                })
-
-                // Перезагружаем данные
-                const projectData = await apiClient.projects.getById(id)
-                setProject(projectData)
-
-                const modelsData = await apiClient.models.getAll({ projectId: id })
-                setModels(modelsData)
-
-                setShowAddModelsModal(false)
-              } catch (error) {
-                const formattedError = await handleError(error, { context: 'ProjectPage.onAdd', projectId: id, modelIds: selectedModelIds })
-                const errorMessage = getErrorMessage(formattedError)
-                showError(errorMessage)
-              }
+        {showEditForm && (
+          <ProjectForm
+            project={currentProjectForEdit}
+            onSubmit={handleProjectSubmit}
+            onCancel={() => {
+              setShowEditForm(false)
+              setCurrentProjectForEdit(null)
             }}
           />
         )}

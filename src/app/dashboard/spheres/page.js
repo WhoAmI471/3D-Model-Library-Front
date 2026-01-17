@@ -275,7 +275,7 @@ export default function SpheresPage() {
                     {(user?.role === 'ADMIN' || checkPermission(user, ALL_PERMISSIONS.EDIT_SPHERE)) && (
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-2">
-                          {checkPermission(user, ALL_PERMISSIONS.EDIT_SPHERE) && (
+                          {(user?.role === 'ADMIN' || checkPermission(user, ALL_PERMISSIONS.EDIT_SPHERE)) && (
                             <button
                               onClick={(e) => handleEdit(sphere, e)}
                               className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
